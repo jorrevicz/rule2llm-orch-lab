@@ -1007,7 +1007,28 @@ idempotência → `StateBuilder` → rastreabilidade → `RulesDecisionEngine` �
 
 Não inverter desnecessariamente essa ordem.
 
-## 49. Resumo operacional para Claude
+## 49. Roadmap e registro de progresso
+
+O roadmap oficial está em `docs/13-roadmap.md` e é a fonte de verdade do progresso do projeto.
+
+- Antes de iniciar uma task, consulte o roadmap e marque-a como 🔄.
+- Cada task concluída = 1 commit `tipo(escopo): descrição [Mx-Tyy]` (Conventional Commits em PT-BR).
+- No mesmo commit da task, marque a task como ✅ no roadmap.
+- Commits direto na `main` local.
+- Ao concluir um marco:
+  1. verificar o critério de conclusão do marco;
+  2. atualizar o painel de status (status, tag, data);
+  3. commit `docs(roadmap): conclui Mx`;
+  4. criar tag anotada `mx-<slug>`;
+  5. `git push origin main --follow-tags`.
+- Avise o responsável imediatamente, com mensagem explícita:
+  - sempre que uma task for concluída: ID, commit e o que foi implementado/testado;
+  - sempre que um marco for concluído: critério atendido, tag e push realizado.
+- Não marcar como ✅ uma task sem entregável e verificação reais (§44).
+- Tasks bloqueadas ficam ⏸, com o motivo registrado.
+- Novas tasks, mudanças de escopo e decisões **(D)** tomadas devem ser registradas no roadmap.
+
+## 50. Resumo operacional para Claude
 
 - LEIA `piloto-do-experimento.md`.
 - MANTENHA dois microserviços.
@@ -1027,3 +1048,4 @@ Não inverter desnecessariamente essa ordem.
 - NÃO altere configuração congelada durante a coleta.
 - NÃO amplie o escopo sem necessidade.
 - SINALIZE qualquer mudança com impacto metodológico.
+- ATUALIZE `docs/13-roadmap.md` a cada task e AVISE ao concluir task ou marco.

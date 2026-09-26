@@ -83,7 +83,7 @@ estrutura de diretórios, dependências, configuração experimental base e test
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
 | M0-T01 | Roadmap detalhado por marcos | `docs(roadmap)` | `docs/13-roadmap.md`; linha 13 no `docs/README.md` | CLAUDE §29, §48 | ✅ |
-| M0-T02 | Regras de roadmap e progresso no `CLAUDE.md` | `docs(claude)` | Seção "Roadmap e registro de progresso" + item no resumo operacional | — | ⬜ |
+| M0-T02 | Regras de roadmap e progresso no `CLAUDE.md` | `docs(claude)` | Seção "Roadmap e registro de progresso" (§49) + item no resumo operacional (§50) | — | ✅ |
 | M0-T03 | Manter `docs/ref` versionado e corrigir referências | `chore(repo)` | `.gitignore` sem `/docs/ref`; `docs/README.md` e caminho do piloto no `CLAUDE.md` corrigidos | Inconsistência I-10 | ⬜ |
 | M0-T04 | Esqueleto de diretórios | `chore(repo)` | `services/orders/app`, `services/inventory/app`, `shared/`, `contracts/`, `config/`, `datasets/`, `scripts/`, `data/pilot/`, `data/experiment/`, `tests/{unit,integration,contracts}`; `.gitignore` (`*.db`, execuções em `data/`, `.venv`, `__pycache__`, `.env`) | [02 §2.6](02-arquitetura.md) | ⬜ |
 | M0-T05 | Dependências e ambiente | `build` | `requirements.txt` por serviço; `requirements-dev.txt` (pytest); `.env.example`; imagem base Python 3.12 (**provisória** — pin no M8) | [03](03-stack-tecnologica.md), CLAUDE §34 | ⬜ |
