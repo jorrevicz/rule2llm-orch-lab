@@ -32,7 +32,7 @@ a documentação deve permanecer coerente com a metodologia e com o código.
 
 ## Relação com `docs/ref/`
 
-`docs/ref/` contém o material-fonte (não versionado — ver `.gitignore`):
+`docs/ref/` contém o material-fonte (versionado junto com o repositório):
 
 - `piloto-do-experimento.md` — decisões de implementação do piloto (37 seções).
 - `TCC_METODOLOGIA.pdf` — capítulo 4 da metodologia (seções 4.1–4.6).

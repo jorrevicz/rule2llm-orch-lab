@@ -15,7 +15,7 @@ O objetivo do agente ao atuar neste repositório é implementar, revisar ou auxi
 
 Antes de realizar alterações arquiteturais, metodológicas ou que afetem o protocolo experimental, leia primeiro:
 
-`piloto-do-experimento.md`
+`docs/ref/piloto-do-experimento.md`
 
 Esse documento contém o detalhamento consolidado do piloto técnico, incluindo stack, responsabilidades, fluxo Pedido → Estoque, arquitetura, contrato RabbitMQ, estados da tarefa, `SYSTEM_STATE`, espaço de ações, `RulesDecisionEngine`, política para decisões inválidas, configuração inicial do LLM, estrutura sugerida do projeto, requisitos funcionais e não funcionais, sequência de desenvolvimento, critérios do piloto e parâmetros ainda sujeitos a congelamento antes da coleta definitiva.
 
@@ -1030,7 +1030,7 @@ O roadmap oficial está em `docs/13-roadmap.md` e é a fonte de verdade do progr
 
 ## 50. Resumo operacional para Claude
 
-- LEIA `piloto-do-experimento.md`.
+- LEIA `docs/ref/piloto-do-experimento.md`.
 - MANTENHA dois microserviços.
 - NÃO crie um terceiro serviço.
 - USE RabbitMQ + Celery para execução assíncrona.
