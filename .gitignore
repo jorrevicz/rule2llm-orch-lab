@@ -1,1 +1,22 @@
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Variáveis de ambiente locais
+.env
+
+# Bancos SQLite gerados em tempo de execução
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Artefatos de execução (piloto e experimento) — versionamento decidido em D-12
+data/pilot/*
+!data/pilot/.gitkeep
+data/experiment/*
+!data/experiment/.gitkeep
