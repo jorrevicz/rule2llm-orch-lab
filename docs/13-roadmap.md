@@ -1,0 +1,359 @@
+# 13 — Roadmap
+
+> Fonte: [`CLAUDE.md`](../CLAUDE.md) §29, §48; `piloto-do-experimento.md` §28, §32, §34, §37;
+> documentos 01–12 deste diretório.
+>
+> Este documento é a **fonte de verdade do progresso** do projeto. Ele organiza o
+> desenvolvimento em **marcos** (M0–M9), cada um com um conjunto de **tasks**. A ordem dos
+> marcos segue exatamente a sequência de implementação definida no `CLAUDE.md` §29 e no
+> piloto §28 — não inverter sem necessidade técnica clara.
+
+## 13.1 Como usar este roadmap
+
+### Convenções de trabalho
+
+| Regra | Descrição |
+|---|---|
+| Identificador | Cada task tem ID `Mx-Tyy` (ex.: `M1-T03`) |
+| 1 task = 1 commit | Mensagem em Conventional Commits, PT-BR, com o ID ao final: `feat(orders): adiciona endpoint POST /orders [M1-T03]` |
+| Status no mesmo commit | O commit que conclui a task também marca a task como ✅ neste documento — o roadmap nunca fica defasado em relação ao código |
+| Branch | Commits direto na `main` local |
+| Fechamento de marco | Verificar o critério de conclusão → atualizar o painel (§13.2) → commit `docs(roadmap): conclui Mx` → tag anotada `mx-<slug>` → `git push origin main --follow-tags` |
+| Comunicação | Avisar o responsável sempre que uma task ou um marco for concluído |
+| Honestidade | Não marcar ✅ sem entregável e verificação reais ([`CLAUDE.md`](../CLAUDE.md) §44) |
+
+### Legenda
+
+| Símbolo | Significado |
+|---|---|
+| ⬜ | Pendente |
+| 🔄 | Em andamento |
+| ✅ | Concluída |
+| ⏸ | Bloqueada (registrar o motivo) |
+| **(D)** | Exige **decisão do responsável** antes ou durante a task |
+| 🔬 | **Impacto metodológico** ([`CLAUDE.md`](../CLAUDE.md) §43): a decisão precisa ser refletida em `piloto-do-experimento.md` e no TCC |
+
+Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**, **testado**,
+**planejado**, **provisório** — indicado nas tasks quando relevante.
+
+## 13.2 Painel de status
+
+| Marco | Objetivo | Status | Tag | Concluído em |
+|---|---|:---:|---|---|
+| [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | 🔄 | `m0-fundacao` | — |
+| [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ⬜ | `m1-fluxo-normal` | — |
+| [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ⬜ | `m2-idempotencia` | — |
+| [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ⬜ | `m3-rastreabilidade` | — |
+| [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
+| [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
+| [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
+| [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
+| [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
+| [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
+
+## 13.3 Dependências entre marcos
+
+```mermaid
+flowchart LR
+    M0["M0<br/>Fundação"] --> M1["M1<br/>Fluxo normal"]
+    M1 --> M2["M2<br/>Contrato +<br/>idempotência"]
+    M2 --> M3["M3<br/>StateBuilder +<br/>rastreabilidade"]
+    M3 --> M4["M4<br/>Rules + Validator<br/>+ Executor"]
+    M4 --> M5["M5<br/>LLM"]
+    M5 --> M6["M6<br/>Falhas + carga"]
+    M6 --> M7["M7<br/>Instrumentação"]
+    M7 --> M8["M8<br/>Congelamento"]
+    M8 --> M9["M9<br/>Coleta definitiva"]
+
+    M4 -. "1º piloto técnico<br/>(doc 11 §11.4)" .-> P1(("piloto"))
+```
+
+Piloto técnico (M0–M7): dados em `data/pilot/`, `phase: PILOT`, `eligible_for_sample: false`.
+Coleta definitiva (M9): dados em `data/experiment/`, `phase: EXPERIMENT`,
+`eligible_for_sample: true` — somente após `freeze-v1`.
+
+---
+
+## M0 — Fundação do repositório
+
+**Objetivo:** preparar o repositório para o desenvolvimento: roadmap, regras de progresso,
+estrutura de diretórios, dependências, configuração experimental base e testes.
+**Pré-requisitos:** documentação 01–12 consolidada. **Tag:** `m0-fundacao`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M0-T01 | Roadmap detalhado por marcos | `docs(roadmap)` | `docs/13-roadmap.md`; linha 13 no `docs/README.md` | CLAUDE §29, §48 | ✅ |
+| M0-T02 | Regras de roadmap e progresso no `CLAUDE.md` | `docs(claude)` | Seção "Roadmap e registro de progresso" + item no resumo operacional | — | ⬜ |
+| M0-T03 | Manter `docs/ref` versionado e corrigir referências | `chore(repo)` | `.gitignore` sem `/docs/ref`; `docs/README.md` e caminho do piloto no `CLAUDE.md` corrigidos | Inconsistência I-10 | ⬜ |
+| M0-T04 | Esqueleto de diretórios | `chore(repo)` | `services/orders/app`, `services/inventory/app`, `shared/`, `contracts/`, `config/`, `datasets/`, `scripts/`, `data/pilot/`, `data/experiment/`, `tests/{unit,integration,contracts}`; `.gitignore` (`*.db`, execuções em `data/`, `.venv`, `__pycache__`, `.env`) | [02 §2.6](02-arquitetura.md) | ⬜ |
+| M0-T05 | Dependências e ambiente | `build` | `requirements.txt` por serviço; `requirements-dev.txt` (pytest); `.env.example`; imagem base Python 3.12 (**provisória** — pin no M8) | [03](03-stack-tecnologica.md), CLAUDE §34 | ⬜ |
+| M0-T06 | Configuração experimental e pacote comum | `feat(config)` | `config/experiment_config.yml` (piloto §31 + `task_deadline_ms` + `decision_engine`); `shared/` com carga de config, geração de IDs (`ORD_`, `TASK_`, `MSG_`, `STATE_`, `DEC_`) e timestamps UTC ISO 8601 (ms) | [03 §3.6](03-stack-tecnologica.md), I-04, RNF-022 | ⬜ |
+| M0-T07 | Testes base | `test` | pytest configurado; testes da carga de config e dos utilitários de `shared/` | CLAUDE §35 | ⬜ |
+| M0-T08 | README raiz | `docs` | `README.md` (objetivo, como subir, onde estão a documentação e o roadmap) | — | ⬜ |
+
+**Critério de conclusão**
+
+- [ ] Roadmap publicado e referenciado no índice de `docs/`.
+- [ ] `CLAUDE.md` contém as regras de atualização do roadmap e de aviso de conclusão.
+- [ ] `docs/ref` continua versionado (`git check-ignore` não o ignora).
+- [ ] Estrutura de diretórios criada; `data/pilot/` e `data/experiment/` separados.
+- [ ] `experiment_config.yml` carrega com todas as chaves do piloto §31 + `task_deadline_ms`.
+- [ ] `pytest` passa.
+
+> `shared/` é uma **biblioteca** comum (contratos, IDs, tempo, config). Não compartilha banco
+> nem estado em tempo de execução entre os serviços (RNF-003).
+
+---
+
+## M1 — Fluxo normal ponta a ponta
+
+**Objetivo:** o caminho funcional mínimo do [`CLAUDE.md`](../CLAUDE.md) §6 funcionando,
+sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
+**Pré-requisitos:** M0. **Tag:** `m1-fluxo-normal`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M1-T01 | Infraestrutura RabbitMQ | `feat(infra)` | `docker-compose.yml` com RabbitMQ (management); `config/rabbitmq/definitions.json` com `tcc.tasks` (direct), `tcc.dlx`, `inventory.primary`, `inventory.fallback`, `orders.events`, `tasks.dlq` | [04 §4.1](04-contrato-mensageria.md) | ⬜ |
+| M1-T02 | Configuração Celery nos dois serviços | `feat(messaging)` | Filas/rotas sobre `tcc.tasks`; `acks_late`, `prefetch=1`, `task_reject_on_worker_lost`; **sem `autoretry`**; envelope como argumento único da task | [03 §3.3](03-stack-tecnologica.md), CLAUDE §9 | ⬜ |
+| M1-T03 | `orders-service`: API e `orders.db` | `feat(orders)` | FastAPI; `orders`, `tasks`, `processed_events`; `POST /orders` (202); `GET /orders/{id}`; health check. **(D)** D-02, D-14 | RF-001–RF-004, [08](08-modelo-de-dados-mer.md) | ⬜ |
+| M1-T04 | `inventory-service`: worker e `inventory.db` | `feat(inventory)` | Worker em `inventory.primary`; `reservations`, `processed_messages`; reserva simulada da rota primária; publica `STOCK_RESERVATION_SUCCEEDED` em `orders.events` | RF-006, RF-007, RF-010 | ⬜ |
+| M1-T05 | Despacho inicial **provisório** | `feat(orders)` | `CONTINUE` fixo para `inventory.primary`, sem motor de decisão — **provisório**, substituído em M4-T04 | RF-005 | ⬜ |
+| M1-T06 | Consumo de `orders.events` | `feat(orders)` | Worker Celery do Orders; evento terminal de sucesso → Task e Order `COMPLETED` | RF-011, [05](05-maquina-de-estados.md) | ⬜ |
+| M1-T07 | Smoke test do fluxo normal | `test` | `scripts/pilot/smoke_test.py`; teste de integração via Docker Compose | CLAUDE §35 | ⬜ |
+
+**Critério de conclusão** (piloto §28 Fase 1)
+
+- [ ] `docker compose up` inicializa RabbitMQ, Orders e Inventory.
+- [ ] `POST /orders` → RabbitMQ → Inventory → `inventory.db` → evento de sucesso → Orders → `orders.db` → `COMPLETED`.
+- [ ] Pedido e tarefa terminam como `COMPLETED`.
+- [ ] Nenhuma chamada HTTP síncrona entre os serviços; nenhum banco compartilhado.
+
+---
+
+## M2 — Contrato de mensagens e idempotência
+
+**Objetivo:** envelope versionado, sequência lógica por tarefa e as duas idempotências
+(transporte e negócio), com redelivery distinta de `RETRY` (piloto §28 Fase 2).
+**Pré-requisitos:** M1. **Tag:** `m2-idempotencia`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M2-T01 | Schema do envelope | `feat(contracts)` | `contracts/message_envelope.schema.json`; modelo em `shared/`; validação no consumo. **(D)** D-13 | [04 §4.2](04-contrato-mensageria.md) | ⬜ |
+| M2-T02 | `event_seq`, `attempt_number`, `message_id` | `feat(orders)` | `event_seq` monotônico por tarefa (incremento transacional em `tasks`); `message_id` novo por mensagem | RF-012, RNF-016, RNF-017 | ⬜ |
+| M2-T03 | Idempotência de transporte | `feat(inventory)` | `processed_messages` com resultado; redelivery reemite o resultado sem reprocessar; `redelivered` lido de `delivery_info` | RF-008, [04 §4.7.1](04-contrato-mensageria.md) | ⬜ |
+| M2-T04 | Idempotência de negócio | `feat(inventory)` | `reservations.task_id UNIQUE`; nova tentativa lógica não cria 2ª reserva | RF-009, [04 §4.7.2](04-contrato-mensageria.md) | ⬜ |
+| M2-T05 | Dedupe no Orders | `feat(orders)` | `processed_events` no consumo de `orders.events` | [04 §4.8](04-contrato-mensageria.md) | ⬜ |
+| M2-T06 | Testes de contrato e idempotência | `test` | Testes de schema; `scripts/pilot/duplicate_message_test.py`; redelivery não duplica reserva; nova tentativa: novo `message_id`, mesmo `task_id`, novo `event_seq`, `attempt_number + 1` | CLAUDE §35 | ⬜ |
+| M2-T07 | **(D) 🔬** Decisão sobre outbox | `docs(decisoes)` | D-04 registrada (padrão proposto: publicação direta pós-commit; outbox só se o piloto mostrar perda) | [08 §8.5](08-modelo-de-dados-mer.md) | ⬜ |
+
+**Critério de conclusão** (piloto §28 Fase 2)
+
+- [ ] Reenviar a mesma mensagem **não** cria uma segunda reserva.
+- [ ] Nova tentativa lógica com `message_id` novo **não** cria uma segunda reserva.
+- [ ] `message_id`, `task_id` e `event_seq` aparecem nos registros.
+
+---
+
+## M3 — StateBuilder, `SYSTEM_STATE` e rastreabilidade
+
+**Objetivo:** construir o snapshot normalizado apresentado ao decisor e os artefatos de
+rastreabilidade (piloto §28 Fase 3).
+**Pré-requisitos:** M2. **Tag:** `m3-rastreabilidade`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M3-T01 | **(D) 🔬** Formato final do `SYSTEM_STATE` | `docs(decisoes)` | D-06 registrada: estrutura aninhada (doc 06) × plana (piloto §10.1), conjunto de `phase`, grafia de `decision_engine`; piloto atualizado | I-01, I-02, I-03 | ⬜ |
+| M3-T02 | Schema do `SYSTEM_STATE` | `feat(contracts)` | `contracts/system_state.schema.json`; modelo em `shared/` | [06 §6.2](06-modelo-de-decisao.md), RF-013 | ⬜ |
+| M3-T03 | Execução e metadados | `feat(observability)` | Escritor JSONL comum; `data/pilot/<EXECUTION_ID>/`; `execution_id` por execução; `execution_metadata.json` (`phase: PILOT`, `eligible_for_sample: false`, desconhecidos `null`). **(D)** D-05 | RF-035, RF-036, [10 §10.3](10-rastreabilidade-e-metricas.md) | ⬜ |
+| M3-T04 | Eventos da tarefa | `feat(orders)` | Tabela `task_events` em `orders.db` (incremento justificado: o StateBuilder lê os últimos K — D-01); `task_events.jsonl` com eventos de orders e inventory (`service`, `redelivered`) | RF-032 | ⬜ |
+| M3-T05 | `StateBuilder` | `feat(orders)` | `state_id`; janela `recent_events_limit`; `elapsed_ms`; `last_result`; `queue_size` e disponibilidade do consumidor via API de management do RabbitMQ (mesma fonte para Rules e LLM); `states.jsonl` | RF-013–RF-015, RF-031, RNF-012, RNF-019, I-08 | ⬜ |
+| M3-T06 | Logs estruturados | `feat(observability)` | Logger JSON nos dois serviços → `microservices_logs.jsonl` | RF-034, CLAUDE §36 | ⬜ |
+| M3-T07 | Registro de decisões | `feat(orders)` | Escritor de `decisions.jsonl` no formato do doc 10 §10.3 | RF-033 | ⬜ |
+| M3-T08 | Testes de estado e correlação | `test` | Janela K; aderência ao schema; correlação `execution_id → task_id → state_id → decision_id → message_id/event_seq` | RNF-007 | ⬜ |
+
+**Critério de conclusão** (piloto §28 Fase 3)
+
+- [ ] Para qualquer decisão é possível localizar o snapshot exato usado pelo decisor.
+- [ ] `task_events.jsonl` permite reconstruir a trajetória anterior.
+- [ ] `recent_events` contém somente a janela K configurada.
+
+---
+
+## M4 — Rules + Validator + Executor
+
+**Objetivo:** as cinco ações reais executadas pelo `RulesDecisionEngine`, passando pelo
+Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto técnico**.
+**Pré-requisitos:** M3. **Tag:** `m4-rules`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M4-T01 | Contrato de decisão | `feat(contracts)` | `contracts/decision.schema.json`; `Decision`, `ValidationResult`; enums `Action`, `Target`, `ReasonCode`, erros de validação | [06 §6.4](06-modelo-de-decisao.md), [12 §12.4](12-glossario.md), RF-017 | ⬜ |
+| M4-T02 | `RulesDecisionEngine` | `feat(orchestration)` | Interface `DecisionEngine`; política ordenada literal do piloto §14.3; limiares do config | [06 §6.6](06-modelo-de-decisao.md), RF-024 | ⬜ |
+| M4-T03 | `DecisionValidator` | `feat(orchestration)` | Validação comum do piloto §18 + `TERMINAL_TASK` | [06 §6.9](06-modelo-de-decisao.md), RF-028, RNF-009 | ⬜ |
+| M4-T04 | Orchestrator | `feat(orchestration)` | `handle_decision_point`: build → decide → validate → `resolve_action` → execute → `decisions.jsonl` (`decision_time_ms`); seleção de `decision_engine` por config; remove o despacho provisório de M1-T05 | [07 §7.2](07-diagramas-uml.md), RF-016 | ⬜ |
+| M4-T05 | `CONTINUE` e `RETRY` | `feat(orchestration)` | Executor: `RETRY` com novo `message_id`/`event_seq`, `attempt_number + 1`, `retry_delay_ms`, mesmo target | RF-018, RF-019 | ⬜ |
+| M4-T06 | Detector de timeout | `feat(orders)` | `timeout_check` agendado a cada dispatch; verifica `attempt_number`; emite `INVENTORY_TIMEOUT` | RF-023, [04 §4.9](04-contrato-mensageria.md) | ⬜ |
+| M4-T07 | `WAIT` | `feat(orchestration)` | `wait_count + 1`; Task `WAITING`; `reevaluate` após `wait_delay_ms`; `attempt_number` inalterado | RF-020 | ⬜ |
+| M4-T08 | Rota fallback e `FALLBACK` | `feat(inventory)` | `reservation/fallback.py` consumindo `inventory.fallback`; Executor `FALLBACK` (`fallback_used = true`). **(D)** D-15 | RF-021, [06 §6.5](06-modelo-de-decisao.md), I-06 | ⬜ |
+| M4-T09 | `ABORT` e decisão inválida | `feat(orchestration)` | Task `ABORTED`, Order `FAILED`, `TASK_ABORTED`; decisão inválida → `ABORT / INVALID_DECISION` | RF-022, RF-029 | ⬜ |
+| M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: definição de "falhas sucessivas" (limite e mecanismo); `MESSAGE_DEAD_LETTERED` → `DEAD_LETTERED` | RF-030, I-07 | ⬜ |
+| M4-T11 | Testes das ações | `test` | Rules (cada regra), Validator (cada erro), Executor por ação: `WAIT` não incrementa tentativa, `FALLBACK` só quando admissível, `ABORT` terminal | CLAUDE §35 | ⬜ |
+| M4-T12 | 1º piloto técnico | `chore(pilot)` | `PILOT_0001` (rules, fluxo normal) executado; checklist do doc 11 §11.4 marcado | piloto §32 | ⬜ |
+
+**Critério de conclusão** (piloto §28 Fase 4 e §32)
+
+- [ ] `CONTINUE`, `RETRY`, `WAIT`, `FALLBACK` e `ABORT` validados sem LLM.
+- [ ] Checklist do 1º piloto técnico ([11 §11.4](11-requisitos.md)) completo.
+
+---
+
+## M5 — `LLMDecisionEngine`
+
+**Objetivo:** trocar **somente** o componente que seleciona a ação (piloto §28 Fase 5).
+**Pré-requisitos:** M4. **Tag:** `m5-llm`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M5-T01 | **(D) 🔬** Onde roda o Ollama | `docs(decisoes)` | D-08: no host macOS (GPU Metal) × em container (apenas CPU no macOS); registro no metadata | [03 §3.5](03-stack-tecnologica.md), RNF-021 | ⬜ |
+| M5-T02 | `OllamaClient` | `feat(llm)` | `stream=false`; `temperature`, `top_p`, `num_predict`, `seed` do config; timeout. **(D) 🔬** D-09 (modo JSON do runtime) | RF-025 | ⬜ |
+| M5-T03 | `PromptBuilder` | `feat(llm)` | Template versionado em `config/prompts/decision_prompt_v1.txt`; hash no metadata | [06 §6.8](06-modelo-de-decisao.md), RNF-027 | ⬜ |
+| M5-T04 | `DecisionParser` | `feat(llm)` | Parser estrito, sem correção; saída malformada = decisão inválida | RF-027, CLAUDE §23 | ⬜ |
+| M5-T05 | `LLMDecisionEngine` | `feat(orchestration)` | Stateless; `llm_inference_ms`; tokens só se o runtime os informar; timeout → `LLM_DECISION_TIMEOUT` → `ABORT` | RF-026, RNF-013, [06 §6.13](06-modelo-de-decisao.md) | ⬜ |
+| M5-T06 | Readiness e warm-up do LLM | `feat(scripts)` | Readiness do Ollama; warm-up (`model_load_ms`, `warmup_inference_ms`); versão/digest/quantização lidos do runtime (nunca inventados) | RF-038, RF-039 | ⬜ |
+| M5-T07 | Testes do LLM e de equivalência | `test` | Cliente falso: JSON inválido, target inventado, timeout → `ABORT`; mesmo `SYSTEM_STATE`, Validator e Executor para Rules e LLM | RNF-009, RNF-010, CLAUDE §35 | ⬜ |
+| M5-T08 | Piloto com LLM | `chore(pilot)` | Piloto com `decision_engine: llm` no fluxo normal; avaliação da viabilidade do `llama3.1:8b` no hardware local | piloto §20.4 | ⬜ |
+
+**Critério de conclusão** (piloto §28 Fase 5)
+
+- [ ] O LLM troca somente o componente que seleciona a ação.
+- [ ] Decisão inválida do LLM → registrada → `ABORT`, sem autocorreção e sem fallback para Rules.
+
+---
+
+## M6 — Cenários de falha e carga
+
+**Objetivo:** tornar os seis cenários reproduzíveis e controláveis (piloto §28 Fase 6).
+**Pré-requisitos:** M5 (fluxo + Rules + LLM funcionando). **Tag:** `m6-falhas-carga`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M6-T01 | Dataset | `feat(datasets)` | `datasets/orders_v1.json` determinístico (seed) | RNF-005 | ⬜ |
+| M6-T02 | Gerador de carga | `feat(workload)` | `scripts/workload/generate_load.py` (nº de requisições, taxa, seed) | RF-040 | ⬜ |
+| M6-T03 | Injeção controlada na rota primária | `feat(inventory)` | Erro transitório/latência na **rota primária**, ativados por controle externo registrado; rota fallback não afetada | piloto §35.7, [06 §6.5](06-modelo-de-decisao.md) | ⬜ |
+| M6-T04 | Cenário timeout | `feat(faults)` | `scripts/faults/timeout.py` | [11 §11.3](11-requisitos.md) | ⬜ |
+| M6-T05 | Cenário falha intermitente | `feat(faults)` | `scripts/faults/intermittent_failure.py` | [11 §11.3](11-requisitos.md) | ⬜ |
+| M6-T06 | Cenário sobrecarga | `feat(faults)` | `scripts/faults/overload.py` | [11 §11.3](11-requisitos.md) | ⬜ |
+| M6-T07 | Cenário dados inconsistentes | `feat(faults)` | `scripts/faults/inconsistent_data.py` → `invalid_data`. **(D)** D-03 | [11 §11.3](11-requisitos.md) | ⬜ |
+| M6-T08 | Cenário recuperação pós-falha | `feat(faults)` | `scripts/faults/recovery.py` (stop/start do `inventory-service` → só `WAIT`/`ABORT`) | [11 §11.3](11-requisitos.md) | ⬜ |
+| M6-T09 | Configuração de cenários | `feat(config)` | `config/scenarios/*.yml`; `fault_events.jsonl` | RF-041 | ⬜ |
+| M6-T10 | Piloto dos cenários | `chore(pilot)` | Os 6 cenários executados em piloto com rules e llm; `FALLBACK` confirmado como realmente executável | piloto §35.7 | ⬜ |
+
+**Critério de conclusão**
+
+- [ ] Os seis cenários são acionáveis por script/config e registrados em `fault_events.jsonl`.
+- [ ] Nenhuma perturbação aleatória não registrada.
+- [ ] Degradação da rota primária é distinguível de indisponibilidade total do Inventory.
+
+---
+
+## M7 — Instrumentação e protocolo experimental
+
+**Objetivo:** instrumentação comum e o protocolo operacional completo (piloto §28 Fase 7;
+doc 10 §10.6).
+**Pré-requisitos:** M6. **Tag:** `m7-instrumentacao`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M7-T01 | Reset do ambiente | `feat(scripts)` | `scripts/reset_environment.py`: purge de filas/DLQ, SQLite iniciais, hashes, `initial_state.json`, `reset.log` | RF-037, RNF-024 | ⬜ |
+| M7-T02 | Readiness completo | `feat(scripts)` | `scripts/readiness.py` → `readiness_status` | RF-038, RNF-023 | ⬜ |
+| M7-T03 | Métricas de fila | `feat(metrics)` | `queue_metrics.csv` (API de management do RabbitMQ, intervalo fixo) | RNF-020 | ⬜ |
+| M7-T04 | Métricas de containers | `feat(metrics)` | `container_stats.csv` (Docker Stats) | RNF-020 | ⬜ |
+| M7-T05 | **(D)** Prometheus | `docs(decisoes)` | D-10: exporters Prometheus × API de management + Docker Stats | I-09, CLAUDE §33 | ⬜ |
+| M7-T06 | Executor do protocolo | `feat(experiment)` | `scripts/run_experiment.py` (TABELA 14, etapas 1–12); `execution_metadata.json` completo (commit, hashes, versões, hardware); `run_status`; `invalid_runs.csv` | RNF-005, RNF-006 | ⬜ |
+| M7-T07 | Consolidação de métricas | `feat(analysis)` | `latency_metrics.csv`, `throughput_metrics.csv`, `error_metrics.csv`, `recovery_metrics.csv`, overhead decisório — calculados **somente** a partir dos arquivos | RF-042, [10 §10.4](10-rastreabilidade-e-metricas.md) | ⬜ |
+| M7-T08 | Testes dos artefatos | `test` | Todos os artefatos do doc 10 §10.2 gerados e íntegros | RNF-029 | ⬜ |
+
+**Critério de conclusão**
+
+- [ ] Uma execução completa segue o protocolo de ponta a ponta e gera todos os artefatos.
+- [ ] Instrumentação idêntica para Rules e LLM.
+
+---
+
+## M8 — Congelamento
+
+**Objetivo:** congelar e versionar tudo o que define a comparabilidade (piloto §28 Fase 8, §34).
+**Pré-requisitos:** M7. **Tag:** `freeze-v1`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M8-T01 | **(D) 🔬** Divergências e inconsistências | `docs(decisoes)` | Decisões pendentes (§13.4) e inconsistências (§13.5) resolvidas; `piloto-do-experimento.md` e docs atualizados | [08 §8.5](08-modelo-de-dados-mer.md) | ⬜ |
+| M8-T02 | **(D) 🔬** Valores finais | `feat(config)` | D-11: `queue_high_watermark` (a partir do steady state), K, timeouts/retry/wait, dataset, carga, seeds, `N_rep`, ordem Rules/LLM | [11 §11.5](11-requisitos.md) | ⬜ |
+| M8-T03 | Pin de versões | `chore(build)` | Bibliotecas, digests de imagem, Python, versão do Ollama, digest/quantização do modelo, hardware | RNF-006, RNF-026 | ⬜ |
+| M8-T04 | Congelamento de prompt e Rules | `chore(freeze)` | Prompt, Rules, `reason_code`s congelados; manifesto de hashes | RNF-027, RNF-028 | ⬜ |
+| M8-T05 | Ensaio geral | `test` | Execução completa (ainda `PILOT`): reset → readiness → warm-up → carga → falha → coleta | piloto §28 Fase 8 | ⬜ |
+| M8-T06 | Ativação da fase experimental | `chore(config)` | `phase: experiment` no config; tag `freeze-v1` | RNF-025 | ⬜ |
+
+**Critério de conclusão**
+
+- [ ] Nenhum campo crítico `null` no `experiment_config.yml`.
+- [ ] Tag `freeze-v1` publicada; a partir daqui nada congelado é alterado.
+
+---
+
+## M9 — Coleta definitiva
+
+**Objetivo:** produzir a amostra do TCC com a configuração congelada.
+**Pré-requisitos:** M8 (`freeze-v1`). **Tag:** `coleta-v1`.
+
+| ID | Task | Commit | Entregáveis | Refs | Status |
+|---|---|---|---|---|:---:|
+| M9-T01 | Execuções da amostra | `chore(experiment)` | `N_rep` × 6 cenários × 2 abordagens na ordem definida → `data/experiment/` | [10 §10.6](10-rastreabilidade-e-metricas.md) | ⬜ |
+| M9-T02 | Execuções inválidas | `chore(experiment)` | `invalid_runs.csv`; repetição até completar `N_rep` válidas por combinação | [06 §6.12](06-modelo-de-decisao.md) | ⬜ |
+| M9-T03 | Consolidação dos resultados | `feat(analysis)` | `results.csv`, `analysis_summary.md` — apenas com dados reais | CLAUDE §42, §44 | ⬜ |
+| M9-T04 | **(D)** Versionamento dos dados | `docs(decisoes)` | D-12: como versionar/publicar os dados experimentais | RNF-006 | ⬜ |
+
+**Critério de conclusão**
+
+- [ ] `N_rep` execuções válidas por cenário × abordagem.
+- [ ] Nenhum dado de piloto na amostra.
+
+---
+
+## 13.4 Registro de decisões pendentes
+
+| ID | Decisão | Opções / padrão proposto | Fechar em | Status |
+|---|---|---|---|:---:|
+| D-01 | Persistir `task_events` / `states` / `decisions` também em tabela | `task_events` em tabela (o StateBuilder precisa dos últimos K); `states`/`decisions` só em JSONL até decisão | M3-T04 / M8-T01 | ⬜ |
+| D-02 | Itens do pedido e da reserva | Tabelas `order_items`/`reservation_items` × itens em JSON; o Orders precisa dos itens para montar o envelope de um `RETRY` | M1-T03 | ⬜ |
+| D-03 | Tabela `stock` no Inventory | Reserva 100% simulada × tabela `stock` (enriquece o cenário "dados inconsistentes") | M6-T07 | ⬜ |
+| D-04 🔬 | Padrão outbox | Publicação direta pós-commit (padrão) × outbox | M2-T07 | ⬜ |
+| D-05 | Tabela `executions` | Só `execution_metadata.json` × também tabela | M3-T03 | ⬜ |
+| D-06 🔬 | Formato do `SYSTEM_STATE` | Aninhado (doc 06) × plano (piloto §10.1); conjunto de `phase`; grafia de `decision_engine` | M3-T01 | ⬜ |
+| D-07 🔬 | Política de DLQ | Limite de "falhas sucessivas" e mecanismo (ex.: contagem de entregas) | M4-T10 | ⬜ |
+| D-08 🔬 | Localização do Ollama | Host macOS (GPU Metal) × container (CPU) | M5-T01 | ⬜ |
+| D-09 🔬 | Modo JSON do runtime | Usar a restrição de formato do Ollama × apenas o prompt | M5-T02 | ⬜ |
+| D-10 | Prometheus | Exporters × API de management + Docker Stats | M7-T05 | ⬜ |
+| D-11 🔬 | Valores finais dos parâmetros | Ver [11 §11.5](11-requisitos.md) | M8-T02 | ⬜ |
+| D-12 | Publicação dos dados experimentais | Commit no repositório × artefato de release × armazenamento externo | M9-T04 | ⬜ |
+| D-13 | Envelope inválido no consumo | Rejeição sem requeue → `tcc.dlx` × evento de falha `invalid_data` | M2-T01 | ⬜ |
+| D-14 | Valor inicial de `attempt_number` | `0` (piloto §23) × `1` (doc 09) | M1-T03 | ⬜ |
+| D-15 🔬 | Semântica de `fallback_max_attempts` | Hoje definido mas não usado por Rules nem pelo Validator | M4-T08 | ⬜ |
+
+Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
+`piloto-do-experimento.md`.
+
+## 13.5 Inconsistências detectadas na documentação
+
+| ID | Inconsistência | Onde | Resolver em |
+|---|---|---|---|
+| I-01 | `decision_engine` grafado `RULES`/`LLM` × `rules`/`llm` | doc 10 × docs 06, 09 e piloto | M3-T01 |
+| I-02 | `SYSTEM_STATE` plano com `observed_latency_ms` × aninhado com `latency_ms` | piloto §10.1 × doc 06 §6.2 | M3-T01 |
+| I-03 | Rules usa `phase` `READY`/`RECOVERED`, ausentes da máquina de estados | piloto §14.3 × doc 05 | M3-T01 |
+| I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 |
+| I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | M1-T03 (D-14) |
+| I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | M4-T08 (D-15) |
+| I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | M4-T10 (D-07) |
+| I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 |
+| I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
+| I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 |
