@@ -3,3 +3,4 @@
 -r services/orders/requirements.txt
 -r services/inventory/requirements.txt
 pytest  # execução dos testes unitários, de contrato e de integração
+httpx2  # cliente HTTP exigido pelo TestClient do Starlette nos testes da API

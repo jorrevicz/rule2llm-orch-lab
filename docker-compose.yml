@@ -17,3 +17,32 @@ services:
       interval: 5s
       timeout: 10s
       retries: 20
+
+  # orders-service — API HTTP. Compartilha orders.db (volume orders-data) com o
+  # worker do mesmo serviço; nenhum outro serviço acessa esse volume.
+  orders-api:
+    build:
+      context: .
+      dockerfile: services/orders/Dockerfile
+    command: ["uvicorn", "services.orders.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment: &orders-env
+      BROKER_URL: amqp://tcc:tcc@rabbitmq:5672//
+      ORDERS_DB_PATH: /data/orders.db
+      EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
+      EXPERIMENT_CONFIG_PATH: /srv/config/experiment_config.yml
+    volumes:
+      - orders-data:/data
+      - ./config:/srv/config:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  orders-data:
