@@ -1,0 +1,8 @@
+# Dependências do orders-service.
+# Imagem base prevista: Python 3.12 (provisória).
+# Versões ainda NÃO pinadas: o pin reproduzível é feito no congelamento (M8-T03).
+fastapi   # API HTTP: POST /orders, GET /orders/{id}, health check
+uvicorn   # servidor ASGI da API
+celery    # execução assíncrona sobre RabbitMQ (não é o mecanismo de decisão)
+pydantic  # validação de payloads e dos contratos (envelope, SYSTEM_STATE, decisão)
+pyyaml    # leitura de config/experiment_config.yml

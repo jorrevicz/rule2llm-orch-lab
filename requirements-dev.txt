@@ -1,0 +1,5 @@
+# Ambiente de desenvolvimento e testes (local).
+# Inclui as dependências dos dois serviços para que os testes exercitem o mesmo código.
+-r services/orders/requirements.txt
+-r services/inventory/requirements.txt
+pytest  # execução dos testes unitários, de contrato e de integração

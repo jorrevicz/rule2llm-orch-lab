@@ -1,0 +1,6 @@
+# Dependências do inventory-service.
+# Imagem base prevista: Python 3.12 (provisória).
+# Versões ainda NÃO pinadas: o pin reproduzível é feito no congelamento (M8-T03).
+celery    # worker de reserva sobre RabbitMQ (inventory.primary / inventory.fallback)
+pydantic  # validação do envelope de mensagem
+pyyaml    # leitura de config/experiment_config.yml
