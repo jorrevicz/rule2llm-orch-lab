@@ -325,7 +325,7 @@ doc 10 §10.6).
 | ID | Decisão | Opções / padrão proposto | Fechar em | Status |
 |---|---|---|---|:---:|
 | D-01 | Persistir `task_events` / `states` / `decisions` também em tabela | `task_events` em tabela (o StateBuilder precisa dos últimos K); `states`/`decisions` só em JSONL até decisão | M3-T04 / M8-T01 | ⬜ |
-| D-02 | Itens do pedido e da reserva | Tabelas `order_items`/`reservation_items` × itens em JSON; o Orders precisa dos itens para montar o envelope de um `RETRY` | M1-T03 | ⬜ |
+| D-02 | Itens do pedido e da reserva | **Decidido (2026-09-27): JSON** em `orders.items_json` e `reservations.items_json`, sem tabelas de itens. Itens imutáveis após a validação; toda tentativa republica o mesmo `payload.items`; nenhuma métrica nem o `SYSTEM_STATE` consultam itens. Sem impacto metodológico | M1-T03 | ✅ |
 | D-03 | Tabela `stock` no Inventory | Reserva 100% simulada × tabela `stock` (enriquece o cenário "dados inconsistentes") | M6-T07 | ⬜ |
 | D-04 🔬 | Padrão outbox | Publicação direta pós-commit (padrão) × outbox | M2-T07 | ⬜ |
 | D-05 | Tabela `executions` | Só `execution_metadata.json` × também tabela | M3-T03 | ⬜ |

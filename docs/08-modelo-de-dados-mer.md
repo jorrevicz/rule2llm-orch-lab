@@ -33,7 +33,6 @@ erDiagram
     EXECUTIONS ||--o{ ORDERS : "contém"
     EXECUTIONS ||--o{ TASKS : "contém"
     ORDERS ||--|| TASKS : "gera (1:1)"
-    ORDERS ||--|{ ORDER_ITEMS : "tem"
     TASKS ||--o{ TASK_EVENTS : "produz"
     TASKS ||--o{ STATES : "snapshot de"
     TASKS ||--o{ DECISIONS : "pontos de decisão de"
@@ -57,16 +56,9 @@ erDiagram
         text order_id PK
         text execution_id FK
         text status "PENDING | COMPLETED | FAILED"
+        text items_json "itens validados, JSON canônico (D-02)"
         text created_at
         text updated_at
-    }
-
-    ORDER_ITEMS {
-        integer id PK
-        text order_id FK
-        integer line_no
-        text sku
-        integer quantity
     }
 
     TASKS {
@@ -164,10 +156,10 @@ erDiagram
 
 | Tabela | No piloto §23? | Papel |
 |---|:---:|---|
-| `orders` | sim | Pedido e seu estado externo |
+| `orders` | sim | Pedido, seu estado externo e os itens em `items_json` (D-02) |
 | `tasks` | sim | Tarefa de processamento e todos os contadores do `SYSTEM_STATE` |
 | `processed_events` | sim (nome citado em §23.1) | Idempotência de transporte no consumo de `orders.events` |
-| `order_items` | ⚠ divergência | Normalização dos itens do pedido (o payload tem `items[]`; §23 não os persiste) |
+| ~~`order_items`~~ | descartada (D-02) | Itens guardados como JSON em `orders.items_json` — ver §8.5 |
 | `executions` | ⚠ divergência | Metadados da execução (espelha `execution_metadata.json`) |
 | `task_events` | ⚠ divergência | Espelho operacional de `task_events.jsonl` (o `StateBuilder` consulta `recent_events`) |
 | `states` | ⚠ divergência | Espelho operacional de `states.jsonl` |
@@ -178,7 +170,6 @@ erDiagram
 
 - `executions (1) — (0..N) orders` / `executions (1) — (0..N) tasks`
 - `orders (1) — (1) tasks` (1 tarefa por pedido; `tasks.order_id` UNIQUE)
-- `orders (1) — (1..N) order_items`
 - `tasks (1) — (0..N) task_events` / `states` / `decisions` / `outbox`
 - `states (1) — (0..1) decisions` (um `state_id` é apresentado ao decisor uma vez → no
   máximo uma decisão)
@@ -191,16 +182,12 @@ erDiagram
 | `outbox.message_id` | `UNIQUE` |
 | `task_events` | índice `(task_id, event_seq)` — **não** único: redelivery gera nova linha com o mesmo `event_seq` (`redelivered = 1`) |
 | `decisions.state_id` | índice; opcionalmente `UNIQUE` |
-| `order_items` | `UNIQUE (order_id, line_no)` |
 | `orders.status`, `tasks.status` | valores restritos aos enums de [05](05-maquina-de-estados.md) (checado na aplicação) |
 
 ## 8.3 MER — `inventory.db`
 
 ```mermaid
 erDiagram
-    RESERVATIONS ||--|{ RESERVATION_ITEMS : "tem"
-    STOCK ||--o{ RESERVATION_ITEMS : "referenciado por (lógico, por sku)"
-
     STOCK {
         text sku PK
         integer quantity_available
@@ -215,16 +202,9 @@ erDiagram
         text execution_id
         text status "RESERVED | FAILED"
         text route "primary | fallback"
+        text items_json "itens reservados, JSON canônico (D-02)"
         text created_at
         text updated_at
-    }
-
-    RESERVATION_ITEMS {
-        integer id PK
-        text reservation_id FK
-        integer line_no
-        text sku
-        integer quantity
     }
 
     PROCESSED_MESSAGES {
@@ -252,21 +232,19 @@ erDiagram
 
 | Tabela | No piloto §23? | Papel |
 |---|:---:|---|
-| `reservations` | sim | Reserva efetivada; `task_id UNIQUE` garante idempotência de negócio |
+| `reservations` | sim | Reserva efetivada; `task_id UNIQUE` garante idempotência de negócio; itens em `items_json` (D-02) |
 | `processed_messages` | sim | Idempotência de transporte no consumo de `inventory.primary`/`inventory.fallback` |
-| `reservation_items` | ⚠ divergência | Normalização dos itens reservados |
+| ~~`reservation_items`~~ | descartada (D-02) | Itens guardados como JSON em `reservations.items_json` — ver §8.5 |
 | `stock` | ⚠ divergência | Suporte à **reserva simulada** e ao cenário "dados inconsistentes"; a metodologia fala em "reserva simulada" sem exigir tabela de estoque |
 | `published_events` | ⚠ divergência | Outbox para publicação confiável em `orders.events` |
 
 ### Cardinalidades e restrições
 
-- `reservations (1) — (1..N) reservation_items`
 - `reservations.task_id` **UNIQUE** (regra central de idempotência de negócio — `piloto §8.2`)
 - `processed_messages.message_id` **PK** (regra central de idempotência de transporte)
 - `published_events.message_id` **UNIQUE**
-- `reservation_items (reservation_id, line_no)` **UNIQUE**
-- `stock.sku` **PK**; relação com `reservation_items.sku` é **lógica** (SKU do dataset), sem
-  FK obrigatória — a reserva é simulada.
+- `stock.sku` **PK** (pendente, D-03); a relação com os SKUs de `reservations.items_json` é
+  **lógica** (SKU do dataset), sem FK — a reserva é simulada.
 
 ## 8.4 Correlação lógica entre os dois bancos
 
@@ -302,7 +280,12 @@ Antes do congelamento da configuração definitiva, decidir e registrar em
 
 1. Persistir `task_events` / `states` / `decisions` **também** em tabela, ou manter só JSONL
    e o `StateBuilder` lê os últimos `K` eventos de outra forma.
-2. Manter `order_items` / `reservation_items` normalizados, ou guardar `payload` como JSON.
+2. ~~Manter `order_items` / `reservation_items` normalizados, ou guardar `payload` como JSON.~~
+   **Decidido (D-02, 2026-09-27): JSON.** Os itens são validados na entrada e não mudam depois;
+   ficam em `orders.items_json` e `reservations.items_json`, serializados de forma canônica.
+   Assim, toda nova tentativa (`RETRY`/`FALLBACK`) republica exatamente o mesmo conteúdo. Nenhuma
+   métrica nem o `SYSTEM_STATE` dependem de consultas por item. Sem impacto metodológico: vale
+   igualmente para Rules e LLM.
 3. Incluir `stock` real (habilita o cenário "dados inconsistentes" de forma mais rica) ou
    manter reserva 100% simulada sem tabela de estoque.
 4. Adotar o padrão **outbox** (`outbox` / `published_events`) para publicação confiável, ou

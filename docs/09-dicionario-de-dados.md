@@ -41,20 +41,13 @@ Pedido e seu estado externo.
 | `order_id` | TEXT | não | PK | — | Identificador do pedido | `ORD_000187` |
 | `execution_id` | TEXT | não | FK → `executions`, IX | — | Execução à qual o pedido pertence ⚠ (FK) | `EXP_0042` |
 | `status` | TEXT | não | IX | `PENDING` | Estado externo do pedido | `PENDING` \| `COMPLETED` \| `FAILED` |
+| `items_json` | TEXT | não | — | — | Itens validados do pedido, JSON canônico; fonte do `payload.items` de toda tentativa (D-02) | `[{"sku":"SKU-001","quantity":2}]` |
 | `created_at` | TEXT | não | — | — | Criação | `2026-08-27T12:00:00.000Z` |
 | `updated_at` | TEXT | não | — | — | Última atualização de estado | `2026-08-27T12:00:03.114Z` |
 
-## `order_items` ⚠
+## ~~`order_items`~~ — descartada (D-02)
 
-Itens do pedido (normalização do `payload.items[]`).
-
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
-| `id` | INTEGER | não | PK (AUTOINCREMENT) | — | Chave técnica | `1` |
-| `order_id` | TEXT | não | FK → `orders`, IX | — | Pedido | `ORD_000187` |
-| `line_no` | INTEGER | não | U(`order_id`,`line_no`) | — | Número da linha no pedido | `1` |
-| `sku` | TEXT | não | — | — | Código do item | `SKU-001` |
-| `quantity` | INTEGER | não | — | — | Quantidade solicitada (> 0) | `2` |
+Os itens do pedido ficam em `orders.items_json` (ver [08 §8.5](08-modelo-de-dados-mer.md)).
 
 ## `tasks`
 
@@ -197,24 +190,17 @@ Reserva efetivada. `task_id UNIQUE` é a **idempotência de negócio**.
 | `execution_id` | TEXT | não | IX | — | Execução ⚠ | `EXP_0042` |
 | `status` | TEXT | não | — | — | Resultado | `RESERVED` \| `FAILED` |
 | `route` | TEXT | não | — | — | Rota usada | `primary` \| `fallback` |
+| `items_json` | TEXT | não | — | — | Itens reservados, JSON canônico (D-02) | `[{"sku":"SKU-001","quantity":2}]` |
 | `created_at` | TEXT | não | — | — | Criação | `2026-08-27T12:00:02.900Z` |
 | `updated_at` | TEXT | não | — | — | Última atualização | `2026-08-27T12:00:02.900Z` |
 
 > No piloto §23.2 a tabela é `reservations(id AUTOINCREMENT, task_id UNIQUE, order_id,
-> status, route, created_at)`. Aqui: `reservation_id` TEXT como PK, mais `execution_id` e
-> `updated_at` ⚠.
+> status, route, items_json, created_at)`. Aqui: `reservation_id` TEXT como PK, mais
+> `execution_id` e `updated_at` ⚠.
 
-## `reservation_items` ⚠
+## ~~`reservation_items`~~ — descartada (D-02)
 
-Itens reservados (normalização).
-
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
-| `id` | INTEGER | não | PK (AUTOINCREMENT) | — | Chave técnica | `1` |
-| `reservation_id` | TEXT | não | FK → `reservations`, IX | — | Reserva | `RES_000187` |
-| `line_no` | INTEGER | não | U(`reservation_id`,`line_no`) | — | Linha | `1` |
-| `sku` | TEXT | não | — | — | Item | `SKU-001` |
-| `quantity` | INTEGER | não | — | — | Quantidade reservada | `2` |
+Os itens reservados ficam em `reservations.items_json` (ver [08 §8.5](08-modelo-de-dados-mer.md)).
 
 ## `processed_messages`
 

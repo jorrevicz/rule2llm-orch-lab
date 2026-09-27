@@ -1662,6 +1662,7 @@ Exemplo conceitual:
 CREATE TABLE orders (
     order_id TEXT PRIMARY KEY,
     status TEXT NOT NULL,
+    items_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -1679,6 +1680,8 @@ CREATE TABLE tasks (
 );
 ```
 
+> **Decisão D-02 (2026-09-27):** os itens do pedido ficam em `orders.items_json` (e os reservados em `reservations.items_json`, §23.2) como JSON canônico, sem tabelas `order_items`/`reservation_items`. Os itens são validados na entrada e não mudam depois; toda nova tentativa (`RETRY`/`FALLBACK`) republica exatamente o mesmo `payload.items`. Registro: `docs/13-roadmap.md` §13.4 e `docs/08-modelo-de-dados-mer.md` §8.5.
+>
 > **Decisão D-14 (2026-09-27):** `attempt_number` começa em `1` (antes: `DEFAULT 0`). A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (§14.2), o que mantém coerência com o envelope da primeira publicação (`attempt_number: 1`, §7.2) e com as condições `attempt_number < max_attempts` (§14.3) e `attempt_number >= max_attempts` (§18). Registro: `docs/13-roadmap.md` §13.4.
 
 ## 23.2 Inventory SQLite
@@ -1699,6 +1702,7 @@ CREATE TABLE reservations (
     order_id TEXT NOT NULL,
     status TEXT NOT NULL,
     route TEXT NOT NULL,
+    items_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
 
