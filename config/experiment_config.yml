@@ -1,0 +1,50 @@
+# Configuração experimental — fonte de verdade dos parâmetros (RNF-022).
+#
+# Fase atual: PILOTO. Todos os valores são provisórios e ficam A CONGELAR antes da
+# coleta definitiva (M8). Após o congelamento, nada aqui muda durante a coleta.
+#
+# Fontes: docs/ref/piloto-do-experimento.md §14.1 e §31;
+#         docs/03-stack-tecnologica.md §3.5 e §3.6.
+
+experiment:
+  phase: pilot                  # pilot | experiment
+  decision_engine: rules        # rules | llm — única diferença entre as condições
+  repetitions: null             # N_rep — A CONGELAR
+  execution_order: null         # ordem de execução Rules/LLM — A CONGELAR
+
+messaging:
+  inventory_timeout_ms: 2000    # timeout operacional (não é timeout de HTTP síncrono)
+  max_attempts: 3               # 1 tentativa inicial + até 2 novas (nunca max_retries)
+  retry_delay_ms: 500
+  wait_delay_ms: 1000
+  max_waits: 2
+  fallback_max_attempts: 1      # semântica ainda pendente (roadmap D-15)
+  queue_high_watermark: 20      # provisório; valor final após observar o steady state
+  task_deadline_ms: 60000       # piloto §14.1; ausente do exemplo do §31 (roadmap I-04)
+
+context:
+  recent_events_limit: 5        # janela K de recent_events — A CONGELAR
+
+llm:
+  runtime: ollama
+  runtime_version: null         # registrado a partir do runtime — A CONGELAR
+  model: llama3.1:8b            # modelo inicial do piloto (pode mudar durante o piloto)
+  model_digest: null            # registrado a partir do runtime — A CONGELAR
+  quantization: null            # registrada a partir do runtime — A CONGELAR
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 64
+  seed: 42                      # controle efetivo só se o runtime suportar
+  session_memory: false         # LLM stateless entre pontos de decisão
+  request_timeout_seconds: 30
+  stream: false
+
+workload:
+  dataset: datasets/orders_v1.json
+  requests: null                # A CONGELAR
+  rate_per_second: null         # A CONGELAR
+  seed: null                    # A CONGELAR
+
+fault:
+  type: none                    # none | overload | intermittent_error | timeout | inconsistent_data | recovery
+  seed: null

@@ -87,7 +87,7 @@ estrutura de diretórios, dependências, configuração experimental base e test
 | M0-T03 | Manter `docs/ref` versionado e corrigir referências | `chore(repo)` | `.gitignore` sem `/docs/ref`; `docs/README.md` e caminho do piloto no `CLAUDE.md` corrigidos | Inconsistência I-10 | ✅ |
 | M0-T04 | Esqueleto de diretórios | `chore(repo)` | `services/orders/app`, `services/inventory/app`, `shared/`, `contracts/`, `config/`, `datasets/`, `scripts/`, `data/pilot/`, `data/experiment/`, `tests/{unit,integration,contracts}`; `.gitignore` (`*.db`, execuções em `data/`, `.venv`, `__pycache__`, `.env`) | [02 §2.6](02-arquitetura.md) | ✅ |
 | M0-T05 | Dependências e ambiente | `build` | `requirements.txt` por serviço; `requirements-dev.txt` (pytest); `.env.example`; imagem base Python 3.12 (**provisória** — pin no M8) | [03](03-stack-tecnologica.md), CLAUDE §34 | ✅ |
-| M0-T06 | Configuração experimental e pacote comum | `feat(config)` | `config/experiment_config.yml` (piloto §31 + `task_deadline_ms` + `decision_engine`); `shared/` com carga de config, geração de IDs (`ORD_`, `TASK_`, `MSG_`, `STATE_`, `DEC_`) e timestamps UTC ISO 8601 (ms) | [03 §3.6](03-stack-tecnologica.md), I-04, RNF-022 | ⬜ |
+| M0-T06 | Configuração experimental e pacote comum | `feat(config)` | `config/experiment_config.yml` (piloto §31 + `task_deadline_ms` + `decision_engine`); `shared/` com carga de config, geração de IDs (`ORD_`, `TASK_`, `MSG_`, `STATE_`, `DEC_`) e timestamps UTC ISO 8601 (ms) | [03 §3.6](03-stack-tecnologica.md), I-04, RNF-022 | ✅ |
 | M0-T07 | Testes base | `test` | pytest configurado; testes da carga de config e dos utilitários de `shared/` | CLAUDE §35 | ⬜ |
 | M0-T08 | README raiz | `docs` | `README.md` (objetivo, como subir, onde estão a documentação e o roadmap) | — | ⬜ |
 
@@ -350,10 +350,10 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-01 | `decision_engine` grafado `RULES`/`LLM` × `rules`/`llm` | doc 10 × docs 06, 09 e piloto | M3-T01 |
 | I-02 | `SYSTEM_STATE` plano com `observed_latency_ms` × aninhado com `latency_ms` | piloto §10.1 × doc 06 §6.2 | M3-T01 |
 | I-03 | Rules usa `phase` `READY`/`RECOVERED`, ausentes da máquina de estados | piloto §14.3 × doc 05 | M3-T01 |
-| I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 |
+| I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 ✅ |
 | I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | M1-T03 (D-14) |
 | I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | M4-T08 (D-15) |
 | I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | M4-T10 (D-07) |
 | I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 |
 | I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
-| I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 |
+| I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 ✅ |
