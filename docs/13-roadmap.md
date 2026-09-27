@@ -40,7 +40,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 
 | Marco | Objetivo | Status | Tag | Concluído em |
 |---|---|:---:|---|---|
-| [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | 🔄 | `m0-fundacao` | — |
+| [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | ✅ | `m0-fundacao` | 2026-09-26 |
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ⬜ | `m1-fluxo-normal` | — |
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ⬜ | `m2-idempotencia` | — |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ⬜ | `m3-rastreabilidade` | — |
@@ -93,12 +93,12 @@ estrutura de diretórios, dependências, configuração experimental base e test
 
 **Critério de conclusão**
 
-- [ ] Roadmap publicado e referenciado no índice de `docs/`.
-- [ ] `CLAUDE.md` contém as regras de atualização do roadmap e de aviso de conclusão.
-- [ ] `docs/ref` continua versionado (`git check-ignore` não o ignora).
-- [ ] Estrutura de diretórios criada; `data/pilot/` e `data/experiment/` separados.
-- [ ] `experiment_config.yml` carrega com todas as chaves do piloto §31 + `task_deadline_ms`.
-- [ ] `pytest` passa.
+- [x] Roadmap publicado e referenciado no índice de `docs/`.
+- [x] `CLAUDE.md` contém as regras de atualização do roadmap e de aviso de conclusão.
+- [x] `docs/ref` continua versionado (`git check-ignore` não o ignora).
+- [x] Estrutura de diretórios criada; `data/pilot/` e `data/experiment/` separados.
+- [x] `experiment_config.yml` carrega com todas as chaves do piloto §31 + `task_deadline_ms`.
+- [x] `pytest` passa (19 testes, Python 3.12).
 
 > `shared/` é uma **biblioteca** comum (contratos, IDs, tempo, config). Não compartilha banco
 > nem estado em tempo de execução entre os serviços (RNF-003).
