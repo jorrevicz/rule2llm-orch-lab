@@ -1671,13 +1671,15 @@ CREATE TABLE tasks (
     order_id TEXT NOT NULL,
     status TEXT NOT NULL,
     current_target TEXT,
-    attempt_number INTEGER NOT NULL DEFAULT 0,
+    attempt_number INTEGER NOT NULL DEFAULT 1,
     wait_count INTEGER NOT NULL DEFAULT 0,
     fallback_used INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 ```
+
+> **Decisão D-14 (2026-09-27):** `attempt_number` começa em `1` (antes: `DEFAULT 0`). A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (§14.2), o que mantém coerência com o envelope da primeira publicação (`attempt_number: 1`, §7.2) e com as condições `attempt_number < max_attempts` (§14.3) e `attempt_number >= max_attempts` (§18). Registro: `docs/13-roadmap.md` §13.4.
 
 ## 23.2 Inventory SQLite
 

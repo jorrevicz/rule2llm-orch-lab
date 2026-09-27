@@ -337,7 +337,7 @@ doc 10 §10.6).
 | D-11 🔬 | Valores finais dos parâmetros | Ver [11 §11.5](11-requisitos.md) | M8-T02 | ⬜ |
 | D-12 | Publicação dos dados experimentais | Commit no repositório × artefato de release × armazenamento externo | M9-T04 | ⬜ |
 | D-13 | Envelope inválido no consumo | Rejeição sem requeue → `tcc.dlx` × evento de falha `invalid_data` | M2-T01 | ⬜ |
-| D-14 | Valor inicial de `attempt_number` | `0` (piloto §23) × `1` (doc 09) | M1-T03 | ⬜ |
+| D-14 | Valor inicial de `attempt_number` | **Decidido (2026-09-27): `1`.** A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (`max_attempts = 3` → tentativas 1, 2 e 3). Mantém coerência com o envelope da 1ª publicação (`attempt_number: 1`) e com as regras `attempt_number < max_attempts` do Rules e do Validator | M1-T03 | ✅ |
 | D-15 🔬 | Semântica de `fallback_max_attempts` | Hoje definido mas não usado por Rules nem pelo Validator | M4-T08 | ⬜ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
@@ -351,7 +351,7 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-02 | `SYSTEM_STATE` plano com `observed_latency_ms` × aninhado com `latency_ms` | piloto §10.1 × doc 06 §6.2 | M3-T01 |
 | I-03 | Rules usa `phase` `READY`/`RECOVERED`, ausentes da máquina de estados | piloto §14.3 × doc 05 | M3-T01 |
 | I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 ✅ |
-| I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | M1-T03 (D-14) |
+| I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | D-14 ✅ (piloto §23.1 atualizado para `1`) |
 | I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | M4-T08 (D-15) |
 | I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | M4-T10 (D-07) |
 | I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 |
