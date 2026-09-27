@@ -1,0 +1,124 @@
+{
+  "users": [
+    {
+      "name": "tcc",
+      "password_hash": "o1L5NYOD9B+1qE2HsUZtPwAUYDdQg4rdxI0bY2DwUWlc1C19",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [
+        "administrator"
+      ]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "tcc",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "tcc.tasks",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "tcc.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "inventory.primary",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "tcc.dlx",
+        "x-dead-letter-routing-key": "tasks.dlq",
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "name": "inventory.fallback",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "tcc.dlx",
+        "x-dead-letter-routing-key": "tasks.dlq",
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "name": "orders.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "tcc.dlx",
+        "x-dead-letter-routing-key": "tasks.dlq",
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "name": "tasks.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "classic"
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "tcc.tasks",
+      "vhost": "/",
+      "destination": "inventory.primary",
+      "destination_type": "queue",
+      "routing_key": "inventory.primary",
+      "arguments": {}
+    },
+    {
+      "source": "tcc.tasks",
+      "vhost": "/",
+      "destination": "inventory.fallback",
+      "destination_type": "queue",
+      "routing_key": "inventory.fallback",
+      "arguments": {}
+    },
+    {
+      "source": "tcc.tasks",
+      "vhost": "/",
+      "destination": "orders.events",
+      "destination_type": "queue",
+      "routing_key": "orders.events",
+      "arguments": {}
+    },
+    {
+      "source": "tcc.dlx",
+      "vhost": "/",
+      "destination": "tasks.dlq",
+      "destination_type": "queue",
+      "routing_key": "tasks.dlq",
+      "arguments": {}
+    }
+  ]
+}

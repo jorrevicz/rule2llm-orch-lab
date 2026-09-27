@@ -1,0 +1,19 @@
+# Ambiente experimental — mesma infraestrutura para Rules e LLM (RNF-001).
+# Imagens e versões são provisórias; o pin reproduzível é feito em M8-T03.
+name: rule2llm-orch-lab
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management (UI e API HTTP)
+    volumes:
+      - ./config/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./config/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
