@@ -114,7 +114,7 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
 | M1-T01 | Infraestrutura RabbitMQ | `feat(infra)` | `docker-compose.yml` com RabbitMQ (management); `config/rabbitmq/definitions.json` com `tcc.tasks` (direct), `tcc.dlx`, `inventory.primary`, `inventory.fallback`, `orders.events`, `tasks.dlq` | [04 §4.1](04-contrato-mensageria.md) | ✅ |
-| M1-T02 | Configuração Celery nos dois serviços | `feat(messaging)` | Filas/rotas sobre `tcc.tasks`; `acks_late`, `prefetch=1`, `task_reject_on_worker_lost`; **sem `autoretry`**; envelope como argumento único da task | [03 §3.3](03-stack-tecnologica.md), CLAUDE §9 | ⬜ |
+| M1-T02 | Configuração Celery nos dois serviços | `feat(messaging)` | Filas/rotas sobre `tcc.tasks`; `acks_late`, `prefetch=1`, `task_reject_on_worker_lost`; **sem `autoretry`**; envelope como argumento único da task; publicação sem rota explícita cai na DLQ | [03 §3.3](03-stack-tecnologica.md), CLAUDE §9 | ✅ |
 | M1-T03 | `orders-service`: API e `orders.db` | `feat(orders)` | FastAPI; `orders`, `tasks`, `processed_events`; `POST /orders` (202); `GET /orders/{id}`; health check. **(D)** D-02, D-14 | RF-001–RF-004, [08](08-modelo-de-dados-mer.md) | ⬜ |
 | M1-T04 | `inventory-service`: worker e `inventory.db` | `feat(inventory)` | Worker em `inventory.primary`; `reservations`, `processed_messages`; reserva simulada da rota primária; publica `STOCK_RESERVATION_SUCCEEDED` em `orders.events` | RF-006, RF-007, RF-010 | ⬜ |
 | M1-T05 | Despacho inicial **provisório** | `feat(orders)` | `CONTINUE` fixo para `inventory.primary`, sem motor de decisão — **provisório**, substituído em M4-T04 | RF-005 | ⬜ |
