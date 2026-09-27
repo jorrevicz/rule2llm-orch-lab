@@ -89,7 +89,7 @@ estrutura de diretórios, dependências, configuração experimental base e test
 | M0-T05 | Dependências e ambiente | `build` | `requirements.txt` por serviço; `requirements-dev.txt` (pytest); `.env.example`; imagem base Python 3.12 (**provisória** — pin no M8) | [03](03-stack-tecnologica.md), CLAUDE §34 | ✅ |
 | M0-T06 | Configuração experimental e pacote comum | `feat(config)` | `config/experiment_config.yml` (piloto §31 + `task_deadline_ms` + `decision_engine`); `shared/` com carga de config, geração de IDs (`ORD_`, `TASK_`, `MSG_`, `STATE_`, `DEC_`) e timestamps UTC ISO 8601 (ms) | [03 §3.6](03-stack-tecnologica.md), I-04, RNF-022 | ✅ |
 | M0-T07 | Testes base | `test` | pytest configurado; testes da carga de config e dos utilitários de `shared/` | CLAUDE §35 | ✅ |
-| M0-T08 | README raiz | `docs` | `README.md` (objetivo, como subir, onde estão a documentação e o roadmap) | — | ⬜ |
+| M0-T08 | README raiz | `docs` | `README.md` (objetivo, como subir, onde estão a documentação e o roadmap) | — | ✅ |
 
 **Critério de conclusão**
 
