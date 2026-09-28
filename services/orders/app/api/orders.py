@@ -1,5 +1,6 @@
 """Endpoints de pedidos: `POST /orders` e `GET /orders/{order_id}`."""
 
+import logging
 import sqlite3
 from collections.abc import Iterator
 from typing import Annotated
@@ -13,9 +14,11 @@ from services.orders.app.orchestration.coordination import Coordination
 from services.orders.app.orchestration.provisional_dispatch import start_task
 from services.orders.app.settings import Settings
 from shared.canonical_json import canonical_json
+from shared.structured_logging import correlated
 from shared.timestamps import utc_now_iso
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def get_settings(request: Request) -> Settings:
@@ -50,7 +53,18 @@ def create_order(
     created = create_order_with_task(
         connection, execution_id=settings.execution_id, items_json=items_json, now=utc_now_iso()
     )
-    start_task(connection, created.task_id, coordination)
+    dispatched = start_task(connection, created.task_id, coordination)
+    logger.info(
+        "order accepted and dispatched",
+        extra=correlated(
+            order_id=created.order_id,
+            task_id=created.task_id,
+            message_id=dispatched["message_id"],
+            event_type=dispatched["event_type"],
+            event_seq=dispatched["event_seq"],
+            attempt_number=dispatched["attempt_number"],
+        ),
+    )
     return OrderResponse(order_id=created.order_id, task_id=created.task_id, status=created.status)
 
 

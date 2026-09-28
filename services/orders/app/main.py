@@ -1,5 +1,6 @@
 """Aplicação FastAPI do orders-service."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -14,6 +15,7 @@ from services.orders.app.messaging.celery_app import app as celery_app
 from services.orders.app.orchestration.coordination import Coordination, build_coordination
 from services.orders.app.settings import Settings, load_settings
 from shared.config import load_experiment_config
+from shared.structured_logging import install, jsonl_log_handler, uninstall
 
 
 def create_app(
@@ -27,7 +29,17 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         init_database(resolved.database_path)
+        root = logging.getLogger()
+        install(
+            root,
+            jsonl_log_handler(
+                resolved.artifacts_dir,
+                service=resolved.service_role,
+                execution_id=resolved.execution_id,
+            ),
+        )
         yield
+        uninstall(root)
 
     app = FastAPI(title="orders-service", lifespan=lifespan)
     app.state.settings = resolved

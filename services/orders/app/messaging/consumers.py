@@ -10,6 +10,7 @@ from services.orders.app.orchestration.event_handler import handle_inventory_eve
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
 from shared.messaging import ORDERS_HANDLE_EVENT_TASK
+from shared.structured_logging import correlated
 
 logger = get_task_logger(__name__)
 
@@ -26,7 +27,11 @@ def handle_event(self: Task, raw_envelope: object) -> None:
         envelope, _ = parse_message(raw_envelope, ACCEPTED_EVENTS)
     except ContractViolation as violation:
         # D-13: mensagem fora do contrato → rejeitada sem requeue → tasks.dlq.
-        logger.warning("contract violation, message dead-lettered: %s", violation)
+        logger.warning(
+            "contract violation, message dead-lettered: %s",
+            violation,
+            extra=correlated(outcome="dead_lettered", redelivered=redelivered),
+        )
         raise Reject(str(violation), requeue=False) from violation
 
     connection = connect(settings.database_path)
@@ -35,12 +40,16 @@ def handle_event(self: Task, raw_envelope: object) -> None:
     finally:
         connection.close()
     logger.info(
-        "inventory event handled: status=%s event_type=%s task_id=%s message_id=%s"
-        " recorded_event_seq=%s changed_state=%s",
+        "inventory event handled: %s (changed_state=%s)",
         outcome.status,
-        envelope.event_type,
-        envelope.task_id,
-        envelope.message_id,
-        outcome.event_seq,
         outcome.changed_state,
+        extra=correlated(
+            outcome=outcome.status,
+            task_id=envelope.task_id,
+            message_id=envelope.message_id,
+            event_type=envelope.event_type,
+            event_seq=outcome.event_seq,
+            attempt_number=envelope.attempt_number,
+            redelivered=redelivered,
+        ),
     )

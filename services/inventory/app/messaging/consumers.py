@@ -11,6 +11,7 @@ from services.inventory.app.reservation.service import process_reservation_reque
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
 from shared.messaging import INVENTORY_RESERVE_TASK
+from shared.structured_logging import correlated
 
 logger = get_task_logger(__name__)
 
@@ -25,7 +26,11 @@ def reserve_stock(self: Task, raw_envelope: object) -> None:
         envelope, payload = parse_message(raw_envelope, {EventType.STOCK_RESERVATION_REQUESTED})
     except ContractViolation as violation:
         # D-13: mensagem fora do contrato → rejeitada sem requeue → tasks.dlq.
-        logger.warning("contract violation, message dead-lettered: %s", violation)
+        logger.warning(
+            "contract violation, message dead-lettered: %s",
+            violation,
+            extra=correlated(outcome="dead_lettered", redelivered=redelivered),
+        )
         raise Reject(str(violation), requeue=False) from violation
 
     connection = connect(settings.database_path)
@@ -34,12 +39,15 @@ def reserve_stock(self: Task, raw_envelope: object) -> None:
     finally:
         connection.close()
     logger.info(
-        "reservation request handled: outcome=%s task_id=%s message_id=%s"
-        " event_seq=%s attempt_number=%s redelivered=%s",
+        "reservation request handled: %s",
         result.outcome,
-        envelope.task_id,
-        envelope.message_id,
-        envelope.event_seq,
-        envelope.attempt_number,
-        redelivered,
+        extra=correlated(
+            outcome=result.outcome,
+            task_id=envelope.task_id,
+            message_id=envelope.message_id,
+            event_type=envelope.event_type,
+            event_seq=envelope.event_seq,
+            attempt_number=envelope.attempt_number,
+            redelivered=redelivered,
+        ),
     )
