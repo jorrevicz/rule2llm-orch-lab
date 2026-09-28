@@ -1,4 +1,4 @@
-"""Exporta os contratos (modelos em shared/envelope.py e shared/system_state.py) para contracts/.
+"""Exporta os contratos (modelos em shared/envelope.py, shared/system_state.py e shared/decision.py) para contracts/.
 
     python scripts/contracts/export_schemas.py
 
@@ -10,6 +10,7 @@ tem impacto metodológico — CLAUDE §43).
 import json
 from pathlib import Path
 
+from shared.decision import Decision
 from shared.envelope import PAYLOAD_MODELS, MessageEnvelope
 from shared.system_state import SystemState
 
@@ -17,6 +18,7 @@ CONTRACTS_DIR = Path(__file__).resolve().parents[2] / "contracts"
 ENVELOPE_SCHEMA_PATH = CONTRACTS_DIR / "message_envelope.schema.json"
 PAYLOADS_SCHEMA_PATH = CONTRACTS_DIR / "message_payloads.schema.json"
 SYSTEM_STATE_SCHEMA_PATH = CONTRACTS_DIR / "system_state.schema.json"
+DECISION_SCHEMA_PATH = CONTRACTS_DIR / "decision.schema.json"
 
 JSON_SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
 
@@ -50,6 +52,14 @@ def system_state_schema() -> dict:
     }
 
 
+def decision_schema() -> dict:
+    return {
+        "$schema": JSON_SCHEMA_DIALECT,
+        "$id": "decision.schema.json",
+        **Decision.model_json_schema(),
+    }
+
+
 def render(schema: dict) -> str:
     return json.dumps(schema, indent=2, ensure_ascii=False) + "\n"
 
@@ -59,7 +69,8 @@ def main() -> None:
     ENVELOPE_SCHEMA_PATH.write_text(render(envelope_schema()), encoding="utf-8")
     PAYLOADS_SCHEMA_PATH.write_text(render(payloads_schema()), encoding="utf-8")
     SYSTEM_STATE_SCHEMA_PATH.write_text(render(system_state_schema()), encoding="utf-8")
-    print(f"wrote {ENVELOPE_SCHEMA_PATH.name}, {PAYLOADS_SCHEMA_PATH.name}, {SYSTEM_STATE_SCHEMA_PATH.name}")
+    DECISION_SCHEMA_PATH.write_text(render(decision_schema()), encoding="utf-8")
+    print("wrote", ", ".join(path.name for path in sorted(CONTRACTS_DIR.glob("*.schema.json"))))
 
 
 if __name__ == "__main__":

@@ -44,7 +44,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
-| [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
+| [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | 🔄 | `m4-rules` | — |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
@@ -203,15 +203,15 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M4-T01 | Contrato de decisão | `feat(contracts)` | `contracts/decision.schema.json`; `Decision`, `ValidationResult`; enums `Action`, `Target`, `ReasonCode`, erros de validação | [06 §6.4](06-modelo-de-decisao.md), [12 §12.4](12-glossario.md), RF-017 | ⬜ |
+| M4-T01 | Contrato de decisão | `feat(contracts)` | `shared/decision.py`: `ProposedDecision` (o que o motor propôs, sem restrição), `Decision` executável (5 ações, target compatível com a ação), `ValidationResult`, enums de ação, `reason_code` e erros; `resolve_action` (inválida → `ABORT / INVALID_DECISION`); `contracts/decision.schema.json` | [06 §6.4](06-modelo-de-decisao.md), [12 §12.4](12-glossario.md), RF-017 | ✅ |
 | M4-T02 | `RulesDecisionEngine` | `feat(orchestration)` | Interface `DecisionEngine`; política ordenada literal do piloto §14.3; limiares do config | [06 §6.6](06-modelo-de-decisao.md), RF-024 | ⬜ |
 | M4-T03 | `DecisionValidator` | `feat(orchestration)` | Validação comum do piloto §18 + `TERMINAL_TASK` | [06 §6.9](06-modelo-de-decisao.md), RF-028, RNF-009 | ⬜ |
-| M4-T04 | Orchestrator | `feat(orchestration)` | `handle_decision_point`: build → decide → validate → `resolve_action` → execute → `decisions.jsonl` (`decision_time_ms`); seleção de `decision_engine` por config; remove o despacho provisório de M1-T05 | [07 §7.2](07-diagramas-uml.md), RF-016 | ⬜ |
-| M4-T05 | `CONTINUE` e `RETRY` | `feat(orchestration)` | Executor: `RETRY` com novo `message_id`/`event_seq`, `attempt_number + 1`, `retry_delay_ms`, mesmo target | RF-018, RF-019 | ⬜ |
+| M4-T04 | Orchestrator e `CONTINUE` | `feat(orchestration)` | `handle_decision_point`: build → decide → validate → `resolve_action` → execute → `decisions.jsonl` (`decision_time_ms`); seleção de `decision_engine` por config; Executor `CONTINUE` (primeiro despacho + `timeout_check` agendado); remove o despacho provisório de M1-T05 | [07 §7.2](07-diagramas-uml.md), RF-016, RF-018 | ⬜ |
+| M4-T05 | `RETRY` | `feat(orchestration)` | Executor: `RETRY` com `attempt_number + 1`, novo `message_id`/`event_seq`, mesmo target, despacho após `retry_delay_ms` | RF-019 | ⬜ |
 | M4-T06 | Detector de timeout | `feat(orders)` | `timeout_check` agendado a cada dispatch; verifica `attempt_number`; emite `INVENTORY_TIMEOUT` | RF-023, [04 §4.9](04-contrato-mensageria.md) | ⬜ |
 | M4-T07 | `WAIT` | `feat(orchestration)` | `wait_count + 1`; Task `WAITING`; `reevaluate` após `wait_delay_ms`; `attempt_number` inalterado | RF-020 | ⬜ |
 | M4-T08 | Rota fallback e `FALLBACK` | `feat(inventory)` | `reservation/fallback.py` consumindo `inventory.fallback`; Executor `FALLBACK` (`fallback_used = true`). **(D)** D-15 | RF-021, [06 §6.5](06-modelo-de-decisao.md), I-06 | ⬜ |
-| M4-T09 | `ABORT` e decisão inválida | `feat(orchestration)` | Task `ABORTED`, Order `FAILED`, `TASK_ABORTED`; decisão inválida → `ABORT / INVALID_DECISION` | RF-022, RF-029 | ⬜ |
+| M4-T09 | `ABORT` e decisão inválida | `feat(orchestration)` | Executor `ABORT` (Task `ABORTED`, Order `FAILED`, `TASK_ABORTED`); decisão inválida → `ABORT / INVALID_DECISION`. Feita antes da T04, que depende do fail-safe | RF-022, RF-029 | ⬜ |
 | M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: definição de "falhas sucessivas" (limite e mecanismo); `MESSAGE_DEAD_LETTERED` → `DEAD_LETTERED`. Hoje, exceção inesperada numa tarefa Celery é confirmada (ack) e a mensagem é descartada, só com log (`task_acks_on_failure_or_timeout = True`, padrão) — decidir aqui se passa a ir para a DLQ | RF-030, I-07 | ⬜ |
 | M4-T11 | Testes das ações | `test` | Rules (cada regra), Validator (cada erro), Executor por ação: `WAIT` não incrementa tentativa, `FALLBACK` só quando admissível, `ABORT` terminal | CLAUDE §35 | ⬜ |
 | M4-T12 | 1º piloto técnico | `chore(pilot)` | `PILOT_0001` (rules, fluxo normal) executado; checklist do doc 11 §11.4 marcado | piloto §32 | ⬜ |

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision.schema.json",
+  "$defs": {
+    "Action": {
+      "enum": [
+        "CONTINUE",
+        "RETRY",
+        "WAIT",
+        "FALLBACK",
+        "ABORT"
+      ],
+      "title": "Action",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/Action"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "enum": [
+            "inventory.primary",
+            "inventory.fallback"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Target"
+    },
+    "reason_code": {
+      "minLength": 1,
+      "title": "Reason Code",
+      "type": "string"
+    }
+  },
+  "required": [
+    "action",
+    "target",
+    "reason_code"
+  ],
+  "title": "Decision",
+  "type": "object"
+}

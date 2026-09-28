@@ -11,6 +11,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 from shared.artifacts import Artifact, JsonlWriter, shard_path
+from shared.decision import Decision, ProposedDecision
 from shared.envelope import ISO_UTC_MS_PATTERN, DecisionId, ExecutionId, TaskId
 from shared.system_state import StateId, SystemState
 
@@ -44,23 +45,6 @@ class _Record(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class ProposedDecision(_Record):
-    """O que o motor propôs, como foi lido. Pode estar incompleto (ex.: LLM sem
-    `reason_code`); a validação é do `DecisionValidator`, não do registro."""
-
-    action: str | None
-    target: str | None
-    reason_code: str | None
-
-
-class ExecutedDecision(_Record):
-    """A ação efetivamente executada; sempre completa."""
-
-    action: str
-    target: str | None
-    reason_code: str
-
-
 class ValidationEntry(_Record):
     valid: StrictBool
     error: str | None
@@ -90,7 +74,7 @@ class DecisionRecord(_Record):
     decision_engine: Literal["RULES", "LLM"]
     proposed_decision: ProposedDecision | None
     validation: ValidationEntry
-    executed_decision: ExecutedDecision
+    executed_decision: Decision  # sempre completa e executável
     decision_time_ms: Annotated[float, Field(ge=0)]
     llm_inference_ms: Annotated[float, Field(ge=0)] | None
     token_usage: TokenUsage | None
