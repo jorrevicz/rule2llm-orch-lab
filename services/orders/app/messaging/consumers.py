@@ -1,7 +1,8 @@
 """Consumidores Celery do orders-service (fila `orders.events`).
 
 - `orders.handle_inventory_event`: eventos do Inventory (contrato validado; D-13);
-- `orders.timeout_check`: verificação de timeout operacional agendada a cada despacho.
+- `orders.timeout_check`: verificação de timeout operacional agendada a cada despacho;
+- `orders.dispatch_attempt`: despacho da nova tentativa, `retry_delay_ms` após o `RETRY`.
 
 Quando um evento ou timeout pede decisão, o ponto de decisão é aberto depois do
 commit do registro, pelo Orchestrator (mesmo fluxo para Rules e LLM).
@@ -21,7 +22,11 @@ from services.orders.app.orchestration.timeouts import register_timeout
 from shared.config import load_experiment_config
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
-from shared.messaging import ORDERS_HANDLE_EVENT_TASK, ORDERS_TIMEOUT_CHECK_TASK
+from shared.messaging import (
+    ORDERS_DISPATCH_ATTEMPT_TASK,
+    ORDERS_HANDLE_EVENT_TASK,
+    ORDERS_TIMEOUT_CHECK_TASK,
+)
 from shared.structured_logging import correlated
 
 logger = get_task_logger(__name__)
@@ -102,5 +107,20 @@ def timeout_check(task_id: str, request_message_id: str) -> None:
             ),
         )
         _decide(connection, task_id)
+    finally:
+        connection.close()
+
+
+@app.task(name=ORDERS_DISPATCH_ATTEMPT_TASK)
+def dispatch_attempt(task_id: str, decision_id: str) -> None:
+    connection = connect(settings.database_path)
+    try:
+        executor = _coordination().orchestrator.executor
+        dispatched = executor.dispatch_scheduled_attempt(connection, task_id=task_id, decision_id=decision_id)
+        logger.info(
+            "scheduled attempt %s",
+            "dispatched" if dispatched else "skipped",
+            extra=correlated(task_id=task_id, decision_id=decision_id, outcome="dispatched" if dispatched else "skipped"),
+        )
     finally:
         connection.close()

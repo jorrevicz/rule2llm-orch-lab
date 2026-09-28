@@ -61,6 +61,10 @@ class Orchestrator:
     def engine_name(self) -> str:
         return self._engine.name
 
+    @property
+    def executor(self) -> DecisionExecutor:
+        return self._executor
+
     def handle_decision_point(self, connection: sqlite3.Connection, task_id: str) -> DecisionOutcome:
         state = self._state_builder.build(connection, task_id)
         self._state_recorder.record(state)

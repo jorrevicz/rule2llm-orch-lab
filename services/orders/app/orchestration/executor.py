@@ -12,7 +12,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from services.orders.app.db.connection import transaction
-from services.orders.app.db.repositories import abort_task, dispatch_context, start_first_dispatch
+from services.orders.app.db.repositories import (
+    abort_task,
+    dispatch_context,
+    mark_retry_dispatched,
+    start_first_dispatch,
+    start_retry,
+)
 from services.orders.app.db.trajectory import (
     EventSource,
     advance_event_seq,
@@ -45,6 +51,7 @@ class DecisionExecutor:
         self._publisher = publisher
         self._scheduler = scheduler
         self._inventory_timeout_ms = config.messaging.inventory_timeout_ms
+        self._retry_delay_ms = config.messaging.retry_delay_ms
 
     def execute(
         self, connection: sqlite3.Connection, decision: Decision, *, task_id: str, decision_id: str
@@ -62,6 +69,7 @@ class DecisionExecutor:
     def _handlers(self) -> dict[Action, Callable[..., ExecutionResult]]:
         return {
             Action.CONTINUE: self._continue,
+            Action.RETRY: self._retry,
             Action.ABORT: self._abort,
         }
 
@@ -81,6 +89,55 @@ class DecisionExecutor:
             raise RuntimeError(f"CONTINUE is not applicable to task {task_id}")
         message_id = self._publish_request(connection, task_id, decision_id, now, effects)
         return ExecutionResult(Action.CONTINUE, True, [message_id])
+
+    def _retry(
+        self,
+        connection: sqlite3.Connection,
+        decision: Decision,
+        task_id: str,
+        decision_id: str,
+        effects: list[Effect],
+    ) -> ExecutionResult:
+        """Nova tentativa lógica no mesmo target, despachada após `retry_delay_ms`.
+
+        `attempt_number + 1` agora; novo `message_id` e novo `event_seq` no despacho
+        (`dispatch_scheduled_attempt`). Não é o `autoretry` do Celery (CLAUDE §9).
+        """
+        now = utc_now_iso()
+        attempt_number = start_retry(connection, task_id=task_id, now=now)
+        if attempt_number is None:
+            raise RuntimeError(f"RETRY is not applicable to task {task_id}")
+        record_internal_event(
+            connection,
+            task_id=task_id,
+            event_type=EventType.RETRY_SCHEDULED,
+            now=now,
+            payload={"decision_id": decision_id, "delay_ms": self._retry_delay_ms},
+        )
+        effects.append(
+            lambda: self._scheduler.schedule_dispatch(
+                task_id=task_id, decision_id=decision_id, delay_ms=self._retry_delay_ms
+            )
+        )
+        return ExecutionResult(Action.RETRY, True)
+
+    def dispatch_scheduled_attempt(
+        self, connection: sqlite3.Connection, *, task_id: str, decision_id: str
+    ) -> bool:
+        """Continuação do `RETRY`: publica a solicitação da nova tentativa.
+
+        Nada acontece se a tarefa não está mais em RETRYING (ex.: já concluída por uma
+        resposta atrasada, ou despacho já feito numa entrega anterior deste agendamento).
+        """
+        effects: list[Effect] = []
+        with transaction(connection):
+            now = utc_now_iso()
+            if not mark_retry_dispatched(connection, task_id=task_id, now=now):
+                return False
+            self._publish_request(connection, task_id, decision_id, now, effects)
+        for effect in effects:
+            effect()
+        return True
 
     def _abort(
         self,

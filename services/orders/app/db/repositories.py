@@ -115,6 +115,35 @@ def start_first_dispatch(connection: sqlite3.Connection, *, task_id: str, target
     return updated.rowcount == 1
 
 
+def start_retry(connection: sqlite3.Connection, *, task_id: str, now: str) -> int | None:
+    """`RETRY`: nova tentativa lógica (`attempt_number + 1`), tarefa → RETRYING.
+
+    Só para tarefa já despachada e não terminal. Retorna o novo `attempt_number`.
+    Deve ser chamada dentro de uma transação do chamador.
+    """
+    terminal = tuple(TERMINAL_TASK_STATUSES)
+    updated = connection.execute(
+        "UPDATE tasks SET attempt_number = attempt_number + 1, status = ?, updated_at = ?"
+        f" WHERE task_id = ? AND current_target IS NOT NULL AND status NOT IN ({', '.join('?' * len(terminal))})",
+        (TaskStatus.RETRYING, now, task_id, *terminal),
+    )
+    if updated.rowcount != 1:
+        return None
+    (attempt_number,) = connection.execute(
+        "SELECT attempt_number FROM tasks WHERE task_id = ?", (task_id,)
+    ).fetchone()
+    return attempt_number
+
+
+def mark_retry_dispatched(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
+    """RETRYING → DISPATCHED quando o despacho agendado da nova tentativa acontece."""
+    updated = connection.execute(
+        "UPDATE tasks SET status = ?, updated_at = ? WHERE task_id = ? AND status = ?",
+        (TaskStatus.DISPATCHED, now, task_id, TaskStatus.RETRYING),
+    )
+    return updated.rowcount == 1
+
+
 def dispatch_context(connection: sqlite3.Connection, task_id: str) -> DispatchContext:
     row = connection.execute(
         "SELECT t.task_id, t.order_id, t.execution_id, t.current_target, t.attempt_number,"
