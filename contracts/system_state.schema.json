@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "system_state.schema.json",
+  "$defs": {
+    "AlternativesView": {
+      "additionalProperties": false,
+      "properties": {
+        "fallback_available": {
+          "title": "Fallback Available",
+          "type": "boolean"
+        },
+        "fallback_used": {
+          "title": "Fallback Used",
+          "type": "boolean"
+        },
+        "alternative_targets": {
+          "items": {
+            "enum": [
+              "inventory.primary",
+              "inventory.fallback"
+            ],
+            "type": "string"
+          },
+          "title": "Alternative Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "fallback_available",
+        "fallback_used",
+        "alternative_targets"
+      ],
+      "title": "AlternativesView",
+      "type": "object"
+    },
+    "EventType": {
+      "enum": [
+        "ORDER_CREATED",
+        "TASK_CREATED",
+        "STOCK_RESERVATION_REQUESTED",
+        "STOCK_RESERVATION_SUCCEEDED",
+        "STOCK_RESERVATION_FAILED",
+        "INVENTORY_TIMEOUT",
+        "TRANSIENT_ERROR",
+        "WAIT_SCHEDULED",
+        "WAIT_FINISHED",
+        "RETRY_SCHEDULED",
+        "FALLBACK_SCHEDULED",
+        "TASK_COMPLETED",
+        "TASK_ABORTED",
+        "MESSAGE_DEAD_LETTERED"
+      ],
+      "title": "EventType",
+      "type": "string"
+    },
+    "MessagingView": {
+      "additionalProperties": false,
+      "properties": {
+        "queue_size": {
+          "minimum": 0,
+          "title": "Queue Size",
+          "type": "integer"
+        },
+        "redelivered": {
+          "title": "Redelivered",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "queue_size",
+        "redelivered"
+      ],
+      "title": "MessagingView",
+      "type": "object"
+    },
+    "RecentEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_type": {
+          "$ref": "#/$defs/EventType"
+        },
+        "attempt_number": {
+          "minimum": 1,
+          "title": "Attempt Number",
+          "type": "integer"
+        },
+        "event_seq": {
+          "minimum": 1,
+          "title": "Event Seq",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "event_type",
+        "attempt_number",
+        "event_seq"
+      ],
+      "title": "RecentEvent",
+      "type": "object"
+    },
+    "ServiceView": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "available",
+            "degraded",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latency Ms"
+        },
+        "last_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "latency_ms",
+        "last_result"
+      ],
+      "title": "ServiceView",
+      "type": "object"
+    },
+    "TaskResult": {
+      "description": "Valores de `service.last_result` / `tasks.last_result`.",
+      "enum": [
+        "ok",
+        "timeout",
+        "transient_error",
+        "invalid_data",
+        "fallback_failed"
+      ],
+      "title": "TaskResult",
+      "type": "string"
+    },
+    "TaskStatus": {
+      "enum": [
+        "PENDING",
+        "DISPATCHED",
+        "PROCESSING",
+        "WAITING",
+        "RETRYING",
+        "FALLBACK_PROCESSING",
+        "COMPLETED",
+        "ABORTED",
+        "DEAD_LETTERED"
+      ],
+      "title": "TaskStatus",
+      "type": "string"
+    },
+    "TaskView": {
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "#/$defs/TaskStatus"
+        },
+        "current_service": {
+          "anyOf": [
+            {
+              "const": "inventory-service",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Service"
+        },
+        "current_target": {
+          "anyOf": [
+            {
+              "enum": [
+                "inventory.primary",
+                "inventory.fallback"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Target"
+        },
+        "attempt_number": {
+          "minimum": 1,
+          "title": "Attempt Number",
+          "type": "integer"
+        },
+        "max_attempts": {
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "wait_count": {
+          "minimum": 0,
+          "title": "Wait Count",
+          "type": "integer"
+        },
+        "max_waits": {
+          "minimum": 0,
+          "title": "Max Waits",
+          "type": "integer"
+        },
+        "elapsed_ms": {
+          "minimum": 0,
+          "title": "Elapsed Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "phase",
+        "current_service",
+        "current_target",
+        "attempt_number",
+        "max_attempts",
+        "wait_count",
+        "max_waits",
+        "elapsed_ms"
+      ],
+      "title": "TaskView",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "execution_id": {
+      "pattern": "^(PILOT|EXP)_[A-Za-z0-9]+$",
+      "title": "Execution Id",
+      "type": "string"
+    },
+    "task_id": {
+      "pattern": "^TASK_[A-Za-z0-9]+$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "state_id": {
+      "pattern": "^STATE_[A-Za-z0-9]+$",
+      "title": "State Id",
+      "type": "string"
+    },
+    "timestamp": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "current_event_seq": {
+      "minimum": 1,
+      "title": "Current Event Seq",
+      "type": "integer"
+    },
+    "task": {
+      "$ref": "#/$defs/TaskView"
+    },
+    "service": {
+      "$ref": "#/$defs/ServiceView"
+    },
+    "messaging": {
+      "$ref": "#/$defs/MessagingView"
+    },
+    "alternatives": {
+      "$ref": "#/$defs/AlternativesView"
+    },
+    "recent_events": {
+      "items": {
+        "$ref": "#/$defs/RecentEvent"
+      },
+      "title": "Recent Events",
+      "type": "array"
+    }
+  },
+  "required": [
+    "execution_id",
+    "task_id",
+    "state_id",
+    "timestamp",
+    "current_event_seq",
+    "task",
+    "service",
+    "messaging",
+    "alternatives",
+    "recent_events"
+  ],
+  "title": "SystemState",
+  "type": "object"
+}

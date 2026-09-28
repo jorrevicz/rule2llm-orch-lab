@@ -172,7 +172,7 @@ rastreabilidade (piloto §28 Fase 3).
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
 | M3-T01 | **(D) 🔬** Formato final do `SYSTEM_STATE` | `docs(decisoes)` | D-06 registrada: formato aninhado; `phase` = estado da tarefa com regra de `CONTINUE` em `PENDING`/`WAITING`; `decision_engine` = `RULES`/`LLM` (config, código e docs) | I-01, I-02, I-03 | ✅ |
-| M3-T02 | Schema do `SYSTEM_STATE` | `feat(contracts)` | `contracts/system_state.schema.json`; modelo em `shared/` | [06 §6.2](06-modelo-de-decisao.md), RF-013 | ⬜ |
+| M3-T02 | Schema do `SYSTEM_STATE` | `feat(contracts)` | `shared/system_state.py` (modelo aninhado estrito) e `contracts/system_state.schema.json` gerado; `TaskStatus`/`TaskResult` movidos para `shared/task.py`; teste de contrato valida o exemplo do doc 06 e rejeita `READY`/`RECOVERED` e a forma plana antiga | [06 §6.2](06-modelo-de-decisao.md), RF-013 | ✅ |
 | M3-T03 | Execução e metadados | `feat(observability)` | Escritor JSONL comum; `data/pilot/<EXECUTION_ID>/`; `execution_id` por execução; `execution_metadata.json` (`phase: PILOT`, `eligible_for_sample: false`, desconhecidos `null`). **(D)** D-05 | RF-035, RF-036, [10 §10.3](10-rastreabilidade-e-metricas.md) | ⬜ |
 | M3-T04 | Eventos da tarefa | `feat(orders)` | Tabela `task_events` em `orders.db` (incremento justificado: o StateBuilder lê os últimos K — D-01); `task_events.jsonl` com eventos de orders e inventory (`service`, `redelivered`) | RF-032 | ⬜ |
 | M3-T05 | `StateBuilder` | `feat(orders)` | `state_id`; janela `recent_events_limit`; `elapsed_ms`; `last_result`; `queue_size` e disponibilidade do consumidor via API de management do RabbitMQ (mesma fonte para Rules e LLM); `states.jsonl` | RF-013–RF-015, RF-031, RNF-012, RNF-019, I-08 | ⬜ |

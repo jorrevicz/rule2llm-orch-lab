@@ -6,38 +6,22 @@ correlação e `items_json` (D-02). Novas colunas entram quando uma task as exig
 
 from enum import StrEnum
 
+from shared.task import TERMINAL_TASK_STATUSES, TaskResult, TaskStatus
+
+__all__ = [
+    "TERMINAL_TASK_STATUSES",
+    "OrderStatus",
+    "TaskResult",
+    "TaskStatus",
+    "order_status_for",
+    "SCHEMA",
+]
+
 
 class OrderStatus(StrEnum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
-
-
-class TaskStatus(StrEnum):
-    PENDING = "PENDING"
-    DISPATCHED = "DISPATCHED"
-    PROCESSING = "PROCESSING"
-    WAITING = "WAITING"
-    RETRYING = "RETRYING"
-    FALLBACK_PROCESSING = "FALLBACK_PROCESSING"
-    COMPLETED = "COMPLETED"
-    ABORTED = "ABORTED"
-    DEAD_LETTERED = "DEAD_LETTERED"
-
-
-class TaskResult(StrEnum):
-    """Valores de `tasks.last_result` (docs/06 §6.2.1, `service.last_result`)."""
-
-    OK = "ok"
-    TIMEOUT = "timeout"
-    TRANSIENT_ERROR = "transient_error"
-    INVALID_DATA = "invalid_data"
-    FALLBACK_FAILED = "fallback_failed"
-
-
-TERMINAL_TASK_STATUSES = frozenset(
-    {TaskStatus.COMPLETED, TaskStatus.ABORTED, TaskStatus.DEAD_LETTERED}
-)
 
 
 def order_status_for(task_status: TaskStatus) -> OrderStatus:
