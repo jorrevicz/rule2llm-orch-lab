@@ -42,7 +42,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 |---|---|:---:|---|---|
 | [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | ✅ | `m0-fundacao` | 2026-09-26 |
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
-| [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | 🔄 | `m2-idempotencia` | — |
+| [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ⬜ | `m3-rastreabilidade` | — |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
@@ -150,9 +150,16 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 
 **Critério de conclusão** (piloto §28 Fase 2)
 
-- [ ] Reenviar a mesma mensagem **não** cria uma segunda reserva.
-- [ ] Nova tentativa lógica com `message_id` novo **não** cria uma segunda reserva.
-- [ ] `message_id`, `task_id` e `event_seq` aparecem nos registros.
+- [x] Reenviar a mesma mensagem **não** cria uma segunda reserva.
+- [x] Nova tentativa lógica com `message_id` novo **não** cria uma segunda reserva.
+- [x] `message_id`, `task_id` e `event_seq` aparecem nos registros.
+
+> Verificado em 2026-09-28 a partir de ambiente limpo: 94 testes unitários/contrato e 3 de
+> integração; `duplicate_message_test` com nova tentativa e 2 redeliveries → 1 reserva por
+> tarefa, `event_seq` correto no Orders, filas e DLQ vazias; `processed_messages` e
+> `processed_events` correlacionam solicitação, resposta, `task_id` e `event_seq`. Decisões
+> tomadas no marco: D-13, D-16, D-04. Limitação conhecida: a redelivery é simulada por
+> republicação (o flag `redelivered` só aparece numa reentrega real do broker).
 
 ---
 
