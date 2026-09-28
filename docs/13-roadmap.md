@@ -41,7 +41,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | Marco | Objetivo | Status | Tag | Concluído em |
 |---|---|:---:|---|---|
 | [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | ✅ | `m0-fundacao` | 2026-09-26 |
-| [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | 🔄 | `m1-fluxo-normal` | — |
+| [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ⬜ | `m2-idempotencia` | — |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ⬜ | `m3-rastreabilidade` | — |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
@@ -123,10 +123,12 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 
 **Critério de conclusão** (piloto §28 Fase 1)
 
-- [ ] `docker compose up` inicializa RabbitMQ, Orders e Inventory.
-- [ ] `POST /orders` → RabbitMQ → Inventory → `inventory.db` → evento de sucesso → Orders → `orders.db` → `COMPLETED`.
-- [ ] Pedido e tarefa terminam como `COMPLETED`.
-- [ ] Nenhuma chamada HTTP síncrona entre os serviços; nenhum banco compartilhado.
+- [x] `docker compose up` inicializa RabbitMQ, Orders e Inventory.
+- [x] `POST /orders` → RabbitMQ → Inventory → `inventory.db` → evento de sucesso → Orders → `orders.db` → `COMPLETED`.
+- [x] Pedido e tarefa terminam como `COMPLETED`.
+- [x] Nenhuma chamada HTTP síncrona entre os serviços; nenhum banco compartilhado.
+
+> Verificado em 2026-09-27 a partir de ambiente limpo (`docker compose down -v`): smoke test com 3 pedidos `COMPLETED`, 1 reserva por tarefa, filas e DLQ vazias; volumes `orders-data` e `inventory-data` separados. Pendências conhecidas, tratadas nos próximos marcos: despacho inicial provisório (M4-T04) e `event_seq` do evento de retorno provisório (M2-T02).
 
 ---
 
