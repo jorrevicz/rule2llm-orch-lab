@@ -14,32 +14,21 @@ Sai com código 0 somente se:
 
 import argparse
 import json
-import subprocess
 import sys
-import time
-import urllib.request
 from dataclasses import dataclass, field
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
-DEFAULT_BASE_URL = "http://localhost:8000"
-QUEUES = ("inventory.primary", "inventory.fallback", "orders.events", "tasks.dlq")
-TERMINAL_ORDER_STATUSES = {"COMPLETED", "FAILED"}
-POLL_INTERVAL_SECONDS = 0.2
+from scripts.pilot.environment import (
+    DEFAULT_BASE_URL,
+    INVENTORY_DB,
+    QUEUES,
+    InspectionError,
+    create_order,
+    scalar,
+    wait_for_drained_queues,
+    wait_for_terminal_status,
+)
+
 QUEUE_DRAIN_TIMEOUT_SECONDS = 10.0
-
-_RESERVATION_COUNT_SCRIPT = """
-import json, sqlite3, sys
-connection = sqlite3.connect("/data/inventory.db")
-counts = {
-    task_id: connection.execute(
-        "SELECT COUNT(*) FROM reservations WHERE task_id = ?", (task_id,)
-    ).fetchone()[0]
-    for task_id in sys.argv[1:]
-}
-print(json.dumps(counts))
-"""
 
 
 @dataclass
@@ -54,69 +43,8 @@ class SmokeResult:
         return not self.errors
 
 
-def _request_json(url: str, payload: dict | None = None) -> dict:
-    data = None if payload is None else json.dumps(payload).encode()
-    request = urllib.request.Request(
-        url, data=data, headers={"content-type": "application/json"}
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        return json.load(response)
-
-
-def create_order(base_url: str, items: list[dict]) -> dict:
-    return _request_json(f"{base_url}/orders", {"items": items})
-
-
-def wait_for_terminal_status(base_url: str, order_id: str, timeout_s: float) -> str:
-    deadline = time.monotonic() + timeout_s
-    status = "UNKNOWN"
-    while time.monotonic() < deadline:
-        status = _request_json(f"{base_url}/orders/{order_id}")["status"]
-        if status in TERMINAL_ORDER_STATUSES:
-            return status
-        time.sleep(POLL_INTERVAL_SECONDS)
-    return status
-
-
-class InspectionError(RuntimeError):
-    pass
-
-
-def _compose(*args: str) -> str:
-    command = ["docker", "compose", "-f", str(COMPOSE_FILE), *args]
-    completed = subprocess.run(command, capture_output=True, text=True)
-    if completed.returncode != 0:
-        raise InspectionError(f"{' '.join(args[:3])}: {completed.stderr.strip()}")
-    return completed.stdout
-
-
-def reservation_counts(task_ids: list[str]) -> dict[str, int]:
-    # `run --no-deps` usa um container efêmero com o mesmo volume: funciona mesmo
-    # com o inventory-worker parado.
-    output = _compose(
-        "run", "--rm", "--no-deps", "-T", "inventory-worker",
-        "python", "-c", _RESERVATION_COUNT_SCRIPT, *task_ids,
-    )
-    return json.loads(output)
-
-
-def queue_depths() -> dict[str, int]:
-    output = _compose(
-        "exec", "-T", "rabbitmq",
-        "rabbitmqctl", "list_queues", "name", "messages", "--formatter", "json", "-q",
-    )
-    return {queue["name"]: queue["messages"] for queue in json.loads(output)}
-
-
-def wait_for_drained_queues(timeout_s: float) -> dict[str, int]:
-    # O ack (acks_late) acontece logo após o processamento; pode haver alguns
-    # milissegundos entre o pedido aparecer COMPLETED e a fila zerar.
-    deadline = time.monotonic() + timeout_s
-    depths = queue_depths()
-    while any(depths.get(name, 0) for name in QUEUES) and time.monotonic() < deadline:
-        time.sleep(POLL_INTERVAL_SECONDS)
-        depths = queue_depths()
-    return depths
+def reservation_count(task_id: str) -> int:
+    return scalar(INVENTORY_DB, "SELECT COUNT(*) FROM reservations WHERE task_id = ?", task_id)
 
 
 def run(base_url: str = DEFAULT_BASE_URL, orders: int = 1, timeout_s: float = 30.0) -> SmokeResult:
@@ -132,7 +60,7 @@ def run(base_url: str = DEFAULT_BASE_URL, orders: int = 1, timeout_s: float = 30
             result.errors.append(f"{order['order_id']} ended as {status}")
 
     try:
-        result.reservations = reservation_counts([order["task_id"] for order in created])
+        result.reservations = {order["task_id"]: reservation_count(order["task_id"]) for order in created}
         result.queue_depths = wait_for_drained_queues(QUEUE_DRAIN_TIMEOUT_SECONDS)
     except InspectionError as error:
         result.errors.append(f"inspection failed: {error}")

@@ -20,10 +20,11 @@ O projeto está no **piloto técnico**, e o progresso é acompanhado em
 
 - Implementado e testado: fluxo normal ponta a ponta (`POST /orders` → RabbitMQ →
   `inventory-service` → evento de retorno → pedido `COMPLETED`), com RabbitMQ, os dois
-  serviços e um SQLite por serviço. O despacho inicial ainda é um `CONTINUE` fixo
-  (**provisório**), sem motor de decisão.
-- Planejado: idempotência e contrato formal de mensagens (M2), `StateBuilder` e
-  rastreabilidade (M3), Rules/Validator/Executor (M4) e LLM (M5).
+  serviços e um SQLite por serviço; contrato de mensagens versionado (`contracts/`),
+  mensagens fora do contrato na `tasks.dlq`, numeração da trajetória (`event_seq`) e
+  idempotência de transporte (`message_id`) e de negócio (`task_id`). O despacho inicial
+  ainda é um `CONTINUE` fixo (**provisório**), sem motor de decisão.
+- Planejado: `StateBuilder` e rastreabilidade (M3), Rules/Validator/Executor (M4) e LLM (M5).
 
 Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
 
@@ -66,8 +67,9 @@ curl -X POST localhost:8000/orders -H 'content-type: application/json' \
      -d '{"items":[{"sku":"SKU-001","quantity":2}]}'
 curl localhost:8000/orders/ORD_000001
 
-.venv/bin/python scripts/pilot/smoke_test.py --orders 3   # smoke test do fluxo normal
-.venv/bin/python -m pytest -m integration                 # testes de integração
+.venv/bin/python -m scripts.pilot.smoke_test --orders 3      # smoke test do fluxo normal
+.venv/bin/python -m scripts.pilot.duplicate_message_test     # redelivery e nova tentativa
+.venv/bin/python -m pytest -m integration                    # testes de integração
 docker compose down -v                                     # derruba e apaga os bancos
 ```
 
