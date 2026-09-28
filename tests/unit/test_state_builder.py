@@ -9,7 +9,6 @@ from services.orders.app.db.repositories import create_order_with_task
 from services.orders.app.db.trajectory import EventSource, record_event
 from services.orders.app.orchestration.broker_observer import QueueStats
 from services.orders.app.orchestration.event_handler import handle_inventory_event
-from services.orders.app.orchestration.provisional_dispatch import dispatch_initial_reservation
 from services.orders.app.orchestration.state_builder import StateBuilder
 from shared.config import load_experiment_config
 from shared.envelope import MessageEnvelope, build_envelope
@@ -17,6 +16,7 @@ from shared.events import EventType
 from shared.messaging import Route
 from shared.system_state import SystemState
 from shared.timestamps import parse_iso, to_iso
+from tests.factories import Harness
 
 REPO_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
 CREATED_AT = "2026-09-28T12:00:00.000Z"
@@ -42,11 +42,6 @@ class Clock:
 
     def advance(self, ms: int) -> None:
         self.now += timedelta(milliseconds=ms)
-
-
-class NullPublisher:
-    def publish(self, envelope, route) -> None:
-        pass
 
 
 @pytest.fixture
@@ -82,6 +77,11 @@ def connection(tmp_path) -> sqlite3.Connection:
 
 
 TASK = "TASK_000001"
+
+
+def _dispatch(connection: sqlite3.Connection) -> dict:
+    harness = Harness(connection=connection, directory=Path("/nonexistent"))
+    return harness.dispatch(TASK)
 
 
 def _success_reply(connection: sqlite3.Connection) -> MessageEnvelope:
@@ -167,7 +167,7 @@ def test_used_fallback_is_not_offered_again(builder, connection):
 
 
 def test_latency_of_a_pending_request_grows_until_the_reply(builder, connection, clock):
-    envelope = dispatch_initial_reservation(connection, TASK, NullPublisher())
+    envelope = _dispatch(connection)
     clock.now = parse_iso(envelope["published_at"]) + timedelta(milliseconds=2054)
 
     state = builder.build(connection, TASK)
@@ -179,7 +179,7 @@ def test_latency_of_a_pending_request_grows_until_the_reply(builder, connection,
 
 
 def test_latency_stops_at_the_reply(builder, connection, clock):
-    dispatch_initial_reservation(connection, TASK, NullPublisher())
+    _dispatch(connection)
     handle_inventory_event(connection, _success_reply(connection))
     clock.advance(60_000)
 
@@ -210,7 +210,7 @@ def test_recent_events_window_keeps_only_the_last_k(builder, connection, config)
 
 
 def test_repeated_deliveries_do_not_occupy_the_window(builder, connection):
-    dispatch_initial_reservation(connection, TASK, NullPublisher())
+    _dispatch(connection)
     reply = _success_reply(connection)
     handle_inventory_event(connection, reply)
     handle_inventory_event(connection, reply)

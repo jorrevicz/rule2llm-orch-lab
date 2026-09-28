@@ -44,12 +44,13 @@ class OrderView:
 
 
 @dataclass(frozen=True)
-class DispatchedTask:
+class DispatchContext:
+    """O que é preciso para montar a solicitação de reserva da tentativa corrente."""
+
     task_id: str
     order_id: str
     execution_id: str
     target: str
-    event_seq: int
     attempt_number: int
     items_json: str
 
@@ -101,35 +102,30 @@ def get_order(connection: sqlite3.Connection, order_id: str) -> OrderView | None
     return OrderView(order_id=row["order_id"], task_id=row["task_id"], status=OrderStatus(row["status"]))
 
 
-def mark_task_dispatched(
-    connection: sqlite3.Connection, *, task_id: str, target: str, now: str
-) -> DispatchedTask:
-    """PENDING → DISPATCHED, reservando o `event_seq` da mensagem a publicar.
+def start_first_dispatch(connection: sqlite3.Connection, *, task_id: str, target: str, now: str) -> bool:
+    """`CONTINUE`: PENDING/WAITING → DISPATCHED, antes de qualquer despacho.
 
-    Gravado ANTES da publicação: assim o evento de retorno nunca encontra a tarefa
-    num estado anterior ao despacho. Deve ser chamada dentro de uma transação do
-    chamador.
+    Deve ser chamada dentro de uma transação do chamador.
     """
     updated = connection.execute(
-        "UPDATE tasks SET status = ?, current_target = ?,"
-        " current_event_seq = current_event_seq + 1, updated_at = ?"
-        " WHERE task_id = ? AND status = ?",
-        (TaskStatus.DISPATCHED, target, now, task_id, TaskStatus.PENDING),
+        "UPDATE tasks SET status = ?, current_target = ?, updated_at = ?"
+        " WHERE task_id = ? AND status IN (?, ?) AND current_target IS NULL",
+        (TaskStatus.DISPATCHED, target, now, task_id, TaskStatus.PENDING, TaskStatus.WAITING),
     )
-    if updated.rowcount != 1:
-        raise ValueError(f"task {task_id} is not PENDING")
+    return updated.rowcount == 1
+
+
+def dispatch_context(connection: sqlite3.Connection, task_id: str) -> DispatchContext:
     row = connection.execute(
-        "SELECT t.task_id, t.order_id, t.execution_id, t.current_target,"
-        " t.current_event_seq, t.attempt_number, o.items_json"
-        " FROM tasks t JOIN orders o ON o.order_id = t.order_id WHERE t.task_id = ?",
+        "SELECT t.task_id, t.order_id, t.execution_id, t.current_target, t.attempt_number,"
+        " o.items_json FROM tasks t JOIN orders o ON o.order_id = t.order_id WHERE t.task_id = ?",
         (task_id,),
     ).fetchone()
-    return DispatchedTask(
+    return DispatchContext(
         task_id=row["task_id"],
         order_id=row["order_id"],
         execution_id=row["execution_id"],
         target=row["current_target"],
-        event_seq=row["current_event_seq"],
         attempt_number=row["attempt_number"],
         items_json=row["items_json"],
     )

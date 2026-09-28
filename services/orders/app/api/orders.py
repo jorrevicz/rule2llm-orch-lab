@@ -11,7 +11,6 @@ from services.orders.app.api.schemas import CreateOrderRequest, OrderResponse
 from services.orders.app.db.connection import connect
 from services.orders.app.db.repositories import create_order_with_task, get_order
 from services.orders.app.orchestration.coordination import Coordination
-from services.orders.app.orchestration.provisional_dispatch import start_task
 from services.orders.app.settings import Settings
 from shared.canonical_json import canonical_json
 from shared.structured_logging import correlated
@@ -53,16 +52,18 @@ def create_order(
     created = create_order_with_task(
         connection, execution_id=settings.execution_id, items_json=items_json, now=utc_now_iso()
     )
-    dispatched = start_task(connection, created.task_id, coordination)
+    # Ponto de decisão "início da tarefa" (docs/06 §6.7).
+    outcome = coordination.orchestrator.handle_decision_point(connection, created.task_id)
     logger.info(
-        "order accepted and dispatched",
+        "order accepted; initial decision %s/%s",
+        outcome.executed.action,
+        outcome.executed.reason_code,
         extra=correlated(
             order_id=created.order_id,
             task_id=created.task_id,
-            message_id=dispatched["message_id"],
-            event_type=dispatched["event_type"],
-            event_seq=dispatched["event_seq"],
-            attempt_number=dispatched["attempt_number"],
+            state_id=outcome.state_id,
+            decision_id=outcome.decision_id,
+            outcome=outcome.executed.action,
         ),
     )
     return OrderResponse(order_id=created.order_id, task_id=created.task_id, status=created.status)

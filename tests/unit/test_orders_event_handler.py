@@ -2,35 +2,24 @@ import sqlite3
 
 import pytest
 
-from services.orders.app.db.connection import connect, init_database
-from services.orders.app.db.repositories import create_order_with_task
 from services.orders.app.orchestration.event_handler import (
     EventStatus,
     UnsupportedEventError,
     handle_inventory_event,
 )
-from services.orders.app.orchestration.provisional_dispatch import dispatch_initial_reservation
 from shared.envelope import MessageEnvelope, build_envelope
 from shared.events import EventType
+from tests.factories import Harness
 
 NOW = "2026-09-27T12:00:00.000Z"
 
 
-class _DiscardingPublisher:
-    def publish(self, envelope, route) -> None:
-        pass
-
-
 @pytest.fixture
 def connection(tmp_path) -> sqlite3.Connection:
-    path = tmp_path / "orders.db"
-    init_database(path)
-    conn = connect(path)
-    items = '[{"quantity":1,"sku":"SKU-001"}]'
-    created = create_order_with_task(conn, execution_id="PILOT_TEST", items_json=items, now=NOW)
-    dispatch_initial_reservation(conn, created.task_id, _DiscardingPublisher())
-    yield conn
-    conn.close()
+    harness = Harness.with_task(tmp_path)
+    harness.dispatch()
+    yield harness.connection
+    harness.connection.close()
 
 
 def _event(event_type: EventType, task_id: str = "TASK_000001") -> MessageEnvelope:

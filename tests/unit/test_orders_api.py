@@ -6,13 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.orders.app.main import create_app
-from services.orders.app.observability.recorders import DecisionRecorder, StateRecorder
-from services.orders.app.orchestration.broker_observer import QueueStats
 from services.orders.app.orchestration.coordination import Coordination
-from services.orders.app.orchestration.state_builder import StateBuilder
 from services.orders.app.settings import Settings
-from shared.artifacts import JsonlWriter
-from shared.config import load_experiment_config
+from tests.factories import Harness, RecordingPublisher
 
 VALID_ORDER = {"items": [{"sku": "SKU-002", "quantity": 1}, {"sku": "SKU-001", "quantity": 2}]}
 
@@ -28,37 +24,25 @@ def settings(tmp_path) -> Settings:
     )
 
 
-class RecordingPublisher:
-    def __init__(self) -> None:
-        self.published: list[tuple[dict, str]] = []
-
-    def publish(self, envelope: dict, route) -> None:
-        self.published.append((envelope, str(route)))
+@pytest.fixture
+def harness(settings, tmp_path) -> Harness:
+    # A conexão do harness não é usada pela API (cada requisição abre a sua).
+    return Harness(connection=None, directory=tmp_path)
 
 
 @pytest.fixture
-def publisher() -> RecordingPublisher:
-    return RecordingPublisher()
-
-
-class StaticObserver:
-    def queue_stats(self, route) -> QueueStats:
-        return QueueStats(message_count=0, consumer_count=1)
+def publisher(harness) -> RecordingPublisher:
+    return harness.publisher
 
 
 @pytest.fixture
-def states_path(tmp_path):
-    return tmp_path / "states.orders-api.jsonl"
+def states_path(harness) -> Path:
+    return harness.states_path
 
 
 @pytest.fixture
-def client(settings, publisher, states_path) -> TestClient:
-    coordination = Coordination(
-        publisher=publisher,
-        state_builder=StateBuilder(load_experiment_config(Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"), StaticObserver()),
-        state_recorder=StateRecorder(JsonlWriter(states_path)),
-        decision_recorder=DecisionRecorder(JsonlWriter(states_path.with_name("decisions.jsonl"))),
-    )
+def client(settings, harness) -> TestClient:
+    coordination = Coordination(orchestrator=harness.orchestrator)
     with TestClient(create_app(settings, coordination)) as test_client:
         yield test_client
 
@@ -204,3 +188,17 @@ def test_initial_decision_point_records_the_system_state(client, states_path):
     assert record["recent_events"] == [
         {"event_type": "TASK_CREATED", "attempt_number": 1, "event_seq": 1}
     ]
+
+
+def test_initial_decision_is_recorded(client, harness):
+    client.post("/orders", json=VALID_ORDER)
+
+    [line] = harness.decisions_path.read_text(encoding="utf-8").splitlines()
+    decision = json.loads(line)
+    assert decision["task_id"] == "TASK_000001"
+    assert decision["decision_engine"] == "RULES"
+    assert decision["executed_decision"] == {
+        "action": "CONTINUE",
+        "target": "inventory.primary",
+        "reason_code": "NORMAL_FLOW",
+    }

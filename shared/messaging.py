@@ -30,6 +30,12 @@ class Route(StrEnum):
 INVENTORY_RESERVE_TASK = "inventory.reserve_stock"
 ORDERS_HANDLE_EVENT_TASK = "orders.handle_inventory_event"
 
+# Tarefas internas de coordenação do orders-service (fila orders.events, com atraso):
+# verificação de timeout, despacho de nova tentativa e reavaliação após WAIT.
+ORDERS_TIMEOUT_CHECK_TASK = "orders.timeout_check"
+ORDERS_DISPATCH_ATTEMPT_TASK = "orders.dispatch_attempt"
+ORDERS_REEVALUATE_TASK = "orders.reevaluate"
+
 
 def declared_queue(route: Route) -> Queue:
     exchange = Exchange(TASKS_EXCHANGE, type="direct", no_declare=True)
