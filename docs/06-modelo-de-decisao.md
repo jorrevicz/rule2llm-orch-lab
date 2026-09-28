@@ -157,7 +157,7 @@ não há subtarefas concorrentes no recorte).
 | `CONTINUE` | Executa a próxima transição normal prevista (ex.: publicar `STOCK_RESERVATION_REQUESTED` em `inventory.primary`) | `target` = `inventory.primary` |
 | `RETRY` | Reexecuta a etapa atual **no mesmo target** | `attempt_number += 1`; novo `message_id`; novo `event_seq`; mesmo `task_id`; `target` = `current_target` |
 | `WAIT` | Não envia nova tentativa naquele instante; aguarda `wait_delay_ms`; reconstrói o `SYSTEM_STATE`; consulta de novo o `DecisionEngine` | `wait_count += 1`; **não** incrementa `attempt_number`; `target` = `null` |
-| `FALLBACK` | Troca `inventory.primary` → `inventory.fallback` (mesmo `inventory-service`) | `fallback_used = true`; `target` = `inventory.fallback`; admissível só se `fallback_available` e `not fallback_used` |
+| `FALLBACK` | Troca `inventory.primary` → `inventory.fallback` (mesmo `inventory-service`) | `fallback_used = true`; `target` = `inventory.fallback`; admissível só se `fallback_available` e `not fallback_used`; **não** incrementa `attempt_number` (D-15) |
 | `ABORT` | Encerra a tarefa de forma controlada | `Task → ABORTED`; `Order → FAILED`; `target` = `null` |
 
 ## 6.4 Contrato de decisão
@@ -338,11 +338,19 @@ def validate(decision, state):
     if not decision.reason_code:
         return invalid("MISSING_REASON_CODE")
 
+    if decision.action == "CONTINUE":                       # acréscimo 🔬
+        if decision.target != "inventory.primary":
+            return invalid("INVALID_CONTINUE_TARGET")
+        if state.task.current_target is not None:           # já houve despacho
+            return invalid("CONTINUE_AFTER_DISPATCH")
+
     if decision.action == "RETRY":
         if state.task.attempt_number >= state.task.max_attempts:
             return invalid("RETRY_LIMIT_EXCEEDED")
         if decision.target != state.task.current_target:
             return invalid("INVALID_RETRY_TARGET")
+        if decision.target == "inventory.fallback":         # acréscimo 🔬 (D-15)
+            return invalid("FALLBACK_RETRY_LIMIT")
 
     if decision.action == "FALLBACK":
         if not state.alternatives.fallback_available:
@@ -361,6 +369,19 @@ def validate(decision, state):
 
     return valid()
 ```
+
+Implementação: `services/orders/app/orchestration/validator.py`. Antes de tudo, uma saída
+do motor que nem pôde ser lida como decisão resulta em `MALFORMED_DECISION`.
+
+**Acréscimos ao Código 6 (M4-T03) 🔬** — valem igualmente para Rules e LLM:
+
+- `CONTINUE` só com target `inventory.primary` e só antes do primeiro despacho
+  (`current_target` nulo). `CONTINUE` é "a próxima transição normal", que no fluxo
+  Pedido → Estoque é o primeiro despacho; depois dele as ações admissíveis são `RETRY`,
+  `FALLBACK`, `WAIT` e `ABORT`. Sem essa regra, um `CONTINUE` para `inventory.fallback` ou
+  um reenvio sem consumir `attempt_number` passariam, e o executor teria de interpretar a
+  decisão (piloto §15.2 já lista "target incompatível com a ação" como decisão inválida).
+- """ + d15 + """
 
 Validações mínimas exigidas ([`CLAUDE.md`](../CLAUDE.md) §22): ação permitida; target
 permitido; `reason_code` presente; limite de tentativas; target do `RETRY`; disponibilidade

@@ -1329,6 +1329,8 @@ A ocorrência é comportamento operacional da abordagem LLM e não deve ser apag
 
 # 18. `DecisionValidator`
 
+> **Implementação (M4-T03) e D-15 (2026-09-28):** além das regras abaixo, `CONTINUE` só é válido com target `inventory.primary` e antes do primeiro despacho (`INVALID_CONTINUE_TARGET`, `CONTINUE_AFTER_DISPATCH`), e `RETRY` em `inventory.fallback` é inválido (`FALLBACK_RETRY_LIMIT`). `FALLBACK` publica uma nova mensagem (novo `message_id` e `event_seq`) para `inventory.fallback` **sem** incrementar `attempt_number`, e marca `fallback_used = true`. Com `fallback_max_attempts = 1`, qualquer timeout ou falha na rota de fallback é registrado como `last_result = fallback_failed` (o Rules aborta com `FALLBACK_FAILED`), e `RETRY` em `inventory.fallback` é inválido (`FALLBACK_RETRY_LIMIT`). Detalhes: `docs/06-modelo-de-decisao.md` §6.9.
+
 Pseudocódigo inicial:
 
 ```python

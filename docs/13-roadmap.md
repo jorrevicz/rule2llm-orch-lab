@@ -205,7 +205,7 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 |---|---|---|---|---|:---:|
 | M4-T01 | Contrato de decisão | `feat(contracts)` | `shared/decision.py`: `ProposedDecision` (o que o motor propôs, sem restrição), `Decision` executável (5 ações, target compatível com a ação), `ValidationResult`, enums de ação, `reason_code` e erros; `resolve_action` (inválida → `ABORT / INVALID_DECISION`); `contracts/decision.schema.json` | [06 §6.4](06-modelo-de-decisao.md), [12 §12.4](12-glossario.md), RF-017 | ✅ |
 | M4-T02 | `RulesDecisionEngine` | `feat(orchestration)` | Interface `DecisionEngine` / `EngineOutput` comum; `RulesDecisionEngine` com a política ordenada literal (Código 4 / piloto §14.3, ajuste D-06) e limiares do config; testes de cada regra e das prioridades | [06 §6.6](06-modelo-de-decisao.md), RF-024 | ✅ |
-| M4-T03 | `DecisionValidator` | `feat(orchestration)` | Validação comum do piloto §18 + `TERMINAL_TASK` | [06 §6.9](06-modelo-de-decisao.md), RF-028, RNF-009 | ⬜ |
+| M4-T03 | `DecisionValidator` | `feat(orchestration)` | Validador comum do Código 6 / piloto §18 + `TERMINAL_TASK` + `MALFORMED_DECISION`; acréscimos 🔬: `CONTINUE` só para `inventory.primary` e antes do primeiro despacho, `RETRY` em `inventory.fallback` inválido (D-15) | [06 §6.9](06-modelo-de-decisao.md), RF-028, RNF-009 | ✅ |
 | M4-T04 | Orchestrator e `CONTINUE` | `feat(orchestration)` | `handle_decision_point`: build → decide → validate → `resolve_action` → execute → `decisions.jsonl` (`decision_time_ms`); seleção de `decision_engine` por config; Executor `CONTINUE` (primeiro despacho + `timeout_check` agendado); remove o despacho provisório de M1-T05 | [07 §7.2](07-diagramas-uml.md), RF-016, RF-018 | ⬜ |
 | M4-T05 | `RETRY` | `feat(orchestration)` | Executor: `RETRY` com `attempt_number + 1`, novo `message_id`/`event_seq`, mesmo target, despacho após `retry_delay_ms` | RF-019 | ⬜ |
 | M4-T06 | Detector de timeout | `feat(orders)` | `timeout_check` agendado a cada dispatch; verifica `attempt_number`; emite `INVENTORY_TIMEOUT` | RF-023, [04 §4.9](04-contrato-mensageria.md) | ⬜ |
@@ -354,7 +354,7 @@ doc 10 §10.6).
 | D-12 | Publicação dos dados experimentais | Commit no repositório × artefato de release × armazenamento externo | M9-T04 | ⬜ |
 | D-13 | Envelope inválido no consumo | **Decidido (2026-09-28): rejeição sem requeue → `tcc.dlx` → `tasks.dlq`.** Envelope, `event_type` ou `payload` fora do contrato é problema de contrato, não de negócio; não vira `invalid_data`. Verificado ao vivo | M2-T01 | ✅ |
 | D-14 | Valor inicial de `attempt_number` | **Decidido (2026-09-27): `1`.** A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (`max_attempts = 3` → tentativas 1, 2 e 3). Mantém coerência com o envelope da 1ª publicação (`attempt_number: 1`) e com as regras `attempt_number < max_attempts` do Rules e do Validator | M1-T03 | ✅ |
-| D-15 🔬 | Semântica de `fallback_max_attempts` | Hoje definido mas não usado por Rules nem pelo Validator | M4-T08 | ⬜ |
+| D-15 🔬 | Semântica de `fallback_max_attempts` | **Decidido (2026-09-28):** `FALLBACK` não incrementa `attempt_number`; com `fallback_max_attempts = 1`, timeout/falha no fallback → `last_result = fallback_failed` e `RETRY` em `inventory.fallback` é inválido (`FALLBACK_RETRY_LIMIT`) | M4-T03 / M4-T08 | ✅ |
 | D-16 🔬 | Quem numera a trajetória (`event_seq`) | **Decidido (2026-09-28): o Orders.** `TASK_CREATED` = 1; cada mensagem publicada, evento novo recebido e evento interno registrado consome o próximo número; no Inventory, `event_seq` repete o da solicitação respondida (correlação). Exemplos dos docs 06, 07 e piloto §10.1 ajustados | M2-T02 | ✅ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
@@ -369,7 +369,7 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-03 | Rules usa `phase` `READY`/`RECOVERED`, ausentes da máquina de estados | metodologia Código 4 e piloto §14.3 × doc 05 | D-06 ✅ (`PENDING`/`WAITING`) |
 | I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 ✅ |
 | I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | D-14 ✅ (piloto §23.1 atualizado para `1`) |
-| I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | M4-T08 (D-15) |
+| I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | D-15 ✅ |
 | I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | M4-T10 (D-07) |
 | I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 ✅ (doc 06 §6.2.4) |
 | I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
@@ -386,3 +386,5 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | D-06 | Código 4 (`RulesDecisionEngine`), regra de fluxo normal | `phase in {"PENDING", "READY", "RECOVERED"}` → `phase in {"PENDING", "WAITING"}`; `phase` passa a ser o estado da tarefa |
 | M3-T05 | Tabela 8 (campos do `SYSTEM_STATE`), coluna de origem | Recomendado detalhar a origem operacional de `service.status`, `service.latency_ms`, `messaging.queue_size`, `alternatives.fallback_available` e da janela `recent_events`, conforme o doc 06 §6.2.4 |
 | M3-T07 | Códigos 7–8 (`decisions.jsonl`), campo `executed_decision` | Acrescentar `reason_code` à decisão executada (necessário para registrar `ABORT / INVALID_DECISION` e `LLM_DECISION_TIMEOUT`, como já aparece no Código 9) |
+| M4-T03 | Código 6 (`DecisionValidator`) | Acrescentar: `CONTINUE` só com target `inventory.primary` e antes do primeiro despacho (`INVALID_CONTINUE_TARGET`, `CONTINUE_AFTER_DISPATCH`); `RETRY` em `inventory.fallback` inválido (`FALLBACK_RETRY_LIMIT`, D-15); saída ilegível → `MALFORMED_DECISION` |
+| D-15 | Tabela de ações / semântica do `FALLBACK` | `FALLBACK` não incrementa `attempt_number`; falha ou timeout no fallback → `last_result = fallback_failed` |
