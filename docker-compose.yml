@@ -30,9 +30,12 @@ services:
       ORDERS_DB_PATH: /data/orders.db
       EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
       EXPERIMENT_CONFIG_PATH: /srv/config/experiment_config.yml
+      DATA_ROOT: /srv/data
+      SERVICE_ROLE: orders-api
     volumes:
       - orders-data:/data
       - ./config:/srv/config:ro
+      - ./data:/srv/data       # artefatos: data/<pilot|experiment>/<EXECUTION_ID>/
     ports:
       - "8000:8000"
     depends_on:
@@ -60,10 +63,13 @@ services:
       - --without-gossip
       - --without-heartbeat
       - --loglevel=INFO
-    environment: *orders-env
+    environment:
+      <<: *orders-env
+      SERVICE_ROLE: orders-worker
     volumes:
       - orders-data:/data
       - ./config:/srv/config:ro
+      - ./data:/srv/data
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -89,10 +95,14 @@ services:
     environment:
       BROKER_URL: amqp://tcc:tcc@rabbitmq:5672//
       INVENTORY_DB_PATH: /data/inventory.db
+      EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
       EXPERIMENT_CONFIG_PATH: /srv/config/experiment_config.yml
+      DATA_ROOT: /srv/data
+      SERVICE_ROLE: inventory-worker
     volumes:
       - inventory-data:/data
       - ./config:/srv/config:ro
+      - ./data:/srv/data
     depends_on:
       rabbitmq:
         condition: service_healthy

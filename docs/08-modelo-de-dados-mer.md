@@ -30,8 +30,6 @@
 
 ```mermaid
 erDiagram
-    EXECUTIONS ||--o{ ORDERS : "contém"
-    EXECUTIONS ||--o{ TASKS : "contém"
     ORDERS ||--|| TASKS : "gera (1:1)"
     TASKS ||--o{ TASK_EVENTS : "produz"
     TASKS ||--o{ STATES : "snapshot de"
@@ -39,21 +37,9 @@ erDiagram
     STATES ||--o| DECISIONS : "apresentado a"
     TASKS ||--o{ PROCESSED_EVENTS : "deduplica"
 
-    EXECUTIONS {
-        text execution_id PK
-        text phase "PILOT | EXPERIMENT"
-        text scenario_id
-        text decision_engine "RULES | LLM"
-        integer eligible_for_sample "0 | 1"
-        text run_status "VALID | INVALID | null"
-        text invalid_reason "nullable"
-        text started_at
-        text finished_at "nullable"
-    }
-
     ORDERS {
         text order_id PK
-        text execution_id FK
+        text execution_id "correlação lógica com execution_metadata.json"
         text status "PENDING | COMPLETED | FAILED"
         text items_json "itens validados, JSON canônico (D-02)"
         text created_at
@@ -148,7 +134,7 @@ erDiagram
 | `tasks` | sim | Tarefa de processamento e todos os contadores do `SYSTEM_STATE` |
 | `processed_events` | sim (nome citado em §23.1) | Idempotência de transporte no consumo de `orders.events` |
 | ~~`order_items`~~ | descartada (D-02) | Itens guardados como JSON em `orders.items_json` — ver §8.5 |
-| `executions` | ⚠ divergência | Metadados da execução (espelha `execution_metadata.json`) |
+| ~~`executions`~~ | descartada (D-05) | Metadados só em `execution_metadata.json` — ver §8.5 |
 | `task_events` | ⚠ divergência | Espelho operacional de `task_events.jsonl` (o `StateBuilder` consulta `recent_events`) |
 | `states` | ⚠ divergência | Espelho operacional de `states.jsonl` |
 | `decisions` | ⚠ divergência | Espelho operacional de `decisions.jsonl` |
@@ -156,7 +142,6 @@ erDiagram
 
 ### Cardinalidades
 
-- `executions (1) — (0..N) orders` / `executions (1) — (0..N) tasks`
 - `orders (1) — (1) tasks` (1 tarefa por pedido; `tasks.order_id` UNIQUE)
 - `tasks (1) — (0..N) task_events` / `states` / `decisions`
 - `states (1) — (0..1) decisions` (um `state_id` é apresentado ao decisor uma vez → no
@@ -264,7 +249,13 @@ Antes do congelamento da configuração definitiva, decidir e registrar em
 4. ~~Adotar o padrão **outbox** (`outbox` / `published_events`) para publicação confiável, ou
    aceitar publicação direta pós-commit.~~
    **Decidido (D-04, 2026-09-28): sem outbox; publicação direta após o commit.** Os dois lados já cobrem a janela entre o commit e a publicação sem tabela extra: no Inventory, a resposta fica em `processed_messages.response_json` e é reemitida na redelivery da solicitação (a mensagem só recebe ack depois do processamento, `acks_late`); no Orders, um despacho gravado como `DISPATCHED` cuja publicação se perdeu é detectado pelo `timeout_check` (M4-T06) e vira ponto de decisão. Pode ser revista se o piloto mostrar perda de mensagem. Sem impacto sobre a comparação Rules × LLM (vale para as duas condições).
-5. Incluir `executions` no banco, ou manter apenas `execution_metadata.json`.
+5. ~~Incluir `executions` no banco, ou manter apenas `execution_metadata.json`.~~
+   **Decidido (D-05, 2026-09-28): sem tabela `executions`.** A metodologia registra os
+   metadados de cada execução em `execution_metadata.json` (§4.5, Código 12) e as inválidas
+   em `invalid_runs.csv`; o SQLite é persistência de negócio dos serviços. Além disso, o
+   reset entre repetições restaura os bancos ao estado inicial (§4.4.1), o que apagaria a
+   tabela, e `run_status` só é conhecido pela bancada após a execução. A correlação usa a
+   coluna `execution_id` de `orders`/`tasks` e o envelope.
 
 Qualquer uma dessas decisões tem impacto metodológico e deve ser refletida no TCC
 ([`CLAUDE.md`](../CLAUDE.md) §43 itens: "mudar contrato do `SYSTEM_STATE`",

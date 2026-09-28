@@ -15,6 +15,8 @@ def settings(tmp_path) -> Settings:
         broker_url="memory://",
         database_path=tmp_path / "orders.db",
         execution_id="PILOT_TEST",
+        data_root=tmp_path / "data",
+        service_role="orders-api",
     )
 
 

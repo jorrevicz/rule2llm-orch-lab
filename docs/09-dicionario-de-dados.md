@@ -16,21 +16,10 @@
 
 # Banco `orders.db` (orders-service)
 
-## `executions` ⚠
+## ~~`executions`~~ — descartada (D-05)
 
-Metadados de cada execução experimental (espelho de `execution_metadata.json`).
-
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
-| `execution_id` | TEXT | não | PK | — | Identificador da execução | `EXP_0042` / `PILOT_0001` |
-| `phase` | TEXT | não | — | — | Fase da execução | `EXPERIMENT` \| `PILOT` |
-| `scenario_id` | TEXT | não | IX | — | Cenário experimental | `NORMAL_FLOW`, `timeout`, `overload` |
-| `decision_engine` | TEXT | não | — | — | Motor de decisão usado na execução | `RULES` \| `LLM` |
-| `eligible_for_sample` | INTEGER | não | — | `0` | `1` só na coleta definitiva | `0` |
-| `run_status` | TEXT | sim | — | `NULL` | Resultado da validação de integridade | `VALID` \| `INVALID` \| `NULL` |
-| `invalid_reason` | TEXT | sim | — | `NULL` | Motivo quando `run_status = INVALID` | `readiness_failed` |
-| `started_at` | TEXT | não | — | — | Início da execução | `2026-08-27T12:00:00.000Z` |
-| `finished_at` | TEXT | sim | — | `NULL` | Fim da execução | `2026-08-27T12:14:31.520Z` |
+Metadados da execução ficam apenas em `execution_metadata.json` (ver
+[08 §8.5](08-modelo-de-dados-mer.md) e [10 §10.3](10-rastreabilidade-e-metricas.md)).
 
 ## `orders`
 
@@ -39,7 +28,7 @@ Pedido e seu estado externo.
 | Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
 |---|---|---|---|---|---|---|
 | `order_id` | TEXT | não | PK | — | Identificador do pedido | `ORD_000187` |
-| `execution_id` | TEXT | não | FK → `executions`, IX | — | Execução à qual o pedido pertence ⚠ (FK) | `EXP_0042` |
+| `execution_id` | TEXT | não | IX | — | Execução à qual o pedido pertence (correlação com `execution_metadata.json`) | `EXP_0042` |
 | `status` | TEXT | não | IX | `PENDING` | Estado externo do pedido | `PENDING` \| `COMPLETED` \| `FAILED` |
 | `items_json` | TEXT | não | — | — | Itens validados do pedido, JSON canônico; fonte do `payload.items` de toda tentativa (D-02) | `[{"sku":"SKU-001","quantity":2}]` |
 | `created_at` | TEXT | não | — | — | Criação | `2026-08-27T12:00:00.000Z` |
@@ -248,5 +237,3 @@ redelivery (ver [08 §8.5](08-modelo-de-dados-mer.md)).
 | `EventType` | ver [04 §4.6](04-contrato-mensageria.md) | `task_events.event_type`, `processed_events.event_type`, … |
 | `ReasonCode` | ver [12 §12.4](12-glossario.md) | `decisions.*_reason_code` |
 | `route` | `primary`, `fallback` | `reservations.route` |
-| `run_status` | `VALID`, `INVALID`, `NULL` | `executions.run_status` |
-| `phase` (execução) | `PILOT`, `EXPERIMENT` | `executions.phase` |
