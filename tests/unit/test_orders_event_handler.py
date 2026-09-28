@@ -5,6 +5,7 @@ import pytest
 from services.orders.app.db.connection import connect, init_database
 from services.orders.app.db.repositories import create_order_with_task, mark_task_dispatched
 from services.orders.app.orchestration.event_handler import (
+    EventStatus,
     UnsupportedEventError,
     handle_inventory_event,
 )
@@ -63,7 +64,7 @@ def test_trajectory_is_numbered_by_orders(connection):
 
     outcome = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
 
-    assert outcome.recorded is True
+    assert outcome.status == EventStatus.RECORDED
     assert outcome.event_seq == 3
     assert _event_seq(connection) == 3
 
@@ -73,7 +74,7 @@ def test_late_event_for_terminal_task_is_recorded_without_state_change(connectio
 
     outcome = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
 
-    assert outcome.recorded is True
+    assert outcome.status == EventStatus.RECORDED
     assert outcome.event_seq == 4
     assert outcome.changed_state is False
     assert _statuses(connection) == ("COMPLETED", "COMPLETED", "ok")
@@ -84,7 +85,7 @@ def test_event_for_unknown_task_is_not_recorded(connection):
         connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED, task_id="TASK_999999")
     )
 
-    assert outcome.recorded is False
+    assert outcome.status == EventStatus.UNKNOWN_TASK
     assert _event_seq(connection) == 2
     assert _statuses(connection) == ("DISPATCHED", "PENDING", None)
 
@@ -95,3 +96,39 @@ def test_non_success_events_are_not_handled_before_the_decision_engine(connectio
 
     assert _event_seq(connection) == 2
     assert _statuses(connection) == ("DISPATCHED", "PENDING", None)
+
+
+def _processed_events(connection: sqlite3.Connection) -> list[tuple[str, str]]:
+    return [
+        (row["message_id"], row["event_type"])
+        for row in connection.execute("SELECT message_id, event_type FROM processed_events")
+    ]
+
+
+def test_new_event_is_recorded_in_processed_events(connection):
+    event = _event(EventType.STOCK_RESERVATION_SUCCEEDED)
+
+    handle_inventory_event(connection, event)
+
+    assert _processed_events(connection) == [(event.message_id, "STOCK_RESERVATION_SUCCEEDED")]
+
+
+def test_repeated_message_is_ignored_without_consuming_event_seq(connection):
+    event = _event(EventType.STOCK_RESERVATION_SUCCEEDED)
+    handle_inventory_event(connection, event)
+
+    outcome = handle_inventory_event(connection, event)
+
+    assert outcome.status == EventStatus.DUPLICATE
+    assert outcome.event_seq is None
+    assert _event_seq(connection) == 3
+    assert len(_processed_events(connection)) == 1
+    assert _statuses(connection) == ("COMPLETED", "COMPLETED", "ok")
+
+
+def test_event_for_unknown_task_is_not_marked_as_processed(connection):
+    handle_inventory_event(
+        connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED, task_id="TASK_999999")
+    )
+
+    assert _processed_events(connection) == []

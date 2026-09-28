@@ -29,6 +29,16 @@ def handle_event(raw_envelope: object) -> None:
 
     connection = connect(settings.database_path)
     try:
-        handle_inventory_event(connection, envelope)
+        outcome = handle_inventory_event(connection, envelope)
     finally:
         connection.close()
+    logger.info(
+        "inventory event handled: status=%s event_type=%s task_id=%s message_id=%s"
+        " recorded_event_seq=%s changed_state=%s",
+        outcome.status,
+        envelope.event_type,
+        envelope.task_id,
+        envelope.message_id,
+        outcome.event_seq,
+        outcome.changed_state,
+    )

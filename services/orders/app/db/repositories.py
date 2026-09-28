@@ -20,6 +20,7 @@ from services.orders.app.db.models import (
     TaskStatus,
     order_status_for,
 )
+from shared.envelope import MessageEnvelope
 from shared.ids import IdPrefix, sequential_id
 
 TASK_CREATED_EVENT_SEQ = 1
@@ -136,6 +137,25 @@ def advance_event_seq(connection: sqlite3.Connection, *, task_id: str, now: str)
         "SELECT current_event_seq FROM tasks WHERE task_id = ?", (task_id,)
     ).fetchone()
     return event_seq
+
+
+def is_event_processed(connection: sqlite3.Connection, message_id: str) -> bool:
+    """Idempotência de transporte no consumo de `orders.events` (docs/04 §4.8)."""
+    row = connection.execute(
+        "SELECT 1 FROM processed_events WHERE message_id = ?", (message_id,)
+    ).fetchone()
+    return row is not None
+
+
+def insert_processed_event(
+    connection: sqlite3.Connection, *, event: MessageEnvelope, now: str
+) -> None:
+    """Deve ser chamada dentro de uma transação do chamador."""
+    connection.execute(
+        "INSERT INTO processed_events (message_id, task_id, event_type, processed_at)"
+        " VALUES (?, ?, ?, ?)",
+        (event.message_id, event.task_id, event.event_type, now),
+    )
 
 
 def complete_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
