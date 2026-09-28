@@ -44,5 +44,35 @@ services:
       timeout: 5s
       retries: 10
 
+  # inventory-service — worker de reserva. Banco próprio (volume inventory-data).
+  # Nesta fase consome apenas inventory.primary; inventory.fallback entra em M4-T08.
+  inventory-worker:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    command:
+      - celery
+      - --app=services.inventory.app.messaging.celery_app
+      - worker
+      - --queues=inventory.primary
+      - --concurrency=1
+      # Sem coordenação entre workers: mingle/gossip/heartbeat usam filas transitórias
+      # (bloqueadas no RabbitMQ 4) e não fazem parte do experimento.
+      - --without-mingle
+      - --without-gossip
+      - --without-heartbeat
+      - --loglevel=INFO
+    environment:
+      BROKER_URL: amqp://tcc:tcc@rabbitmq:5672//
+      INVENTORY_DB_PATH: /data/inventory.db
+      EXPERIMENT_CONFIG_PATH: /srv/config/experiment_config.yml
+    volumes:
+      - inventory-data:/data
+      - ./config:/srv/config:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
 volumes:
   orders-data:
+  inventory-data:

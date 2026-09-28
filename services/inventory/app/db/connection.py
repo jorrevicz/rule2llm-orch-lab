@@ -1,12 +1,8 @@
-"""Conexões SQLite do orders-service.
-
-`orders.db` é exclusivo deste serviço (RNF-003). A API e o worker do orders-service
-compartilham o arquivo; a escrita é serializada com `BEGIN IMMEDIATE` e WAL.
-"""
+"""Conexões SQLite do inventory-service. `inventory.db` é exclusivo deste serviço."""
 
 from pathlib import Path
 
-from services.orders.app.db.models import SCHEMA
+from services.inventory.app.db.models import SCHEMA
 from shared.sqlite import connect, transaction
 from shared.sqlite import init_database as _init_database
 

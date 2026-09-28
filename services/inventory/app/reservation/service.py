@@ -1,0 +1,54 @@
+"""Processamento de uma solicitação de reserva (RF-006, RF-007, RF-010).
+
+Ordem: reservar → persistir (reserva + mensagem processada) → publicar o resultado.
+A publicação acontece só depois do commit, para que Orders nunca receba sucesso de
+uma reserva que não foi persistida.
+"""
+
+import sqlite3
+
+from services.inventory.app.db.repositories import record_reservation
+from services.inventory.app.messaging.publisher import EventPublisher
+from services.inventory.app.reservation.primary import reserve_primary
+from shared.canonical_json import canonical_json
+from shared.envelope import Envelope, build_envelope
+from shared.events import EventType
+from shared.messaging import Route
+from shared.timestamps import utc_now_iso
+
+
+def process_reservation_request(
+    connection: sqlite3.Connection, request: Envelope, publisher: EventPublisher
+) -> Envelope:
+    if request["target"] != Route.INVENTORY_PRIMARY:
+        # A rota inventory.fallback é implementada em M4-T08.
+        raise ValueError(f"unsupported target: {request['target']!r}")
+
+    payload = request["payload"]
+    outcome = reserve_primary(payload["items"])
+    record_reservation(
+        connection,
+        message_id=request["message_id"],
+        task_id=request["task_id"],
+        order_id=payload["order_id"],
+        route=outcome.route,
+        items_json=canonical_json(payload["items"]),
+        now=utc_now_iso(),
+    )
+    event = _succeeded_event(request, outcome.route)
+    publisher.publish(event)
+    return event
+
+
+def _succeeded_event(request: Envelope, route: str) -> Envelope:
+    return build_envelope(
+        execution_id=request["execution_id"],
+        task_id=request["task_id"],
+        event_type=EventType.STOCK_RESERVATION_SUCCEEDED,
+        # PROVISÓRIO: quem atribui o event_seq dos eventos do Inventory é definido em M2-T02.
+        event_seq=request["event_seq"] + 1,
+        attempt_number=request["attempt_number"],
+        decision_id=request["decision_id"],
+        target=request["target"],
+        payload={"order_id": request["payload"]["order_id"], "route": str(route)},
+    )
