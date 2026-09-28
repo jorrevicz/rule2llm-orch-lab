@@ -40,13 +40,13 @@ def connection(tmp_path) -> sqlite3.Connection:
     conn.close()
 
 
-def _request(target: str = "inventory.primary"):
+def _request(target: str = "inventory.primary", *, event_seq: int = 2, attempt_number: int = 1):
     envelope = build_envelope(
         execution_id="PILOT_TEST",
         task_id="TASK_000001",
         event_type=EventType.STOCK_RESERVATION_REQUESTED,
-        event_seq=1,
-        attempt_number=1,
+        event_seq=event_seq,
+        attempt_number=attempt_number,
         target=target,
         payload={"order_id": "ORD_000001", "items": [{"sku": "SKU-001", "quantity": 2}]},
     )
@@ -157,3 +157,64 @@ def test_processed_message_stores_result_and_reply(connection):
     assert row["event_type"] == "STOCK_RESERVATION_REQUESTED"
     assert row["result"] == "succeeded"
     assert row["response_json"] == canonical_json(result.reply)
+
+
+def _new_attempt():
+    """Nova tentativa lógica (RETRY): novo message_id, mesmo task_id, novo event_seq, attempt + 1."""
+    return _request(event_seq=4, attempt_number=2)
+
+
+def test_new_attempt_of_reserved_task_does_not_reserve_again(connection):
+    publisher = RecordingPublisher()
+    first, first_payload = _request()
+    retry, retry_payload = _new_attempt()
+    assert retry.message_id != first.message_id and retry.task_id == first.task_id
+
+    process_reservation_request(connection, first, first_payload, publisher)
+    result = process_reservation_request(connection, retry, retry_payload, publisher)
+
+    assert result.outcome == RequestOutcome.ALREADY_RESERVED
+    assert _count(connection, "reservations") == 1
+    assert _count(connection, "processed_messages") == 2
+
+
+def test_new_attempt_gets_its_own_success_reply(connection):
+    publisher = RecordingPublisher()
+    process_reservation_request(connection, *_request(), publisher)
+    retry, retry_payload = _new_attempt()
+
+    result = process_reservation_request(connection, retry, retry_payload, publisher)
+
+    first_reply, retry_reply = publisher.published
+    assert retry_reply == result.reply
+    assert retry_reply["message_id"] != first_reply["message_id"]
+    assert retry_reply["event_type"] == "STOCK_RESERVATION_SUCCEEDED"
+    assert retry_reply["attempt_number"] == 2
+    assert retry_reply["event_seq"] == retry.event_seq
+    assert retry_reply["payload"] == first_reply["payload"]
+
+
+def test_redelivery_of_the_new_attempt_is_still_deduplicated(connection):
+    publisher = RecordingPublisher()
+    process_reservation_request(connection, *_request(), publisher)
+    retry, retry_payload = _new_attempt()
+
+    process_reservation_request(connection, retry, retry_payload, publisher)
+    result = process_reservation_request(connection, retry, retry_payload, publisher)
+
+    assert result.outcome == RequestOutcome.DUPLICATE_MESSAGE
+    assert publisher.published[2] == publisher.published[1]
+    assert _count(connection, "reservations") == 1
+
+
+def test_task_id_uniqueness_is_enforced_by_the_database(connection):
+    connection.execute(
+        "INSERT INTO reservations (task_id, order_id, status, route, items_json, created_at)"
+        " VALUES ('TASK_000001', 'ORD_000001', 'RESERVED', 'primary', '[]', 'now')"
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "INSERT INTO reservations (task_id, order_id, status, route, items_json, created_at)"
+            " VALUES ('TASK_000001', 'ORD_000001', 'RESERVED', 'primary', '[]', 'now')"
+        )

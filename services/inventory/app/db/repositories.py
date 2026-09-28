@@ -15,6 +15,13 @@ from services.inventory.app.db.models import (
 
 
 @dataclass(frozen=True)
+class ExistingReservation:
+    task_id: str
+    order_id: str
+    route: ReservationRoute
+
+
+@dataclass(frozen=True)
 class ProcessedMessage:
     message_id: str
     task_id: str
@@ -37,6 +44,19 @@ def find_processed_message(
         task_id=row["task_id"],
         result=ProcessingResult(row["result"]),
         response_json=row["response_json"],
+    )
+
+
+def find_reservation(connection: sqlite3.Connection, task_id: str) -> ExistingReservation | None:
+    """Reserva já efetivada para a tarefa (idempotência de negócio, `task_id` UNIQUE)."""
+    row = connection.execute(
+        "SELECT task_id, order_id, route FROM reservations WHERE task_id = ? AND status = ?",
+        (task_id, ReservationStatus.RESERVED),
+    ).fetchone()
+    if row is None:
+        return None
+    return ExistingReservation(
+        task_id=row["task_id"], order_id=row["order_id"], route=ReservationRoute(row["route"])
     )
 
 

@@ -1,13 +1,16 @@
 """Processamento de uma solicitação de reserva (RF-006 a RF-010).
 
-Numa única transação: verificar a idempotência de transporte (`message_id`) →
-reservar → gravar reserva, mensagem processada e a resposta. A resposta é
-publicada só depois do commit, para que o Orders nunca receba sucesso de uma
-reserva não persistida.
+Numa única transação: idempotência de transporte (`message_id`) → idempotência de
+negócio (`task_id`) → reservar → gravar reserva, mensagem processada e resposta.
+A resposta é publicada só depois do commit, para que o Orders nunca receba
+sucesso de uma reserva não persistida.
 
-Redelivery da mesma mensagem (mesmo `message_id`) não reprocessa: reemite a
-resposta gravada, com o MESMO `message_id`, que o Orders deduplica. Isso também
-recupera uma resposta perdida entre o commit e a publicação.
+- Redelivery da mesma mensagem (mesmo `message_id`): não reprocessa; reemite a
+  resposta gravada, com o MESMO `message_id`, que o Orders deduplica. Isso também
+  recupera uma resposta perdida entre o commit e a publicação.
+- Nova tentativa lógica (novo `message_id`, mesmo `task_id`) de tarefa já
+  reservada: não cria segunda reserva; responde com o resultado da reserva
+  existente, numa resposta nova (é outra mensagem).
 """
 
 import json
@@ -19,6 +22,7 @@ from services.inventory.app.db.connection import transaction
 from services.inventory.app.db.models import ProcessingResult
 from services.inventory.app.db.repositories import (
     find_processed_message,
+    find_reservation,
     insert_processed_message,
     insert_reservation,
 )
@@ -39,6 +43,7 @@ from shared.timestamps import utc_now_iso
 class RequestOutcome(StrEnum):
     RESERVED = "reserved"
     DUPLICATE_MESSAGE = "duplicate_message"  # redelivery: mesma mensagem já processada
+    ALREADY_RESERVED = "already_reserved"    # nova tentativa de tarefa já reservada
 
 
 @dataclass(frozen=True)
@@ -74,17 +79,23 @@ def _reserve(
     payload: ReservationRequestPayload,
     now: str,
 ) -> RequestResult:
-    items = [item.model_dump() for item in payload.items]
-    outcome = reserve_primary(items)
-    reply = _succeeded_event(request, payload.order_id, outcome.route)
-    insert_reservation(
-        connection,
-        task_id=request.task_id,
-        order_id=payload.order_id,
-        route=outcome.route,
-        items_json=canonical_json(items),
-        now=now,
-    )
+    existing = find_reservation(connection, request.task_id)
+    if existing is not None:
+        outcome = RequestOutcome.ALREADY_RESERVED
+        reply = _succeeded_event(request, existing.order_id, existing.route)
+    else:
+        outcome = RequestOutcome.RESERVED
+        items = [item.model_dump() for item in payload.items]
+        reservation = reserve_primary(items)
+        reply = _succeeded_event(request, payload.order_id, reservation.route)
+        insert_reservation(
+            connection,
+            task_id=request.task_id,
+            order_id=payload.order_id,
+            route=reservation.route,
+            items_json=canonical_json(items),
+            now=now,
+        )
     insert_processed_message(
         connection,
         message_id=request.message_id,
@@ -94,7 +105,7 @@ def _reserve(
         response_json=canonical_json(reply),
         now=now,
     )
-    return RequestResult(RequestOutcome.RESERVED, reply)
+    return RequestResult(outcome, reply)
 
 
 def _succeeded_event(request: MessageEnvelope, order_id: str, route: str) -> Envelope:
