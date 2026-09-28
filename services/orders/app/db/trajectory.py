@@ -117,7 +117,12 @@ def record_message(
 
 
 def record_internal_event(
-    connection: sqlite3.Connection, *, task_id: str, event_type: EventType, now: str
+    connection: sqlite3.Connection,
+    *,
+    task_id: str,
+    event_type: EventType,
+    now: str,
+    payload: dict[str, Any] | None = None,
 ) -> int:
     """Numera e registra um evento interno do Orders; retorna o `event_seq` atribuído."""
     event_seq = advance_event_seq(connection, task_id=task_id, now=now)
@@ -137,6 +142,7 @@ def record_internal_event(
         service=EventSource.ORDERS,
         target=task["current_target"],
         now=now,
+        payload=payload,
     )
     return event_seq
 

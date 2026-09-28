@@ -176,6 +176,33 @@ def complete_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> 
     return True
 
 
+def abort_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
+    """Task → ABORTED e Order → FAILED (docs/05 §5.4). False se já era terminal.
+
+    Deve ser chamada dentro de uma transação do chamador.
+    """
+    return _finish_task(connection, task_id=task_id, status=TaskStatus.ABORTED, now=now)
+
+
+def _finish_task(
+    connection: sqlite3.Connection, *, task_id: str, status: TaskStatus, now: str
+) -> bool:
+    terminal = tuple(TERMINAL_TASK_STATUSES)
+    updated = connection.execute(
+        "UPDATE tasks SET status = ?, updated_at = ?"
+        f" WHERE task_id = ? AND status NOT IN ({', '.join('?' * len(terminal))})",
+        (status, now, task_id, *terminal),
+    )
+    if updated.rowcount != 1:
+        return False
+    connection.execute(
+        "UPDATE orders SET status = ?, updated_at = ?"
+        " WHERE order_id = (SELECT order_id FROM tasks WHERE task_id = ?)",
+        (order_status_for(status), now, task_id),
+    )
+    return True
+
+
 def _next_order_number(connection: sqlite3.Connection) -> int:
     # Seguro sob BEGIN IMMEDIATE: nenhum outro escritor lê o mesmo máximo.
     (current,) = connection.execute("SELECT COALESCE(MAX(rowid), 0) FROM orders").fetchone()
