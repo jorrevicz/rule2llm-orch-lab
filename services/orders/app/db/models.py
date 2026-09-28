@@ -25,6 +25,16 @@ class TaskStatus(StrEnum):
     DEAD_LETTERED = "DEAD_LETTERED"
 
 
+class TaskResult(StrEnum):
+    """Valores de `tasks.last_result` (docs/06 §6.2.1, `service.last_result`)."""
+
+    OK = "ok"
+    TIMEOUT = "timeout"
+    TRANSIENT_ERROR = "transient_error"
+    INVALID_DATA = "invalid_data"
+    FALLBACK_FAILED = "fallback_failed"
+
+
 TERMINAL_TASK_STATUSES = frozenset(
     {TaskStatus.COMPLETED, TaskStatus.ABORTED, TaskStatus.DEAD_LETTERED}
 )

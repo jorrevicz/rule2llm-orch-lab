@@ -44,6 +44,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # orders-service — worker Celery que consome orders.events. Mesmo serviço e mesma
+  # imagem da API; compartilha o volume orders-data.
+  orders-worker:
+    build:
+      context: .
+      dockerfile: services/orders/Dockerfile
+    command:
+      - celery
+      - --app=services.orders.app.messaging.celery_app
+      - worker
+      - --queues=orders.events
+      - --concurrency=1
+      - --without-mingle
+      - --without-gossip
+      - --without-heartbeat
+      - --loglevel=INFO
+    environment: *orders-env
+    volumes:
+      - orders-data:/data
+      - ./config:/srv/config:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   # inventory-service — worker de reserva. Banco próprio (volume inventory-data).
   # Nesta fase consome apenas inventory.primary; inventory.fallback entra em M4-T08.
   inventory-worker:

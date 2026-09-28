@@ -4,7 +4,13 @@ import sqlite3
 from dataclasses import dataclass
 
 from services.orders.app.db.connection import transaction
-from services.orders.app.db.models import OrderStatus, TaskStatus
+from services.orders.app.db.models import (
+    TERMINAL_TASK_STATUSES,
+    OrderStatus,
+    TaskResult,
+    TaskStatus,
+    order_status_for,
+)
 from shared.ids import IdPrefix, sequential_id
 
 
@@ -101,6 +107,29 @@ def mark_task_dispatched(
         attempt_number=row["attempt_number"],
         items_json=row["items_json"],
     )
+
+
+def complete_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
+    """Conclui tarefa e pedido (docs/05 §5.4). Retorna False se não houve transição.
+
+    Uma tarefa já terminal não é alterada. A deduplicação por `message_id` entra
+    em M2-T05.
+    """
+    terminal = tuple(TERMINAL_TASK_STATUSES)
+    with transaction(connection):
+        updated = connection.execute(
+            "UPDATE tasks SET status = ?, last_result = ?, updated_at = ?"
+            f" WHERE task_id = ? AND status NOT IN ({', '.join('?' * len(terminal))})",
+            (TaskStatus.COMPLETED, TaskResult.OK, now, task_id, *terminal),
+        )
+        if updated.rowcount != 1:
+            return False
+        connection.execute(
+            "UPDATE orders SET status = ?, updated_at = ?"
+            " WHERE order_id = (SELECT order_id FROM tasks WHERE task_id = ?)",
+            (order_status_for(TaskStatus.COMPLETED), now, task_id),
+        )
+    return True
 
 
 def _next_order_number(connection: sqlite3.Connection) -> int:
