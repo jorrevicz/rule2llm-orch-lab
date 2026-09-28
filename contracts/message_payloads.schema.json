@@ -6,7 +6,7 @@
   "payloads_by_event_type": {
     "STOCK_RESERVATION_FAILED": {
       "additionalProperties": false,
-      "description": "Payload de `STOCK_RESERVATION_SUCCEEDED` / `_FAILED` (Inventory → Orders).",
+      "description": "Payload de `STOCK_RESERVATION_FAILED` (Inventory → Orders).",
       "properties": {
         "order_id": {
           "pattern": "^ORD_[A-Za-z0-9]+$",
@@ -20,13 +20,22 @@
           ],
           "title": "Route",
           "type": "string"
+        },
+        "failure_reason": {
+          "enum": [
+            "transient_error",
+            "invalid_data"
+          ],
+          "title": "Failure Reason",
+          "type": "string"
         }
       },
       "required": [
         "order_id",
-        "route"
+        "route",
+        "failure_reason"
       ],
-      "title": "ReservationResultPayload",
+      "title": "ReservationFailedPayload",
       "type": "object"
     },
     "STOCK_RESERVATION_REQUESTED": {
@@ -79,7 +88,7 @@
     },
     "STOCK_RESERVATION_SUCCEEDED": {
       "additionalProperties": false,
-      "description": "Payload de `STOCK_RESERVATION_SUCCEEDED` / `_FAILED` (Inventory → Orders).",
+      "description": "Payload de `STOCK_RESERVATION_SUCCEEDED` (Inventory → Orders).",
       "properties": {
         "order_id": {
           "pattern": "^ORD_[A-Za-z0-9]+$",

@@ -1,4 +1,13 @@
-"""Consumidores Celery do orders-service."""
+"""Consumidores Celery do orders-service (fila `orders.events`).
+
+- `orders.handle_inventory_event`: eventos do Inventory (contrato validado; D-13);
+- `orders.timeout_check`: verificação de timeout operacional agendada a cada despacho.
+
+Quando um evento ou timeout pede decisão, o ponto de decisão é aberto depois do
+commit do registro, pelo Orchestrator (mesmo fluxo para Rules e LLM).
+"""
+
+from functools import cache
 
 from celery import Task
 from celery.exceptions import Reject
@@ -6,10 +15,13 @@ from celery.utils.log import get_task_logger
 
 from services.orders.app.db.connection import connect
 from services.orders.app.messaging.celery_app import app, settings
+from services.orders.app.orchestration.coordination import Coordination, build_coordination
 from services.orders.app.orchestration.event_handler import handle_inventory_event
+from services.orders.app.orchestration.timeouts import register_timeout
+from shared.config import load_experiment_config
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
-from shared.messaging import ORDERS_HANDLE_EVENT_TASK
+from shared.messaging import ORDERS_HANDLE_EVENT_TASK, ORDERS_TIMEOUT_CHECK_TASK
 from shared.structured_logging import correlated
 
 logger = get_task_logger(__name__)
@@ -18,6 +30,26 @@ ACCEPTED_EVENTS = {
     EventType.STOCK_RESERVATION_SUCCEEDED,
     EventType.STOCK_RESERVATION_FAILED,
 }
+
+
+@cache
+def _coordination() -> Coordination:
+    return build_coordination(settings, load_experiment_config(), app)
+
+
+def _decide(connection, task_id: str) -> None:
+    outcome = _coordination().orchestrator.handle_decision_point(connection, task_id)
+    logger.info(
+        "decision point: %s/%s",
+        outcome.executed.action,
+        outcome.executed.reason_code,
+        extra=correlated(
+            task_id=task_id,
+            state_id=outcome.state_id,
+            decision_id=outcome.decision_id,
+            outcome=outcome.executed.action,
+        ),
+    )
 
 
 @app.task(name=ORDERS_HANDLE_EVENT_TASK, bind=True)
@@ -37,19 +69,38 @@ def handle_event(self: Task, raw_envelope: object) -> None:
     connection = connect(settings.database_path)
     try:
         outcome = handle_inventory_event(connection, envelope, redelivered=redelivered)
+        logger.info(
+            "inventory event handled: %s (changed_state=%s)",
+            outcome.status,
+            outcome.changed_state,
+            extra=correlated(
+                outcome=outcome.status,
+                task_id=envelope.task_id,
+                message_id=envelope.message_id,
+                event_type=envelope.event_type,
+                event_seq=outcome.event_seq,
+                attempt_number=envelope.attempt_number,
+                redelivered=redelivered,
+            ),
+        )
+        if outcome.decision_required:
+            _decide(connection, envelope.task_id)
     finally:
         connection.close()
-    logger.info(
-        "inventory event handled: %s (changed_state=%s)",
-        outcome.status,
-        outcome.changed_state,
-        extra=correlated(
-            outcome=outcome.status,
-            task_id=envelope.task_id,
-            message_id=envelope.message_id,
-            event_type=envelope.event_type,
-            event_seq=outcome.event_seq,
-            attempt_number=envelope.attempt_number,
-            redelivered=redelivered,
-        ),
-    )
+
+
+@app.task(name=ORDERS_TIMEOUT_CHECK_TASK)
+def timeout_check(task_id: str, request_message_id: str) -> None:
+    connection = connect(settings.database_path)
+    try:
+        if not register_timeout(connection, task_id=task_id, request_message_id=request_message_id):
+            return
+        logger.info(
+            "inventory timeout",
+            extra=correlated(
+                task_id=task_id, message_id=request_message_id, event_type=EventType.INVENTORY_TIMEOUT
+            ),
+        )
+        _decide(connection, task_id)
+    finally:
+        connection.close()

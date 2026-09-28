@@ -87,12 +87,57 @@ def test_event_for_unknown_task_is_not_recorded(connection):
     assert _statuses(connection) == ("DISPATCHED", "PENDING", None)
 
 
-def test_non_success_events_are_not_handled_before_the_decision_engine(connection):
-    with pytest.raises(UnsupportedEventError):
-        handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_FAILED))
+def _failed(reason: str = "transient_error", *, event_seq: int = 2, target: str = "inventory.primary") -> MessageEnvelope:
+    envelope = build_envelope(
+        execution_id="PILOT_TEST",
+        task_id="TASK_000001",
+        event_type=EventType.STOCK_RESERVATION_FAILED,
+        event_seq=event_seq,
+        attempt_number=1,
+        target=target,
+        payload={"order_id": "ORD_000001", "route": target.split(".")[1], "failure_reason": reason},
+    )
+    return MessageEnvelope.model_validate(envelope)
 
-    assert _event_seq(connection) == 2
-    assert _statuses(connection) == ("DISPATCHED", "PENDING", None)
+
+def _last_result(connection: sqlite3.Connection):
+    return connection.execute("SELECT last_result FROM tasks").fetchone()[0]
+
+
+@pytest.mark.parametrize("reason", ["transient_error", "invalid_data"])
+def test_failure_of_the_current_request_requires_a_decision(connection, reason):
+    outcome = handle_inventory_event(connection, _failed(reason))
+
+    assert outcome.status == EventStatus.RECORDED
+    assert outcome.decision_required is True
+    assert _last_result(connection) == reason
+    assert _statuses(connection)[:2] == ("DISPATCHED", "PENDING")
+
+
+def test_failure_on_the_fallback_route_is_fallback_failed(connection):
+    connection.execute("UPDATE tasks SET current_target = 'inventory.fallback'")
+
+    handle_inventory_event(connection, _failed(target="inventory.fallback"))
+
+    assert _last_result(connection) == "fallback_failed"  # D-15
+
+
+def test_failure_of_a_superseded_request_is_only_recorded(connection):
+    outcome = handle_inventory_event(connection, _failed(event_seq=99))
+
+    assert outcome.status == EventStatus.RECORDED
+    assert outcome.decision_required is False
+    assert _last_result(connection) is None
+
+
+def test_failure_after_completion_does_not_reopen_the_task(connection):
+    handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
+
+    outcome = handle_inventory_event(connection, _failed())
+
+    assert outcome.decision_required is False
+    assert _statuses(connection)[0] == "COMPLETED"
+
 
 
 def _processed_events(connection: sqlite3.Connection) -> list[tuple[str, str]]:

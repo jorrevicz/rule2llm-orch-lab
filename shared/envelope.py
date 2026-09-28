@@ -63,16 +63,24 @@ class ReservationRequestPayload(_Contract):
 
 
 class ReservationResultPayload(_Contract):
-    """Payload de `STOCK_RESERVATION_SUCCEEDED` / `_FAILED` (Inventory → Orders)."""
+    """Payload de `STOCK_RESERVATION_SUCCEEDED` (Inventory → Orders)."""
 
     order_id: OrderId
     route: Literal["primary", "fallback"]
 
 
+class ReservationFailedPayload(_Contract):
+    """Payload de `STOCK_RESERVATION_FAILED` (Inventory → Orders)."""
+
+    order_id: OrderId
+    route: Literal["primary", "fallback"]
+    failure_reason: Literal["transient_error", "invalid_data"]
+
+
 PAYLOAD_MODELS: dict[EventType, type[_Contract]] = {
     EventType.STOCK_RESERVATION_REQUESTED: ReservationRequestPayload,
     EventType.STOCK_RESERVATION_SUCCEEDED: ReservationResultPayload,
-    EventType.STOCK_RESERVATION_FAILED: ReservationResultPayload,
+    EventType.STOCK_RESERVATION_FAILED: ReservationFailedPayload,
 }
 
 

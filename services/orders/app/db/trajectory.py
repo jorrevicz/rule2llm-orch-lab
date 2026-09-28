@@ -157,6 +157,38 @@ def event_seq_of_message(connection: sqlite3.Connection, message_id: str) -> int
     return None if row is None else row["event_seq"]
 
 
+def latest_request(connection: sqlite3.Connection, task_id: str) -> sqlite3.Row | None:
+    """Última `STOCK_RESERVATION_REQUESTED` publicada (primeira ocorrência)."""
+    return connection.execute(
+        "SELECT event_id, event_seq, message_id FROM task_events"
+        " WHERE task_id = ? AND event_type = ? AND redelivered = 0"
+        " ORDER BY event_id DESC LIMIT 1",
+        (task_id, EventType.STOCK_RESERVATION_REQUESTED),
+    ).fetchone()
+
+
+def is_awaiting_reply(connection: sqlite3.Connection, task_id: str, request_message_id: str) -> bool:
+    """A solicitação é a corrente da tarefa e ainda não teve resposta do Inventory."""
+    request = latest_request(connection, task_id)
+    if request is None or request["message_id"] != request_message_id:
+        return False
+    reply = connection.execute(
+        "SELECT 1 FROM task_events WHERE task_id = ? AND service = ? AND event_id > ? LIMIT 1",
+        (task_id, EventSource.INVENTORY, request["event_id"]),
+    ).fetchone()
+    return reply is None
+
+
+def timeout_registered(connection: sqlite3.Connection, task_id: str, request_message_id: str) -> bool:
+    """Já existe `INVENTORY_TIMEOUT` registrado para esta solicitação."""
+    row = connection.execute(
+        "SELECT 1 FROM task_events WHERE task_id = ? AND event_type = ?"
+        " AND json_extract(payload_json, '$.request_message_id') = ? LIMIT 1",
+        (task_id, EventType.INVENTORY_TIMEOUT, request_message_id),
+    ).fetchone()
+    return row is not None
+
+
 def recent_events(connection: sqlite3.Connection, task_id: str, limit: int) -> list[TrajectoryEvent]:
     """Últimas `limit` ocorrências distintas da trajetória, em ordem crescente (janela K).
 

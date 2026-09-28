@@ -47,7 +47,15 @@ def dead_letter_queue() -> Queue:
     return Queue(DEAD_LETTER_QUEUE, exchange, routing_key=DEAD_LETTER_QUEUE, no_declare=True)
 
 
-def configure_celery(app: Celery, broker_url: str) -> None:
+def configure_celery(app: Celery, broker_url: str, *, prefetch_multiplier: int = 1) -> None:
+    """Política comum de mensageria.
+
+    `prefetch_multiplier = 1` (padrão): o worker só recebe a próxima mensagem após o ack
+    da atual. Exceção: o worker do orders-service usa 0 (sem limite) porque consome as
+    tarefas internas com atraso (timeout, nova tentativa, reavaliação) na mesma fila dos
+    eventos; com limite 1, uma tarefa com atraso ocupa o slot de entrega e bloqueia os
+    eventos até vencer (observado ao vivo: resposta retida por 2 s até o timeout).
+    """
     app.conf.update(
         broker_url=broker_url,
         broker_connection_retry_on_startup=True,
@@ -60,7 +68,7 @@ def configure_celery(app: Celery, broker_url: str) -> None:
         # mensagem, que é tratada pela idempotência de transporte (message_id).
         task_acks_late=True,
         task_reject_on_worker_lost=True,
-        worker_prefetch_multiplier=1,
+        worker_prefetch_multiplier=prefetch_multiplier,
         task_serializer="json",
         accept_content=["json"],
         result_backend=None,

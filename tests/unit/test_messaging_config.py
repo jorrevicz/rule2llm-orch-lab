@@ -66,8 +66,14 @@ def test_both_services_share_the_same_messaging_policy(service_app, app):
     for key in (
         "task_acks_late",
         "task_reject_on_worker_lost",
-        "worker_prefetch_multiplier",
         "task_default_queue",
         "task_create_missing_queues",
     ):
         assert service_app.conf[key] == app.conf[key]
+
+
+def test_prefetch_is_unlimited_only_for_the_orders_worker():
+    # Tarefas com atraso (timers) dividem orders.events com os eventos: não podem
+    # ocupar o único slot de entrega.
+    assert orders_app.conf.worker_prefetch_multiplier == 0
+    assert inventory_app.conf.worker_prefetch_multiplier == 1

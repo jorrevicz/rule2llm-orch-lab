@@ -7,8 +7,12 @@ numeração na trajetória (D-16) → registro em `task_events` → aplicação 
   redelivery): não é reaplicado e não consome `event_seq`; entra na trajetória com o
   `event_seq` da primeira ocorrência e `redelivered = 1`.
 - Evento terminal de sucesso conclui tarefa e pedido sem consultar o DecisionEngine
-  (piloto §5.2) e registra `TASK_COMPLETED`. Os demais eventos geram um ponto de
-  decisão, implementado a partir de M4-T04.
+  (piloto §5.2) e registra `TASK_COMPLETED`. Um sucesso de tentativa antiga também
+  conclui: a reserva existe (idempotência de negócio).
+- Falha reportada para a solicitação corrente grava `last_result` (`transient_error`,
+  `invalid_data`, ou `fallback_failed` na rota de fallback — D-15) e pede um ponto de
+  decisão, que o chamador abre após o commit. Falha de solicitação já superada só é
+  registrada.
 """
 
 import sqlite3
@@ -16,21 +20,30 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from services.orders.app.db.connection import transaction
+from services.orders.app.db.models import TERMINAL_TASK_STATUSES
 from services.orders.app.db.repositories import (
     complete_task,
     insert_processed_event,
     is_event_processed,
+    set_last_result,
 )
 from services.orders.app.db.trajectory import (
     EventSource,
     advance_event_seq,
     event_seq_of_message,
+    latest_request,
     record_internal_event,
     record_message,
 )
 from shared.envelope import MessageEnvelope
 from shared.events import EventType
+from shared.messaging import Route
+from shared.task import TaskResult
 from shared.timestamps import utc_now_iso
+
+HANDLED_EVENTS = frozenset(
+    {EventType.STOCK_RESERVATION_SUCCEEDED, EventType.STOCK_RESERVATION_FAILED}
+)
 
 
 class UnsupportedEventError(ValueError):
@@ -48,6 +61,7 @@ class EventOutcome:
     status: EventStatus
     event_seq: int | None = None     # posição atribuída pelo Orders (só se RECORDED)
     changed_state: bool = False      # houve transição de estado da tarefa
+    decision_required: bool = False  # abrir ponto de decisão após o commit
 
 
 def handle_inventory_event(
@@ -57,8 +71,8 @@ def handle_inventory_event(
 
     `redelivered` é o flag do broker (reentrega da mesma mensagem).
     """
-    if event.event_type != EventType.STOCK_RESERVATION_SUCCEEDED:
-        raise UnsupportedEventError(f"event type not handled yet: {event.event_type}")
+    if event.event_type not in HANDLED_EVENTS:
+        raise UnsupportedEventError(f"event type not handled: {event.event_type}")
 
     now = utc_now_iso()
     with transaction(connection):
@@ -77,12 +91,31 @@ def handle_inventory_event(
             redelivered=redelivered,
             now=now,
         )
-        changed = complete_task(connection, task_id=event.task_id, now=now)
-        if changed:
-            record_internal_event(
-                connection, task_id=event.task_id, event_type=EventType.TASK_COMPLETED, now=now
-            )
-    return EventOutcome(EventStatus.RECORDED, event_seq=event_seq, changed_state=changed)
+        if event.event_type == EventType.STOCK_RESERVATION_SUCCEEDED:
+            changed = complete_task(connection, task_id=event.task_id, now=now)
+            if changed:
+                record_internal_event(
+                    connection, task_id=event.task_id, event_type=EventType.TASK_COMPLETED, now=now
+                )
+            return EventOutcome(EventStatus.RECORDED, event_seq=event_seq, changed_state=changed)
+        decision_required = _register_failure(connection, event, now)
+    return EventOutcome(EventStatus.RECORDED, event_seq=event_seq, decision_required=decision_required)
+
+
+def _register_failure(connection: sqlite3.Connection, event: MessageEnvelope, now: str) -> bool:
+    task = connection.execute(
+        "SELECT status FROM tasks WHERE task_id = ?", (event.task_id,)
+    ).fetchone()
+    request = latest_request(connection, event.task_id)
+    is_current = request is not None and request["event_seq"] == event.event_seq
+    if task["status"] in TERMINAL_TASK_STATUSES or not is_current:
+        return False
+    if event.target == Route.INVENTORY_FALLBACK:
+        result = TaskResult.FALLBACK_FAILED
+    else:
+        result = TaskResult(event.payload["failure_reason"])
+    set_last_result(connection, task_id=event.task_id, result=result, now=now)
+    return True
 
 
 def _record_repeated(connection: sqlite3.Connection, event: MessageEnvelope, now: str) -> None:

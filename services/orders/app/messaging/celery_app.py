@@ -17,7 +17,9 @@ from shared.structured_logging import JsonlLogHandler, install, jsonl_log_handle
 settings = load_settings()
 
 app = Celery("orders-service", include=["services.orders.app.messaging.consumers"])
-configure_celery(app, settings.broker_url)
+# Prefetch sem limite: tarefas internas com atraso não podem reter os eventos (ver
+# shared.messaging.configure_celery).
+configure_celery(app, settings.broker_url, prefetch_multiplier=0)
 
 
 @worker_init.connect

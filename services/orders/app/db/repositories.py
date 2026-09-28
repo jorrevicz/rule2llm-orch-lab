@@ -172,6 +172,13 @@ def complete_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> 
     return True
 
 
+def set_last_result(connection: sqlite3.Connection, *, task_id: str, result: TaskResult, now: str) -> None:
+    """Resultado da última etapa, lido pelo `StateBuilder` (`service.last_result`)."""
+    connection.execute(
+        "UPDATE tasks SET last_result = ?, updated_at = ? WHERE task_id = ?", (result, now, task_id)
+    )
+
+
 def abort_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
     """Task → ABORTED e Order → FAILED (docs/05 §5.4). False se já era terminal.
 
