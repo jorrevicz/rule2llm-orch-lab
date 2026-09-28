@@ -88,13 +88,19 @@ service · target · timestamp · redelivered · attempt_number
   "decision_engine": "LLM",
   "proposed_decision": { "action": "RETRY", "target": "inventory.primary", "reason_code": "TRANSIENT_RETRY" },
   "validation": { "valid": true, "error": null },
-  "executed_decision": { "action": "RETRY", "target": "inventory.primary" },
+  "executed_decision": { "action": "RETRY", "target": "inventory.primary", "reason_code": "TRANSIENT_RETRY" },
   "decision_time_ms": 684,
   "llm_inference_ms": 642,
   "token_usage": { "input_tokens": 428, "output_tokens": 21, "total_tokens": 449 },
   "timestamp": "2026-08-27T12:00:02.196Z"
 }
 ```
+
+Implementação (M3-T07): `DecisionRecord` em `services/orders/app/observability/recorders.py`
+valida cada linha antes de gravar. Diferenças em relação aos Códigos 7–8 da metodologia:
+`executed_decision` sempre traz `reason_code` (para distinguir `ABORT / INVALID_DECISION`
+ou `LLM_DECISION_TIMEOUT` de um `ABORT` proposto pelo motor); `proposed_decision` é `null`
+quando a saída do motor não pôde ser lida como decisão.
 
 Indicadores derivados de `decisions.jsonl` (não precisam ser gravados por linha):
 `decision_count`, `llm_call_count`, `total_llm_inference_ms`, `total_input_tokens`,

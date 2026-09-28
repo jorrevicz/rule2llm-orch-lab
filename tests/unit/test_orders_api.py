@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.orders.app.main import create_app
-from services.orders.app.observability.recorders import StateRecorder
+from services.orders.app.observability.recorders import DecisionRecorder, StateRecorder
 from services.orders.app.orchestration.broker_observer import QueueStats
 from services.orders.app.orchestration.coordination import Coordination
 from services.orders.app.orchestration.state_builder import StateBuilder
@@ -57,6 +57,7 @@ def client(settings, publisher, states_path) -> TestClient:
         publisher=publisher,
         state_builder=StateBuilder(load_experiment_config(Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"), StaticObserver()),
         state_recorder=StateRecorder(JsonlWriter(states_path)),
+        decision_recorder=DecisionRecorder(JsonlWriter(states_path.with_name("decisions.jsonl"))),
     )
     with TestClient(create_app(settings, coordination)) as test_client:
         yield test_client
