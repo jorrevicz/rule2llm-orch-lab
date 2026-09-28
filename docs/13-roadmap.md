@@ -43,7 +43,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | ✅ | `m0-fundacao` | 2026-09-26 |
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
-| [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | 🔄 | `m3-rastreabilidade` | — |
+| [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
@@ -182,9 +182,16 @@ rastreabilidade (piloto §28 Fase 3).
 
 **Critério de conclusão** (piloto §28 Fase 3)
 
-- [ ] Para qualquer decisão é possível localizar o snapshot exato usado pelo decisor.
-- [ ] `task_events.jsonl` permite reconstruir a trajetória anterior.
-- [ ] `recent_events` contém somente a janela K configurada.
+- [x] Para qualquer decisão é possível localizar o snapshot exato usado pelo decisor.
+- [x] `task_events.jsonl` permite reconstruir a trajetória anterior.
+- [x] `recent_events` contém somente a janela K configurada.
+
+> Verificado em 2026-09-28 a partir de ambiente limpo (`PILOT_0005`): 170 testes
+> unitários/contrato e 4 de integração; `check_traceability` sem erros (46 eventos, 10
+> snapshots, 110 linhas de log). O snapshot é gravado em todo ponto de decisão e
+> `check_traceability` exige que cada decisão aponte para um `state_id` da mesma tarefa; as
+> decisões propriamente ditas começam a ser registradas no M4 (motor de decisão). Decisões
+> do marco: D-06, D-05, D-01. Ajustes a levar ao TCC: §13.6.
 
 ---
 
