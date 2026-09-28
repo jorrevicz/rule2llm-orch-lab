@@ -22,6 +22,17 @@ class OrderView:
     status: OrderStatus
 
 
+@dataclass(frozen=True)
+class DispatchedTask:
+    task_id: str
+    order_id: str
+    execution_id: str
+    target: str
+    event_seq: int
+    attempt_number: int
+    items_json: str
+
+
 def create_order_with_task(
     connection: sqlite3.Connection, *, execution_id: str, items_json: str, now: str
 ) -> CreatedOrder:
@@ -56,6 +67,40 @@ def get_order(connection: sqlite3.Connection, order_id: str) -> OrderView | None
     if row is None:
         return None
     return OrderView(order_id=row["order_id"], task_id=row["task_id"], status=OrderStatus(row["status"]))
+
+
+def mark_task_dispatched(
+    connection: sqlite3.Connection, *, task_id: str, target: str, now: str
+) -> DispatchedTask:
+    """PENDING → DISPATCHED, avançando o `event_seq` da tarefa.
+
+    Gravado ANTES da publicação: assim o evento de retorno nunca encontra a tarefa
+    num estado anterior ao despacho.
+    """
+    with transaction(connection):
+        updated = connection.execute(
+            "UPDATE tasks SET status = ?, current_target = ?,"
+            " current_event_seq = current_event_seq + 1, updated_at = ?"
+            " WHERE task_id = ? AND status = ?",
+            (TaskStatus.DISPATCHED, target, now, task_id, TaskStatus.PENDING),
+        )
+        if updated.rowcount != 1:
+            raise ValueError(f"task {task_id} is not PENDING")
+        row = connection.execute(
+            "SELECT t.task_id, t.order_id, t.execution_id, t.current_target,"
+            " t.current_event_seq, t.attempt_number, o.items_json"
+            " FROM tasks t JOIN orders o ON o.order_id = t.order_id WHERE t.task_id = ?",
+            (task_id,),
+        ).fetchone()
+    return DispatchedTask(
+        task_id=row["task_id"],
+        order_id=row["order_id"],
+        execution_id=row["execution_id"],
+        target=row["current_target"],
+        event_seq=row["current_event_seq"],
+        attempt_number=row["attempt_number"],
+        items_json=row["items_json"],
+    )
 
 
 def _next_order_number(connection: sqlite3.Connection) -> int:

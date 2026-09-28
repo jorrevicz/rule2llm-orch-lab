@@ -10,11 +10,16 @@ from fastapi.responses import JSONResponse
 
 from services.orders.app.api.orders import router as orders_router
 from services.orders.app.db.connection import init_database
+from services.orders.app.messaging.celery_app import app as celery_app
+from services.orders.app.messaging.publisher import CeleryCommandPublisher, CommandPublisher
 from services.orders.app.settings import Settings, load_settings
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, publisher: CommandPublisher | None = None
+) -> FastAPI:
     resolved = settings or load_settings()
+    resolved_publisher = publisher or CeleryCommandPublisher(celery_app)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -23,6 +28,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="orders-service", lifespan=lifespan)
     app.state.settings = resolved
+    app.state.publisher = resolved_publisher
     app.include_router(orders_router)
     app.add_exception_handler(RequestValidationError, _invalid_request)
 

@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from services.orders.app.api.schemas import CreateOrderRequest, OrderResponse
 from services.orders.app.db.connection import connect
 from services.orders.app.db.repositories import create_order_with_task, get_order
+from services.orders.app.messaging.publisher import CommandPublisher
+from services.orders.app.orchestration.provisional_dispatch import dispatch_initial_reservation
 from services.orders.app.settings import Settings
 from shared.canonical_json import canonical_json
 from shared.timestamps import utc_now_iso
@@ -18,6 +20,10 @@ router = APIRouter()
 
 def get_settings(request: Request) -> Settings:
     return request.app.state.settings
+
+
+def get_publisher(request: Request) -> CommandPublisher:
+    return request.app.state.publisher
 
 
 def get_connection(
@@ -38,11 +44,13 @@ def create_order(
     body: CreateOrderRequest,
     connection: Connection,
     settings: Annotated[Settings, Depends(get_settings)],
+    publisher: Annotated[CommandPublisher, Depends(get_publisher)],
 ) -> OrderResponse:
     items_json = canonical_json([item.model_dump() for item in body.items])
     created = create_order_with_task(
         connection, execution_id=settings.execution_id, items_json=items_json, now=utc_now_iso()
     )
+    dispatch_initial_reservation(connection, created.task_id, publisher)
     return OrderResponse(order_id=created.order_id, task_id=created.task_id, status=created.status)
 
 

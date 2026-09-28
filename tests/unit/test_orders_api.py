@@ -18,9 +18,22 @@ def settings(tmp_path) -> Settings:
     )
 
 
+class RecordingPublisher:
+    def __init__(self) -> None:
+        self.published: list[tuple[dict, str]] = []
+
+    def publish(self, envelope: dict, route) -> None:
+        self.published.append((envelope, str(route)))
+
+
 @pytest.fixture
-def client(settings) -> TestClient:
-    with TestClient(create_app(settings)) as test_client:
+def publisher() -> RecordingPublisher:
+    return RecordingPublisher()
+
+
+@pytest.fixture
+def client(settings, publisher) -> TestClient:
+    with TestClient(create_app(settings, publisher)) as test_client:
         yield test_client
 
 
@@ -48,7 +61,6 @@ def test_create_order_persists_order_and_task(client, settings):
     assert order["status"] == "PENDING"
     assert order["execution_id"] == "PILOT_TEST"
     assert task["order_id"] == "ORD_000001"
-    assert task["status"] == "PENDING"
     assert task["attempt_number"] == 1  # D-14
     assert task["wait_count"] == 0
     assert task["fallback_used"] == 0
@@ -94,11 +106,47 @@ def test_identifiers_are_sequential(client):
         "extra-order-field",
     ],
 )
-def test_invalid_order_is_rejected_with_400_and_not_persisted(client, settings, payload):
+def test_invalid_order_is_rejected_with_400_and_not_persisted(client, settings, publisher, payload):
     response = client.post("/orders", json=payload)
 
     assert response.status_code == 400
     assert _row(settings, "SELECT COUNT(*) AS n FROM orders")["n"] == 0
+    assert publisher.published == []
+
+
+def test_created_order_is_dispatched_to_primary_route(client, settings, publisher):
+    client.post("/orders", json=VALID_ORDER)
+
+    [(envelope, route)] = publisher.published
+    task = _row(settings, "SELECT * FROM tasks WHERE task_id = ?", "TASK_000001")
+    assert route == "inventory.primary"
+    assert task["status"] == "DISPATCHED"
+    assert task["current_target"] == "inventory.primary"
+    assert task["current_event_seq"] == envelope["event_seq"] == 1
+
+
+def test_dispatch_envelope_carries_the_order(client, publisher):
+    client.post("/orders", json=VALID_ORDER)
+
+    [(envelope, _)] = publisher.published
+    assert envelope["schema_version"] == "1.0"
+    assert envelope["execution_id"] == "PILOT_TEST"
+    assert envelope["task_id"] == "TASK_000001"
+    assert envelope["event_type"] == "STOCK_RESERVATION_REQUESTED"
+    assert envelope["attempt_number"] == 1
+    assert envelope["target"] == "inventory.primary"
+    assert envelope["message_id"].startswith("MSG_")
+    assert envelope["payload"] == {
+        "order_id": "ORD_000001",
+        "items": [{"quantity": 1, "sku": "SKU-002"}, {"quantity": 2, "sku": "SKU-001"}],
+    }
+
+
+def test_order_stays_pending_after_dispatch(client):
+    response = client.post("/orders", json=VALID_ORDER)
+
+    assert response.json()["status"] == "PENDING"
+    assert client.get("/orders/ORD_000001").json()["status"] == "PENDING"
 
 
 def test_read_order_returns_current_status(client):
