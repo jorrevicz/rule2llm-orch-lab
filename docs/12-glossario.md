@@ -76,7 +76,7 @@
 
 | Código | Ação típica | Origem |
 |---|---|---|
-| `NORMAL_FLOW` | `CONTINUE` | Fluxo normal (`phase` em `PENDING`/`READY`/`RECOVERED`) |
+| `NORMAL_FLOW` | `CONTINUE` | Fluxo normal (`phase` em `PENDING`/`WAITING` — D-06) |
 | `TRANSIENT_RETRY` | `RETRY` | `last_result` em `timeout`/`transient_error` e `attempt_number < max_attempts` |
 | `PRIMARY_EXHAUSTED` | `FALLBACK` | Tentativas esgotadas, `fallback_available` e `not fallback_used` |
 | `SERVICE_UNAVAILABLE` | `WAIT` | `service_status = unavailable` e `wait_count < max_waits` |

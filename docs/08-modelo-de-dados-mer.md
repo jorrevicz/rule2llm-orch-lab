@@ -43,7 +43,7 @@ erDiagram
         text execution_id PK
         text phase "PILOT | EXPERIMENT"
         text scenario_id
-        text decision_engine "rules | llm"
+        text decision_engine "RULES | LLM"
         integer eligible_for_sample "0 | 1"
         text run_status "VALID | INVALID | null"
         text invalid_reason "nullable"
@@ -68,7 +68,7 @@ erDiagram
         text phase
         text current_service "inventory-service"
         text current_target "inventory.primary | inventory.fallback | null"
-        text decision_engine "rules | llm"
+        text decision_engine "RULES | LLM"
         integer attempt_number
         integer max_attempts
         integer wait_count
@@ -114,7 +114,7 @@ erDiagram
         text execution_id
         text task_id FK
         text state_id FK
-        text decision_engine "rules | llm"
+        text decision_engine "RULES | LLM"
         text proposed_action
         text proposed_target "nullable"
         text proposed_reason_code

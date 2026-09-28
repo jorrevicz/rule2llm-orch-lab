@@ -25,7 +25,7 @@ Metadados de cada execução experimental (espelho de `execution_metadata.json`)
 | `execution_id` | TEXT | não | PK | — | Identificador da execução | `EXP_0042` / `PILOT_0001` |
 | `phase` | TEXT | não | — | — | Fase da execução | `EXPERIMENT` \| `PILOT` |
 | `scenario_id` | TEXT | não | IX | — | Cenário experimental | `NORMAL_FLOW`, `timeout`, `overload` |
-| `decision_engine` | TEXT | não | — | — | Motor de decisão usado na execução | `rules` \| `llm` |
+| `decision_engine` | TEXT | não | — | — | Motor de decisão usado na execução | `RULES` \| `LLM` |
 | `eligible_for_sample` | INTEGER | não | — | `0` | `1` só na coleta definitiva | `0` |
 | `run_status` | TEXT | sim | — | `NULL` | Resultado da validação de integridade | `VALID` \| `INVALID` \| `NULL` |
 | `invalid_reason` | TEXT | sim | — | `NULL` | Motivo quando `run_status = INVALID` | `readiness_failed` |
@@ -62,7 +62,7 @@ Tarefa de processamento; carrega todos os contadores usados no `SYSTEM_STATE`.
 | `phase` | TEXT | não | — | `PENDING` | Fase corrente exposta no `SYSTEM_STATE` | `RETRYING` |
 | `current_service` | TEXT | sim | — | `NULL` | Serviço físico atual | `inventory-service` |
 | `current_target` | TEXT | sim | — | `NULL` | Rota lógica atual | `inventory.primary` \| `inventory.fallback` \| `NULL` |
-| `decision_engine` | TEXT | não | — | — | Motor de decisão da execução | `rules` \| `llm` |
+| `decision_engine` | TEXT | não | — | — | Motor de decisão da execução | `RULES` \| `LLM` |
 | `attempt_number` | INTEGER | não | — | `1` | Tentativa lógica corrente (inicial = 1; ver [03 §3.7](03-stack-tecnologica.md)) | `2` |
 | `max_attempts` | INTEGER | não | — | (config) | Limite total de tentativas | `3` |
 | `wait_count` | INTEGER | não | — | `0` | Ações `WAIT` já realizadas | `0` |
@@ -120,7 +120,7 @@ Espelho operacional de `decisions.jsonl`.
 | `execution_id` | TEXT | não | IX | — | Execução | `EXP_0042` |
 | `task_id` | TEXT | não | FK → `tasks`, IX | — | Tarefa | `TASK_000187` |
 | `state_id` | TEXT | não | FK → `states`, IX | — | Estado que originou a decisão | `STATE_0091` |
-| `decision_engine` | TEXT | não | — | — | Motor que propôs | `rules` \| `llm` |
+| `decision_engine` | TEXT | não | — | — | Motor que propôs | `RULES` \| `LLM` |
 | `proposed_action` | TEXT | não | — | — | Ação proposta | `RETRY` |
 | `proposed_target` | TEXT | sim | — | `NULL` | Target proposto | `inventory.primary` \| `NULL` |
 | `proposed_reason_code` | TEXT | não | — | — | `reason_code` proposto | `TRANSIENT_RETRY` |
@@ -130,7 +130,7 @@ Espelho operacional de `decisions.jsonl`.
 | `executed_target` | TEXT | sim | — | `NULL` | Target executado | `inventory.primary` \| `NULL` |
 | `executed_reason_code` | TEXT | não | — | — | `reason_code` executado | `TRANSIENT_RETRY` \| `INVALID_DECISION` |
 | `decision_time_ms` | REAL | não | — | — | Tempo entre `SYSTEM_STATE` pronto e ação válida disponível | `684.0` (LLM) / `1.7` (rules) |
-| `llm_inference_ms` | REAL | sim | — | `NULL` | Parcela de inferência (só `llm`) | `642.0` \| `NULL` |
+| `llm_inference_ms` | REAL | sim | — | `NULL` | Parcela de inferência (só `LLM`) | `642.0` \| `NULL` |
 | `input_tokens` | INTEGER | sim | — | `NULL` | Tokens de entrada (quando confiável) | `428` |
 | `output_tokens` | INTEGER | sim | — | `NULL` | Tokens de saída | `21` |
 | `total_tokens` | INTEGER | sim | — | `NULL` | Soma | `449` |

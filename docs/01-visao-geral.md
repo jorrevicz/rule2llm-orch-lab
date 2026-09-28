@@ -67,7 +67,7 @@ Tudo o mais é mantido equivalente entre as duas condições:
 A seleção do mecanismo é interna e controlada por configuração:
 
 ```yaml
-decision_engine: rules   # ou: llm
+decision_engine: RULES   # ou: LLM
 ```
 
 Ver [02-arquitetura.md §2.4](02-arquitetura.md) (princípio de equivalência) e

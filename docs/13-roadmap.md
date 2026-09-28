@@ -43,7 +43,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | ✅ | `m0-fundacao` | 2026-09-26 |
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
-| [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ⬜ | `m3-rastreabilidade` | — |
+| [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | 🔄 | `m3-rastreabilidade` | — |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
@@ -171,7 +171,7 @@ rastreabilidade (piloto §28 Fase 3).
 
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M3-T01 | **(D) 🔬** Formato final do `SYSTEM_STATE` | `docs(decisoes)` | D-06 registrada: estrutura aninhada (doc 06) × plana (piloto §10.1), conjunto de `phase`, grafia de `decision_engine`; piloto atualizado | I-01, I-02, I-03 | ⬜ |
+| M3-T01 | **(D) 🔬** Formato final do `SYSTEM_STATE` | `docs(decisoes)` | D-06 registrada: formato aninhado; `phase` = estado da tarefa com regra de `CONTINUE` em `PENDING`/`WAITING`; `decision_engine` = `RULES`/`LLM` (config, código e docs) | I-01, I-02, I-03 | ✅ |
 | M3-T02 | Schema do `SYSTEM_STATE` | `feat(contracts)` | `contracts/system_state.schema.json`; modelo em `shared/` | [06 §6.2](06-modelo-de-decisao.md), RF-013 | ⬜ |
 | M3-T03 | Execução e metadados | `feat(observability)` | Escritor JSONL comum; `data/pilot/<EXECUTION_ID>/`; `execution_id` por execução; `execution_metadata.json` (`phase: PILOT`, `eligible_for_sample: false`, desconhecidos `null`). **(D)** D-05 | RF-035, RF-036, [10 §10.3](10-rastreabilidade-e-metricas.md) | ⬜ |
 | M3-T04 | Eventos da tarefa | `feat(orders)` | Tabela `task_events` em `orders.db` (incremento justificado: o StateBuilder lê os últimos K — D-01); `task_events.jsonl` com eventos de orders e inventory (`service`, `redelivered`) | RF-032 | ⬜ |
@@ -338,7 +338,7 @@ doc 10 §10.6).
 | D-03 | Tabela `stock` no Inventory | Reserva 100% simulada × tabela `stock` (enriquece o cenário "dados inconsistentes") | M6-T07 | ⬜ |
 | D-04 🔬 | Padrão outbox | **Decidido (2026-09-28): sem outbox; publicação direta após o commit.** Inventory reemite a resposta gravada em `processed_messages.response_json` na redelivery; despacho perdido do Orders é coberto pelo `timeout_check` (M4-T06). Revisável se o piloto mostrar perda | M2-T07 | ✅ |
 | D-05 | Tabela `executions` | Só `execution_metadata.json` × também tabela | M3-T03 | ⬜ |
-| D-06 🔬 | Formato do `SYSTEM_STATE` | Aninhado (doc 06) × plano (piloto §10.1); conjunto de `phase`; grafia de `decision_engine` | M3-T01 | ⬜ |
+| D-06 🔬 | Formato do `SYSTEM_STATE` | **Decidido (2026-09-28):** aninhado (como o Código 4 da metodologia); `service.latency_ms`; `phase` = `TaskStatus`, com `CONTINUE` em `PENDING`/`WAITING` (substitui `READY`/`RECOVERED` — **altera o Código 4 do TCC**, §13.6); `decision_engine` = `RULES`/`LLM` em tudo, como os Códigos 7–9 e 12 | M3-T01 | ✅ |
 | D-07 🔬 | Política de DLQ | Limite de "falhas sucessivas" e mecanismo (ex.: contagem de entregas) | M4-T10 | ⬜ |
 | D-08 🔬 | Localização do Ollama | Host macOS (GPU Metal) × container (CPU) | M5-T01 | ⬜ |
 | D-09 🔬 | Modo JSON do runtime | Usar a restrição de formato do Ollama × apenas o prompt | M5-T02 | ⬜ |
@@ -357,9 +357,9 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 
 | ID | Inconsistência | Onde | Resolver em |
 |---|---|---|---|
-| I-01 | `decision_engine` grafado `RULES`/`LLM` × `rules`/`llm` | doc 10 × docs 06, 09 e piloto | M3-T01 |
-| I-02 | `SYSTEM_STATE` plano com `observed_latency_ms` × aninhado com `latency_ms` | piloto §10.1 × doc 06 §6.2 | M3-T01 |
-| I-03 | Rules usa `phase` `READY`/`RECOVERED`, ausentes da máquina de estados | piloto §14.3 × doc 05 | M3-T01 |
+| I-01 | `decision_engine` grafado `RULES`/`LLM` × `rules`/`llm` | metodologia e doc 10 × docs 01, 06–09 e piloto | D-06 ✅ (maiúsculas, como a metodologia) |
+| I-02 | `SYSTEM_STATE` plano com `observed_latency_ms` × aninhado com `latency_ms` | piloto §10.1 × doc 06 §6.2 | D-06 ✅ (aninhado) |
+| I-03 | Rules usa `phase` `READY`/`RECOVERED`, ausentes da máquina de estados | metodologia Código 4 e piloto §14.3 × doc 05 | D-06 ✅ (`PENDING`/`WAITING`) |
 | I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 ✅ |
 | I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | D-14 ✅ (piloto §23.1 atualizado para `1`) |
 | I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | M4-T08 (D-15) |
@@ -367,3 +367,13 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 |
 | I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
 | I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 ✅ |
+
+## 13.6 Ajustes a refletir no texto do TCC
+
+Decisões tomadas na implementação que alteram trechos do capítulo de metodologia
+(`docs/ref/TCC_METODOLOGIA.pdf`). Complementa a lista do piloto §33 (espaço de ações,
+`alternative_targets`, `wait_count`/`fallback_used`, `max_attempts`).
+
+| Decisão | Trecho da metodologia | Ajuste |
+|---|---|---|
+| D-06 | Código 4 (`RulesDecisionEngine`), regra de fluxo normal | `phase in {"PENDING", "READY", "RECOVERED"}` → `phase in {"PENDING", "WAITING"}`; `phase` passa a ser o estado da tarefa |

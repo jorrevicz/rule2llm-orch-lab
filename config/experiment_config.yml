@@ -8,7 +8,7 @@
 
 experiment:
   phase: pilot                  # pilot | experiment
-  decision_engine: rules        # rules | llm — única diferença entre as condições
+  decision_engine: RULES        # RULES | LLM — única diferença entre as condições (D-06)
   repetitions: null             # N_rep — A CONGELAR
   execution_order: null         # ordem de execução Rules/LLM — A CONGELAR
 

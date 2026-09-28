@@ -61,7 +61,7 @@ def test_repo_config_loads_as_pilot():
     config = load_experiment_config(REPO_CONFIG)
 
     assert config.experiment.phase == "pilot"
-    assert config.experiment.decision_engine in {"rules", "llm"}
+    assert config.experiment.decision_engine in {"RULES", "LLM"}
     assert config.llm.session_memory is False
 
 
@@ -73,9 +73,10 @@ def test_unknown_key_is_rejected(tmp_path):
         load_experiment_config(_write_config(tmp_path, raw))
 
 
-def test_invalid_decision_engine_is_rejected(tmp_path):
+@pytest.mark.parametrize("engine", ["airflow", "rules", "llm"])
+def test_invalid_decision_engine_is_rejected(tmp_path, engine):
     raw = _raw_repo_config()
-    raw["experiment"]["decision_engine"] = "airflow"
+    raw["experiment"]["decision_engine"] = engine  # D-06: somente RULES / LLM
 
     with pytest.raises(ValidationError):
         load_experiment_config(_write_config(tmp_path, raw))

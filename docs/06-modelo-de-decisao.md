@@ -77,7 +77,7 @@ objeto**. Schema: `contracts/system_state.schema.json`.
 | `state_id` | texto | `StateBuilder` | Identificar de forma única o snapshot apresentado ao decisor |
 | `timestamp` | data/hora | orquestrador | Horário de construção do snapshot |
 | `current_event_seq` | inteiro | histórico da tarefa | Posição lógica atual |
-| `task.phase` | categórico | orquestrador | Fase corrente da tarefa |
+| `task.phase` | categórico | orquestrador | Estado corrente da tarefa (`TaskStatus`, doc 05) — D-06 |
 | `task.current_service` | texto | orquestrador | Serviço físico atual (`inventory-service`) |
 | `task.current_target` | texto | orquestrador | Rota lógica atual (`inventory.primary` \| `inventory.fallback`) |
 | `task.attempt_number` | inteiro | orquestrador | Tentativas já realizadas |
@@ -108,7 +108,11 @@ objeto**. Schema: `contracts/system_state.schema.json`.
   histórico completo permanece em `task_events.jsonl` e **não** é enviado automaticamente ao
   LLM.
 
-### 6.2.3 Controle de contexto
+### 6.2.3 Formato e valores (D-06)
+
+**Decisão D-06 (2026-09-28) 🔬:** (1) `SYSTEM_STATE` no formato **aninhado** (`task`, `service`, `messaging`, `alternatives`, `recent_events`), como no Código 4 da metodologia e no doc 06; o campo de latência é `service.latency_ms`. (2) `phase` = estado da tarefa (os 9 `TaskStatus` do doc 05). A regra de fluxo normal vale para `PENDING` (primeiro despacho) e `WAITING` (reavaliação após `WAIT` sem falha pendente); `READY` e `RECOVERED`, do Código 4 da metodologia, não existem na máquina de estados e, com eles, a reavaliação após um `WAIT` por pressão de fila caía em `UNMAPPED_STATE` → `ABORT`. (3) `decision_engine` grafado `RULES` / `LLM` em configuração, banco e artefatos, como nos Códigos 7–9 e 12 da metodologia. O item (2) altera a política do `RulesDecisionEngine` e precisa ser refletido no Código 4 do TCC (roadmap §13.6).
+
+### 6.2.4 Controle de contexto
 
 - O `SYSTEM_STATE` é composto **predominantemente por variáveis previamente definidas**, não
   por grandes volumes de log textual.
@@ -215,7 +219,8 @@ def decide(state):
         return Decision("ABORT", None, "ATTEMPTS_EXHAUSTED")
 
     # 7. fluxo normal
-    if t["phase"] in {"PENDING", "READY", "RECOVERED"}:
+    #    D-06: phase = estado da tarefa; WAITING = reavaliação após WAIT
+    if t["phase"] in {"PENDING", "WAITING"}:
         return Decision("CONTINUE", "inventory.primary", "NORMAL_FLOW")
 
     # 8. estado não mapeado
@@ -395,7 +400,7 @@ Registro (exemplo em `decisions.jsonl`):
 {
   "execution_id": "EXP_0042", "task_id": "TASK_0187",
   "state_id": "STATE_0091", "decision_id": "DEC_0091",
-  "decision_engine": "llm",
+  "decision_engine": "LLM",
   "proposed_decision": { "action": "RETRY", "target": "service_c", "reason_code": "RETRY" },
   "validation": { "valid": false, "error": "UNKNOWN_TARGET" },
   "executed_decision": { "action": "ABORT", "target": null, "reason_code": "INVALID_DECISION" }

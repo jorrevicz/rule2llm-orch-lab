@@ -22,9 +22,9 @@ class _Section(BaseModel):
 
 class ExperimentSection(_Section):
     phase: Literal["pilot", "experiment"]
-    decision_engine: Literal["rules", "llm"]
+    decision_engine: Literal["RULES", "LLM"]
     repetitions: PositiveInt | None
-    execution_order: list[Literal["rules", "llm"]] | None
+    execution_order: list[Literal["RULES", "LLM"]] | None
 
 
 class MessagingSection(_Section):

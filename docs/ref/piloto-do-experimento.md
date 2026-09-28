@@ -279,13 +279,13 @@ A arquitetura física é a mesma nas duas condições.
 A seleção do mecanismo ocorre internamente:
 
 ```text
-decision_engine = "rules"
+decision_engine = "RULES"
 ```
 
 ou:
 
 ```text
-decision_engine = "llm"
+decision_engine = "LLM"
 ```
 
 Todo o restante deve permanecer equivalente.
@@ -775,6 +775,10 @@ Exemplo inicial:
 }
 ```
 
+> **Decisão D-06 (2026-09-28) 🔬:** (1) `SYSTEM_STATE` no formato **aninhado** (`task`, `service`, `messaging`, `alternatives`, `recent_events`), como no Código 4 da metodologia e no doc 06; o campo de latência é `service.latency_ms`. (2) `phase` = estado da tarefa (os 9 `TaskStatus` do doc 05). A regra de fluxo normal vale para `PENDING` (primeiro despacho) e `WAITING` (reavaliação após `WAIT` sem falha pendente); `READY` e `RECOVERED`, do Código 4 da metodologia, não existem na máquina de estados e, com eles, a reavaliação após um `WAIT` por pressão de fila caía em `UNMAPPED_STATE` → `ABORT`. (3) `decision_engine` grafado `RULES` / `LLM` em configuração, banco e artefatos, como nos Códigos 7–9 e 12 da metodologia. O item (2) altera a política do `RulesDecisionEngine` e precisa ser refletido no Código 4 do TCC (roadmap §13.6). Contrato final: `docs/06-modelo-de-decisao.md` §6.2 e
+> `contracts/system_state.schema.json`. O exemplo acima é ilustrativo e usa a forma plana
+> anterior. Registro: `docs/13-roadmap.md` §13.4.
+
 ## 10.2 Ajustes necessários em relação ao texto metodológico atual
 
 ### Ajuste A — `alternative_services`
@@ -1128,7 +1132,8 @@ def decide(state):
             reason_code="ATTEMPTS_EXHAUSTED",
         )
 
-    if state.phase in {"PENDING", "READY", "RECOVERED"}:
+    # D-06: phase = estado da tarefa; WAITING = reavaliação após WAIT
+    if state.phase in {"PENDING", "WAITING"}:
         return Decision(
             action="CONTINUE",
             target="inventory.primary",
@@ -1216,7 +1221,7 @@ Essas alternativas ocultariam um comportamento relevante da abordagem LLM.
   "task_id": "TASK_0187",
   "state_id": "STATE_0091",
   "decision_id": "DEC_0091",
-  "decision_engine": "llm",
+  "decision_engine": "LLM",
   "proposed_decision": {
     "action": "RETRY",
     "target": "service_c",
@@ -1864,7 +1869,7 @@ Exemplo:
   "execution_id": "PILOT_0001",
   "phase": "PILOT",
   "eligible_for_sample": false,
-  "decision_engine": "rules",
+  "decision_engine": "RULES",
   "scenario_id": "NORMAL_FLOW",
   "code_commit": null,
   "runtime": {

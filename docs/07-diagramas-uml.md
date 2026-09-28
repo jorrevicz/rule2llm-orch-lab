@@ -46,7 +46,7 @@ flowchart LR
         UC7(["Detectar timeout operacional"])
         UC8(["Registrar rastreabilidade"])
 
-        UC10(["Selecionar motor de decisão (rules|llm)"])
+        UC10(["Selecionar motor de decisão (RULES|LLM)"])
         UC11(["Executar cenário experimental"])
         UC12(["Resetar ambiente"])
         UC13(["Verificar readiness"])
@@ -92,7 +92,7 @@ flowchart LR
 | Reservar estoque | (sistema) / RabbitMQ | Mensagem em `inventory.primary`/`inventory.fallback` | Idempotência (`message_id`, `task_id`) → reserva simulada → persiste → publica em `orders.events` | `reservation` persistida; evento publicado |
 | Detectar timeout operacional | (sistema) | Dispatch realizado | `timeout_check` após `inventory_timeout_ms`; se a tarefa não avançou → `INVENTORY_TIMEOUT` | Novo ponto de decisão |
 | Registrar rastreabilidade | (sistema) | Execução em curso | Grava `states.jsonl`, `task_events.jsonl`, `decisions.jsonl`, logs | Artefatos correlacionáveis por identificadores |
-| Selecionar motor de decisão | Pesquisador | Ambiente configurado | Define `decision_engine: rules\|llm` em `experiment_config.yml` | Execução usa o motor escolhido |
+| Selecionar motor de decisão | Pesquisador | Ambiente configurado | Define `decision_engine: RULES\|LLM` em `experiment_config.yml` | Execução usa o motor escolhido |
 | Executar cenário experimental | Pesquisador | Readiness OK | Reset → readiness → warm-up (LLM) → carga → falha → coleta → validação → consolidação | `run_status = VALID\|INVALID`; artefatos gerados |
 | Resetar ambiente | Pesquisador | — | Limpa filas/DLQ; restaura os dois SQLite; remove estados transitórios | Estado inicial previsto |
 | Verificar readiness | Pesquisador | Containers subindo | Checa containers, filas declaradas, health checks, SQLite inicial, coletores, (LLM) modelo carregado + warm-up | `readiness_status = PASS\|FAIL` |
