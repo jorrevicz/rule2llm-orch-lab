@@ -542,6 +542,8 @@ Campos adicionais de implementação:
 - `target`;
 - `payload`.
 
+> **Decisão D-13 (2026-09-28):** Mensagem fora do contrato (envelope inválido, `event_type` não aceito pelo consumidor ou `payload` inválido para o evento) é **rejeitada sem requeue** e segue, via `tcc.dlx`, para `tasks.dlq` (D-13). É um problema de contrato/transporte, não de negócio: **não** vira evento `invalid_data`. Dados de negócio inconsistentes, mas bem formados (cenário "dados inconsistentes", M6), continuam gerando evento de falha de reserva. Registro: `docs/13-roadmap.md` §13.4.
+
 ## 7.3 Política de ordenação
 
 Não haverá garantia de ordenação global do sistema.

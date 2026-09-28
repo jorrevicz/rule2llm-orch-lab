@@ -8,7 +8,7 @@ from services.orders.app.orchestration.event_handler import (
     UnsupportedEventError,
     handle_inventory_event,
 )
-from shared.envelope import build_envelope
+from shared.envelope import MessageEnvelope, build_envelope
 from shared.events import EventType
 
 NOW = "2026-09-27T12:00:00.000Z"
@@ -25,8 +25,8 @@ def connection(tmp_path) -> sqlite3.Connection:
     conn.close()
 
 
-def _event(event_type: EventType, task_id: str = "TASK_000001") -> dict:
-    return build_envelope(
+def _event(event_type: EventType, task_id: str = "TASK_000001") -> MessageEnvelope:
+    envelope = build_envelope(
         execution_id="PILOT_TEST",
         task_id=task_id,
         event_type=event_type,
@@ -35,6 +35,7 @@ def _event(event_type: EventType, task_id: str = "TASK_000001") -> dict:
         target="inventory.primary",
         payload={"order_id": "ORD_000001", "route": "primary"},
     )
+    return MessageEnvelope.model_validate(envelope)
 
 
 def _statuses(connection: sqlite3.Connection) -> tuple[str, str, str | None]:

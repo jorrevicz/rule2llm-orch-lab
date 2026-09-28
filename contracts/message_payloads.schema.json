@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "message_payloads.schema.json",
+  "title": "MessagePayloads",
+  "description": "Schema do campo `payload` por `event_type`.",
+  "payloads_by_event_type": {
+    "STOCK_RESERVATION_FAILED": {
+      "additionalProperties": false,
+      "description": "Payload de `STOCK_RESERVATION_SUCCEEDED` / `_FAILED` (Inventory → Orders).",
+      "properties": {
+        "order_id": {
+          "pattern": "^ORD_[A-Za-z0-9]+$",
+          "title": "Order Id",
+          "type": "string"
+        },
+        "route": {
+          "enum": [
+            "primary",
+            "fallback"
+          ],
+          "title": "Route",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "route"
+      ],
+      "title": "ReservationResultPayload",
+      "type": "object"
+    },
+    "STOCK_RESERVATION_REQUESTED": {
+      "$defs": {
+        "OrderItemPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "sku": {
+              "minLength": 1,
+              "title": "Sku",
+              "type": "string"
+            },
+            "quantity": {
+              "exclusiveMinimum": 0,
+              "title": "Quantity",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "sku",
+            "quantity"
+          ],
+          "title": "OrderItemPayload",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Payload de `STOCK_RESERVATION_REQUESTED` (Orders → Inventory).",
+      "properties": {
+        "order_id": {
+          "pattern": "^ORD_[A-Za-z0-9]+$",
+          "title": "Order Id",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/OrderItemPayload"
+          },
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "order_id",
+        "items"
+      ],
+      "title": "ReservationRequestPayload",
+      "type": "object"
+    },
+    "STOCK_RESERVATION_SUCCEEDED": {
+      "additionalProperties": false,
+      "description": "Payload de `STOCK_RESERVATION_SUCCEEDED` / `_FAILED` (Inventory → Orders).",
+      "properties": {
+        "order_id": {
+          "pattern": "^ORD_[A-Za-z0-9]+$",
+          "title": "Order Id",
+          "type": "string"
+        },
+        "route": {
+          "enum": [
+            "primary",
+            "fallback"
+          ],
+          "title": "Route",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "route"
+      ],
+      "title": "ReservationResultPayload",
+      "type": "object"
+    }
+  }
+}

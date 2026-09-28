@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "message_envelope.schema.json",
+  "$defs": {
+    "EventType": {
+      "enum": [
+        "ORDER_CREATED",
+        "TASK_CREATED",
+        "STOCK_RESERVATION_REQUESTED",
+        "STOCK_RESERVATION_SUCCEEDED",
+        "STOCK_RESERVATION_FAILED",
+        "INVENTORY_TIMEOUT",
+        "TRANSIENT_ERROR",
+        "WAIT_SCHEDULED",
+        "WAIT_FINISHED",
+        "RETRY_SCHEDULED",
+        "FALLBACK_SCHEDULED",
+        "TASK_COMPLETED",
+        "TASK_ABORTED",
+        "MESSAGE_DEAD_LETTERED"
+      ],
+      "title": "EventType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "execution_id": {
+      "pattern": "^(PILOT|EXP)_[A-Za-z0-9]+$",
+      "title": "Execution Id",
+      "type": "string"
+    },
+    "message_id": {
+      "pattern": "^MSG_[A-Za-z0-9]+$",
+      "title": "Message Id",
+      "type": "string"
+    },
+    "task_id": {
+      "pattern": "^TASK_[A-Za-z0-9]+$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "event_type": {
+      "$ref": "#/$defs/EventType"
+    },
+    "event_seq": {
+      "minimum": 1,
+      "title": "Event Seq",
+      "type": "integer"
+    },
+    "attempt_number": {
+      "minimum": 1,
+      "title": "Attempt Number",
+      "type": "integer"
+    },
+    "published_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+      "title": "Published At",
+      "type": "string"
+    },
+    "decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^DEC_[A-Za-z0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Decision Id"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "enum": [
+            "inventory.primary",
+            "inventory.fallback"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Target"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "execution_id",
+    "message_id",
+    "task_id",
+    "event_type",
+    "event_seq",
+    "attempt_number",
+    "published_at",
+    "decision_id",
+    "target",
+    "payload"
+  ],
+  "title": "MessageEnvelope",
+  "type": "object"
+}

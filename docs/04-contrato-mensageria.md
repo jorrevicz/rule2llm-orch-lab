@@ -70,7 +70,13 @@ Toda mensagem de negócio usa este envelope:
 O contrato **não** permite instruções arbitrárias, comandos de shell, código ou consultas
 diretas ao RabbitMQ/SQLite dentro do envelope.
 
-Schema: `contracts/message_envelope.schema.json`.
+Schemas: `contracts/message_envelope.schema.json` (envelope) e
+`contracts/message_payloads.schema.json` (`payload` por `event_type`), gerados a partir de
+`shared/envelope.py` por `scripts/contracts/export_schemas.py`.
+
+### 4.2.1 Mensagem fora do contrato (D-13)
+
+Mensagem fora do contrato (envelope inválido, `event_type` não aceito pelo consumidor ou `payload` inválido para o evento) é **rejeitada sem requeue** e segue, via `tcc.dlx`, para `tasks.dlq` (D-13). É um problema de contrato/transporte, não de negócio: **não** vira evento `invalid_data`. Dados de negócio inconsistentes, mas bem formados (cenário "dados inconsistentes", M6), continuam gerando evento de falha de reserva.
 
 ## 4.3 Política de ordenação
 

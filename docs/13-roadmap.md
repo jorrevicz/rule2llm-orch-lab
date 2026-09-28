@@ -42,7 +42,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 |---|---|:---:|---|---|
 | [M0](#m0--fundação-do-repositório) | Fundação do repositório, roadmap, configuração base | ✅ | `m0-fundacao` | 2026-09-26 |
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
-| [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ⬜ | `m2-idempotencia` | — |
+| [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | 🔄 | `m2-idempotencia` | — |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ⬜ | `m3-rastreabilidade` | — |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ⬜ | `m4-rules` | — |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
@@ -140,7 +140,7 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M2-T01 | Schema do envelope | `feat(contracts)` | `contracts/message_envelope.schema.json`; modelo em `shared/`; validação no consumo. **(D)** D-13 | [04 §4.2](04-contrato-mensageria.md) | ⬜ |
+| M2-T01 | Schema do envelope | `feat(contracts)` | Modelos em `shared/envelope.py` (envelope + `payload` por evento); `contracts/message_envelope.schema.json` e `message_payloads.schema.json` gerados e checados por teste de contrato; consumidores rejeitam mensagem fora do contrato para `tasks.dlq`. **(D)** D-13 | [04 §4.2](04-contrato-mensageria.md) | ✅ |
 | M2-T02 | `event_seq`, `attempt_number`, `message_id` | `feat(orders)` | `event_seq` monotônico por tarefa (incremento transacional em `tasks`); definir quais eventos consomem sequência (`ORDER_CREATED`/`TASK_CREATED`) e quem atribui o `event_seq` dos eventos publicados pelo Inventory (hoje **provisório**: `event_seq` da solicitação + 1); `message_id` novo por mensagem | RF-012, RNF-016, RNF-017 | ⬜ |
 | M2-T03 | Idempotência de transporte | `feat(inventory)` | `processed_messages` com resultado; redelivery reemite o resultado sem reprocessar; `redelivered` lido de `delivery_info` | RF-008, [04 §4.7.1](04-contrato-mensageria.md) | ⬜ |
 | M2-T04 | Idempotência de negócio | `feat(inventory)` | `reservations.task_id UNIQUE`; nova tentativa lógica não cria 2ª reserva | RF-009, [04 §4.7.2](04-contrato-mensageria.md) | ⬜ |
@@ -198,7 +198,7 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 | M4-T07 | `WAIT` | `feat(orchestration)` | `wait_count + 1`; Task `WAITING`; `reevaluate` após `wait_delay_ms`; `attempt_number` inalterado | RF-020 | ⬜ |
 | M4-T08 | Rota fallback e `FALLBACK` | `feat(inventory)` | `reservation/fallback.py` consumindo `inventory.fallback`; Executor `FALLBACK` (`fallback_used = true`). **(D)** D-15 | RF-021, [06 §6.5](06-modelo-de-decisao.md), I-06 | ⬜ |
 | M4-T09 | `ABORT` e decisão inválida | `feat(orchestration)` | Task `ABORTED`, Order `FAILED`, `TASK_ABORTED`; decisão inválida → `ABORT / INVALID_DECISION` | RF-022, RF-029 | ⬜ |
-| M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: definição de "falhas sucessivas" (limite e mecanismo); `MESSAGE_DEAD_LETTERED` → `DEAD_LETTERED` | RF-030, I-07 | ⬜ |
+| M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: definição de "falhas sucessivas" (limite e mecanismo); `MESSAGE_DEAD_LETTERED` → `DEAD_LETTERED`. Hoje, exceção inesperada numa tarefa Celery é confirmada (ack) e a mensagem é descartada, só com log (`task_acks_on_failure_or_timeout = True`, padrão) — decidir aqui se passa a ir para a DLQ | RF-030, I-07 | ⬜ |
 | M4-T11 | Testes das ações | `test` | Rules (cada regra), Validator (cada erro), Executor por ação: `WAIT` não incrementa tentativa, `FALLBACK` só quando admissível, `ABORT` terminal | CLAUDE §35 | ⬜ |
 | M4-T12 | 1º piloto técnico | `chore(pilot)` | `PILOT_0001` (rules, fluxo normal) executado; checklist do doc 11 §11.4 marcado | piloto §32 | ⬜ |
 
@@ -338,7 +338,7 @@ doc 10 §10.6).
 | D-10 | Prometheus | Exporters × API de management + Docker Stats | M7-T05 | ⬜ |
 | D-11 🔬 | Valores finais dos parâmetros | Ver [11 §11.5](11-requisitos.md) | M8-T02 | ⬜ |
 | D-12 | Publicação dos dados experimentais | Commit no repositório × artefato de release × armazenamento externo | M9-T04 | ⬜ |
-| D-13 | Envelope inválido no consumo | Rejeição sem requeue → `tcc.dlx` × evento de falha `invalid_data` | M2-T01 | ⬜ |
+| D-13 | Envelope inválido no consumo | **Decidido (2026-09-28): rejeição sem requeue → `tcc.dlx` → `tasks.dlq`.** Envelope, `event_type` ou `payload` fora do contrato é problema de contrato, não de negócio; não vira `invalid_data`. Verificado ao vivo | M2-T01 | ✅ |
 | D-14 | Valor inicial de `attempt_number` | **Decidido (2026-09-27): `1`.** A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (`max_attempts = 3` → tentativas 1, 2 e 3). Mantém coerência com o envelope da 1ª publicação (`attempt_number: 1`) e com as regras `attempt_number < max_attempts` do Rules e do Validator | M1-T03 | ✅ |
 | D-15 🔬 | Semântica de `fallback_max_attempts` | Hoje definido mas não usado por Rules nem pelo Validator | M4-T08 | ⬜ |
 
