@@ -3,7 +3,8 @@ import sqlite3
 import pytest
 
 from services.inventory.app.db.connection import connect, init_database
-from services.inventory.app.reservation.service import process_reservation_request
+from services.inventory.app.reservation.service import RequestOutcome, process_reservation_request
+from shared.canonical_json import canonical_json
 from shared.envelope import build_envelope, parse_message
 from shared.events import EventType
 
@@ -14,6 +15,20 @@ class RecordingPublisher:
 
     def publish(self, envelope: dict) -> None:
         self.published.append(envelope)
+
+
+class FailingOncePublisher(RecordingPublisher):
+    """Simula queda do worker entre o commit e a publicação da resposta."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.failed = False
+
+    def publish(self, envelope: dict) -> None:
+        if not self.failed:
+            self.failed = True
+            raise ConnectionError("broker unreachable")
+        super().publish(envelope)
 
 
 @pytest.fixture
@@ -83,3 +98,62 @@ def test_nothing_is_published_when_persistence_fails(connection):
 def test_fallback_route_is_not_handled_yet(connection):
     with pytest.raises(ValueError, match="unsupported target"):
         process_reservation_request(connection, *_request("inventory.fallback"), RecordingPublisher())
+
+
+def _count(connection: sqlite3.Connection, table: str) -> int:
+    return connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+
+
+def test_first_delivery_is_reserved(connection):
+    result = process_reservation_request(connection, *_request(), RecordingPublisher())
+
+    assert result.outcome == RequestOutcome.RESERVED
+
+
+def test_redelivery_does_not_reserve_again(connection):
+    request, payload = _request()
+    publisher = RecordingPublisher()
+
+    process_reservation_request(connection, request, payload, publisher)
+    result = process_reservation_request(connection, request, payload, publisher)
+
+    assert result.outcome == RequestOutcome.DUPLICATE_MESSAGE
+    assert _count(connection, "reservations") == 1
+    assert _count(connection, "processed_messages") == 1
+
+
+def test_redelivery_reemits_the_same_reply(connection):
+    request, payload = _request()
+    publisher = RecordingPublisher()
+
+    process_reservation_request(connection, request, payload, publisher)
+    process_reservation_request(connection, request, payload, publisher)
+
+    first, second = publisher.published
+    assert second == first  # mesmo message_id: o Orders deduplica
+
+
+def test_reply_lost_after_commit_is_recovered_by_redelivery(connection):
+    request, payload = _request()
+    publisher = FailingOncePublisher()
+
+    with pytest.raises(ConnectionError):
+        process_reservation_request(connection, request, payload, publisher)
+    assert _count(connection, "reservations") == 1  # reserva já commitada
+    assert publisher.published == []
+
+    result = process_reservation_request(connection, request, payload, publisher)
+
+    assert result.outcome == RequestOutcome.DUPLICATE_MESSAGE
+    assert publisher.published == [result.reply]
+    assert _count(connection, "reservations") == 1
+
+
+def test_processed_message_stores_result_and_reply(connection):
+    request, payload = _request()
+    result = process_reservation_request(connection, request, payload, RecordingPublisher())
+
+    row = connection.execute("SELECT * FROM processed_messages").fetchone()
+    assert row["event_type"] == "STOCK_RESERVATION_REQUESTED"
+    assert row["result"] == "succeeded"
+    assert row["response_json"] == canonical_json(result.reply)

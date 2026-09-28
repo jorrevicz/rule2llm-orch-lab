@@ -1,5 +1,6 @@
 """Consumidores Celery do inventory-service."""
 
+from celery import Task
 from celery.exceptions import Reject
 from celery.utils.log import get_task_logger
 
@@ -16,8 +17,10 @@ logger = get_task_logger(__name__)
 _publisher = CeleryEventPublisher(app)
 
 
-@app.task(name=INVENTORY_RESERVE_TASK)
-def reserve_stock(raw_envelope: object) -> None:
+@app.task(name=INVENTORY_RESERVE_TASK, bind=True)
+def reserve_stock(self: Task, raw_envelope: object) -> None:
+    # Flag do broker: a MESMA mensagem está sendo entregue de novo (não é RETRY).
+    redelivered = bool((self.request.delivery_info or {}).get("redelivered", False))
     try:
         envelope, payload = parse_message(raw_envelope, {EventType.STOCK_RESERVATION_REQUESTED})
     except ContractViolation as violation:
@@ -27,6 +30,16 @@ def reserve_stock(raw_envelope: object) -> None:
 
     connection = connect(settings.database_path)
     try:
-        process_reservation_request(connection, envelope, payload, _publisher)
+        result = process_reservation_request(connection, envelope, payload, _publisher)
     finally:
         connection.close()
+    logger.info(
+        "reservation request handled: outcome=%s task_id=%s message_id=%s"
+        " event_seq=%s attempt_number=%s redelivered=%s",
+        result.outcome,
+        envelope.task_id,
+        envelope.message_id,
+        envelope.event_seq,
+        envelope.attempt_number,
+        redelivered,
+    )

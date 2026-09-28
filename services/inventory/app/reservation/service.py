@@ -1,13 +1,27 @@
-"""Processamento de uma solicitação de reserva (RF-006, RF-007, RF-010).
+"""Processamento de uma solicitação de reserva (RF-006 a RF-010).
 
-Ordem: reservar → persistir (reserva + mensagem processada) → publicar o resultado.
-A publicação acontece só depois do commit, para que Orders nunca receba sucesso de
-uma reserva que não foi persistida.
+Numa única transação: verificar a idempotência de transporte (`message_id`) →
+reservar → gravar reserva, mensagem processada e a resposta. A resposta é
+publicada só depois do commit, para que o Orders nunca receba sucesso de uma
+reserva não persistida.
+
+Redelivery da mesma mensagem (mesmo `message_id`) não reprocessa: reemite a
+resposta gravada, com o MESMO `message_id`, que o Orders deduplica. Isso também
+recupera uma resposta perdida entre o commit e a publicação.
 """
 
+import json
 import sqlite3
+from dataclasses import dataclass
+from enum import StrEnum
 
-from services.inventory.app.db.repositories import record_reservation
+from services.inventory.app.db.connection import transaction
+from services.inventory.app.db.models import ProcessingResult
+from services.inventory.app.db.repositories import (
+    find_processed_message,
+    insert_processed_message,
+    insert_reservation,
+)
 from services.inventory.app.messaging.publisher import EventPublisher
 from services.inventory.app.reservation.primary import reserve_primary
 from shared.canonical_json import canonical_json
@@ -22,30 +36,65 @@ from shared.messaging import Route
 from shared.timestamps import utc_now_iso
 
 
+class RequestOutcome(StrEnum):
+    RESERVED = "reserved"
+    DUPLICATE_MESSAGE = "duplicate_message"  # redelivery: mesma mensagem já processada
+
+
+@dataclass(frozen=True)
+class RequestResult:
+    outcome: RequestOutcome
+    reply: Envelope
+
+
 def process_reservation_request(
     connection: sqlite3.Connection,
     request: MessageEnvelope,
     payload: ReservationRequestPayload,
     publisher: EventPublisher,
-) -> Envelope:
+) -> RequestResult:
     if request.target != Route.INVENTORY_PRIMARY:
         # A rota inventory.fallback é implementada em M4-T08.
         raise ValueError(f"unsupported target: {request.target!r}")
 
+    now = utc_now_iso()
+    with transaction(connection):
+        previous = find_processed_message(connection, request.message_id)
+        if previous is not None:
+            result = RequestResult(RequestOutcome.DUPLICATE_MESSAGE, json.loads(previous.response_json))
+        else:
+            result = _reserve(connection, request, payload, now)
+    publisher.publish(result.reply)
+    return result
+
+
+def _reserve(
+    connection: sqlite3.Connection,
+    request: MessageEnvelope,
+    payload: ReservationRequestPayload,
+    now: str,
+) -> RequestResult:
     items = [item.model_dump() for item in payload.items]
     outcome = reserve_primary(items)
-    record_reservation(
+    reply = _succeeded_event(request, payload.order_id, outcome.route)
+    insert_reservation(
         connection,
-        message_id=request.message_id,
         task_id=request.task_id,
         order_id=payload.order_id,
         route=outcome.route,
         items_json=canonical_json(items),
-        now=utc_now_iso(),
+        now=now,
     )
-    event = _succeeded_event(request, payload.order_id, outcome.route)
-    publisher.publish(event)
-    return event
+    insert_processed_message(
+        connection,
+        message_id=request.message_id,
+        task_id=request.task_id,
+        event_type=request.event_type,
+        result=ProcessingResult.SUCCEEDED,
+        response_json=canonical_json(reply),
+        now=now,
+    )
+    return RequestResult(RequestOutcome.RESERVED, reply)
 
 
 def _succeeded_event(request: MessageEnvelope, order_id: str, route: str) -> Envelope:

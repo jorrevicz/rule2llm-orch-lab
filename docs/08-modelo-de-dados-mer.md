@@ -212,6 +212,7 @@ erDiagram
         text task_id
         text event_type
         text result "succeeded | failed"
+        text response_json "resposta reemitida em redelivery (M2-T03)"
         text processed_at
     }
 

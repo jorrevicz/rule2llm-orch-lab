@@ -212,10 +212,13 @@ Idempotência de transporte no consumo de `inventory.primary` / `inventory.fallb
 | `task_id` | TEXT | não | IX | — | Tarefa correlata | `TASK_000187` |
 | `event_type` | TEXT | não | — | — | Tipo processado | `STOCK_RESERVATION_REQUESTED` |
 | `result` | TEXT | não | — | — | Resultado registrado (reusado em redelivery) | `succeeded` \| `failed` |
+| `response_json` | TEXT | não | — | — | Resposta publicada em `orders.events` (envelope completo). Uma redelivery reemite exatamente esta resposta, com o mesmo `message_id` | `{"schema_version":"1.0", ...}` |
 | `processed_at` | TEXT | não | — | — | Instante do processamento | `2026-08-27T12:00:02.905Z` |
 
-> No piloto §23.2: `processed_messages(message_id PK, task_id, processed_at)`. Coluna
-> `event_type` e `result` são ⚠ (permitem reemitir o resultado correto em redelivery).
+> No piloto §23.2: `processed_messages(message_id PK, task_id, processed_at)`. Colunas
+> `event_type`, `result` e `response_json` são ⚠ (M2-T03): permitem reemitir a mesma
+> resposta em redelivery, inclusive quando a publicação original se perdeu entre o commit e
+> o envio. Com isso, `published_events` (outbox) não é necessária (D-04).
 
 ## `published_events` ⚠
 
