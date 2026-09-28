@@ -27,6 +27,19 @@ execution_id  →  task_id  →  state_id  →  decision_id
 > Fonte: `piloto-do-experimento.md` §25; metodologia Quadro 3, Quadro 4, TABELA 16.
 > A árvore fica em `data/<pilot|experiment>/<EXECUTION_ID>/`.
 
+**Como os arquivos são produzidos (M3):**
+
+- O diretório é derivado do `execution_id` (`PILOT_` → `data/pilot/`, `EXP_` →
+  `data/experiment/`); `scripts/pilot/new_execution.py` abre a execução e grava
+  `execution_metadata.json`.
+- Cada processo grava o seu próprio arquivo (`states.orders-api.jsonl`,
+  `states.orders-worker.jsonl`, `microservices_logs.inventory-worker.jsonl`, …): containers
+  diferentes nunca escrevem no mesmo arquivo.
+- `task_events.jsonl` é exportado da tabela `task_events` do `orders.db` (D-01).
+- `scripts/pilot/collect_artifacts.py`, executado ao fim da execução e antes do reset,
+  gera os arquivos consolidados (`states.jsonl`, `decisions.jsonl`,
+  `microservices_logs.jsonl`, `task_events.jsonl`) e mantém os arquivos por processo.
+
 | Arquivo | Formato | Conteúdo | Pergunta que responde |
 |---|---|---|---|
 | `execution_metadata.json` | JSON | Config efetiva, versões, seeds, hardware, readiness, `run_status` | "Sob qual configuração isso rodou?" |

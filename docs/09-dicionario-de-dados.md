@@ -65,9 +65,13 @@ Tarefa de processamento; carrega todos os contadores usados no `SYSTEM_STATE`.
 | `created_at` | TEXT | não | — | — | Criação | `2026-08-27T12:00:00.050Z` |
 | `updated_at` | TEXT | não | — | — | Última atualização | `2026-08-27T12:00:04.342Z` |
 
-## `task_events` ⚠
+## `task_events` ⚠ (D-01, adotada)
 
-Espelho operacional de `task_events.jsonl` (o `StateBuilder` lê os últimos `K`).
+Trajetória da tarefa (M3-T04). O `StateBuilder` lê daqui a janela `recent_events`;
+`task_events.jsonl` é exportado desta tabela ao fim da execução. Eventos registrados:
+`TASK_CREATED`, mensagens publicadas pelo Orders, eventos recebidos do Inventory
+(`service = inventory`) e eventos internos (ex.: `TASK_COMPLETED`). `ORDER_CREATED`
+pertence ao pedido e não entra na trajetória (D-16).
 
 | Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
 |---|---|---|---|---|---|---|
@@ -85,45 +89,13 @@ Espelho operacional de `task_events.jsonl` (o `StateBuilder` lê os últimos `K`
 | `recorded_at` | TEXT | não | — | — | Instante de gravação do evento | `2026-08-27T12:00:02.014Z` |
 | `payload_json` | TEXT | sim | — | `NULL` | Cópia do `payload` / detalhes | `{"order_id":"ORD_000187", ...}` |
 
-## `states` ⚠
+## ~~`states`~~ — descartada (D-01)
 
-Espelho operacional de `states.jsonl`.
+Somente `states.jsonl` (ver [10 §10.3](10-rastreabilidade-e-metricas.md)).
 
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
-| `state_id` | TEXT | não | PK | — | Identificador do snapshot apresentado ao decisor | `STATE_0091` |
-| `execution_id` | TEXT | não | IX | — | Execução | `EXP_0042` |
-| `task_id` | TEXT | não | FK → `tasks`, IX | — | Tarefa | `TASK_000187` |
-| `current_event_seq` | INTEGER | não | — | — | `event_seq` no momento da construção | `4` |
-| `phase` | TEXT | não | — | — | Fase no snapshot | `RETRYING` |
-| `snapshot_json` | TEXT | não | — | — | `SYSTEM_STATE` **integral** (JSON) | `{"state_id":"STATE_0091", ...}` |
-| `created_at` | TEXT | não | — | — | Instante de construção do snapshot | `2026-08-27T12:00:02.142Z` |
+## ~~`decisions`~~ — descartada (D-01)
 
-## `decisions` ⚠
-
-Espelho operacional de `decisions.jsonl`.
-
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
-| `decision_id` | TEXT | não | PK | — | Identificador do ponto de decisão | `DEC_0091` |
-| `execution_id` | TEXT | não | IX | — | Execução | `EXP_0042` |
-| `task_id` | TEXT | não | FK → `tasks`, IX | — | Tarefa | `TASK_000187` |
-| `state_id` | TEXT | não | FK → `states`, IX | — | Estado que originou a decisão | `STATE_0091` |
-| `decision_engine` | TEXT | não | — | — | Motor que propôs | `RULES` \| `LLM` |
-| `proposed_action` | TEXT | não | — | — | Ação proposta | `RETRY` |
-| `proposed_target` | TEXT | sim | — | `NULL` | Target proposto | `inventory.primary` \| `NULL` |
-| `proposed_reason_code` | TEXT | não | — | — | `reason_code` proposto | `TRANSIENT_RETRY` |
-| `validation_valid` | INTEGER | não | — | — | Resultado da validação (`1`/`0`) | `1` |
-| `validation_error` | TEXT | sim | — | `NULL` | Código de erro da validação | `UNKNOWN_TARGET` |
-| `executed_action` | TEXT | não | — | — | Ação efetivamente executada | `RETRY` \| `ABORT` |
-| `executed_target` | TEXT | sim | — | `NULL` | Target executado | `inventory.primary` \| `NULL` |
-| `executed_reason_code` | TEXT | não | — | — | `reason_code` executado | `TRANSIENT_RETRY` \| `INVALID_DECISION` |
-| `decision_time_ms` | REAL | não | — | — | Tempo entre `SYSTEM_STATE` pronto e ação válida disponível | `684.0` (LLM) / `1.7` (rules) |
-| `llm_inference_ms` | REAL | sim | — | `NULL` | Parcela de inferência (só `LLM`) | `642.0` \| `NULL` |
-| `input_tokens` | INTEGER | sim | — | `NULL` | Tokens de entrada (quando confiável) | `428` |
-| `output_tokens` | INTEGER | sim | — | `NULL` | Tokens de saída | `21` |
-| `total_tokens` | INTEGER | sim | — | `NULL` | Soma | `449` |
-| `created_at` | TEXT | não | — | — | Instante da decisão | `2026-08-27T12:00:02.196Z` |
+Somente `decisions.jsonl` (ver [10 §10.3](10-rastreabilidade-e-metricas.md)).
 
 ## `processed_events`
 

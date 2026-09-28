@@ -1,5 +1,6 @@
 """Consumidores Celery do orders-service."""
 
+from celery import Task
 from celery.exceptions import Reject
 from celery.utils.log import get_task_logger
 
@@ -18,8 +19,9 @@ ACCEPTED_EVENTS = {
 }
 
 
-@app.task(name=ORDERS_HANDLE_EVENT_TASK)
-def handle_event(raw_envelope: object) -> None:
+@app.task(name=ORDERS_HANDLE_EVENT_TASK, bind=True)
+def handle_event(self: Task, raw_envelope: object) -> None:
+    redelivered = bool((self.request.delivery_info or {}).get("redelivered", False))
     try:
         envelope, _ = parse_message(raw_envelope, ACCEPTED_EVENTS)
     except ContractViolation as violation:
@@ -29,7 +31,7 @@ def handle_event(raw_envelope: object) -> None:
 
     connection = connect(settings.database_path)
     try:
-        outcome = handle_inventory_event(connection, envelope)
+        outcome = handle_inventory_event(connection, envelope, redelivered=redelivered)
     finally:
         connection.close()
     logger.info(

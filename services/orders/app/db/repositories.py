@@ -5,8 +5,9 @@ não abrem transação devem ser chamadas DENTRO de uma transação do chamador,
 compor passos que precisam ser atômicos (ex.: numerar e aplicar um evento).
 
 Numeração da trajetória (`event_seq`, D-16): o Orders numera todos os eventos da
-tarefa, de forma monotônica. `TASK_CREATED` = 1; cada mensagem publicada e cada
-evento novo recebido consomem o próximo número.
+tarefa, de forma monotônica. `TASK_CREATED` = 1; cada mensagem publicada, cada
+evento novo recebido e cada evento interno registrado consomem o próximo número.
+O registro de cada evento fica em `services/orders/app/db/trajectory.py`.
 """
 
 import sqlite3
@@ -20,7 +21,9 @@ from services.orders.app.db.models import (
     TaskStatus,
     order_status_for,
 )
+from services.orders.app.db.trajectory import EventSource, record_event
 from shared.envelope import MessageEnvelope
+from shared.events import EventType
 from shared.ids import IdPrefix, sequential_id
 
 TASK_CREATED_EVENT_SEQ = 1
@@ -54,11 +57,12 @@ class DispatchedTask:
 def create_order_with_task(
     connection: sqlite3.Connection, *, execution_id: str, items_json: str, now: str
 ) -> CreatedOrder:
-    """Persiste pedido e tarefa na mesma transação (RF-003, RF-004).
+    """Persiste pedido, tarefa e `TASK_CREATED` na mesma transação (RF-003, RF-004).
 
     Pedido e tarefa compartilham o número sequencial (`ORD_000001` ↔ `TASK_000001`),
     pois a relação é 1:1 no recorte atual.
     """
+
     with transaction(connection):
         number = _next_order_number(connection)
         order_id = sequential_id(IdPrefix.ORDER, number)
@@ -72,6 +76,16 @@ def create_order_with_task(
             "INSERT INTO tasks (task_id, order_id, execution_id, status, current_event_seq,"
             " created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (task_id, order_id, execution_id, TaskStatus.PENDING, TASK_CREATED_EVENT_SEQ, now, now),
+        )
+        record_event(
+            connection,
+            execution_id=execution_id,
+            task_id=task_id,
+            event_seq=TASK_CREATED_EVENT_SEQ,
+            event_type=EventType.TASK_CREATED,
+            attempt_number=1,
+            service=EventSource.ORDERS,
+            now=now,
         )
     return CreatedOrder(order_id=order_id, task_id=task_id, status=OrderStatus.PENDING)
 
@@ -90,26 +104,26 @@ def get_order(connection: sqlite3.Connection, order_id: str) -> OrderView | None
 def mark_task_dispatched(
     connection: sqlite3.Connection, *, task_id: str, target: str, now: str
 ) -> DispatchedTask:
-    """PENDING → DISPATCHED, avançando o `event_seq` da tarefa.
+    """PENDING → DISPATCHED, reservando o `event_seq` da mensagem a publicar.
 
     Gravado ANTES da publicação: assim o evento de retorno nunca encontra a tarefa
-    num estado anterior ao despacho.
+    num estado anterior ao despacho. Deve ser chamada dentro de uma transação do
+    chamador.
     """
-    with transaction(connection):
-        updated = connection.execute(
-            "UPDATE tasks SET status = ?, current_target = ?,"
-            " current_event_seq = current_event_seq + 1, updated_at = ?"
-            " WHERE task_id = ? AND status = ?",
-            (TaskStatus.DISPATCHED, target, now, task_id, TaskStatus.PENDING),
-        )
-        if updated.rowcount != 1:
-            raise ValueError(f"task {task_id} is not PENDING")
-        row = connection.execute(
-            "SELECT t.task_id, t.order_id, t.execution_id, t.current_target,"
-            " t.current_event_seq, t.attempt_number, o.items_json"
-            " FROM tasks t JOIN orders o ON o.order_id = t.order_id WHERE t.task_id = ?",
-            (task_id,),
-        ).fetchone()
+    updated = connection.execute(
+        "UPDATE tasks SET status = ?, current_target = ?,"
+        " current_event_seq = current_event_seq + 1, updated_at = ?"
+        " WHERE task_id = ? AND status = ?",
+        (TaskStatus.DISPATCHED, target, now, task_id, TaskStatus.PENDING),
+    )
+    if updated.rowcount != 1:
+        raise ValueError(f"task {task_id} is not PENDING")
+    row = connection.execute(
+        "SELECT t.task_id, t.order_id, t.execution_id, t.current_target,"
+        " t.current_event_seq, t.attempt_number, o.items_json"
+        " FROM tasks t JOIN orders o ON o.order_id = t.order_id WHERE t.task_id = ?",
+        (task_id,),
+    ).fetchone()
     return DispatchedTask(
         task_id=row["task_id"],
         order_id=row["order_id"],
@@ -119,24 +133,6 @@ def mark_task_dispatched(
         attempt_number=row["attempt_number"],
         items_json=row["items_json"],
     )
-
-
-def advance_event_seq(connection: sqlite3.Connection, *, task_id: str, now: str) -> int | None:
-    """Reserva o próximo `event_seq` da tarefa. None se a tarefa não existe.
-
-    Deve ser chamada dentro de uma transação do chamador.
-    """
-    updated = connection.execute(
-        "UPDATE tasks SET current_event_seq = current_event_seq + 1, updated_at = ?"
-        " WHERE task_id = ?",
-        (now, task_id),
-    )
-    if updated.rowcount != 1:
-        return None
-    (event_seq,) = connection.execute(
-        "SELECT current_event_seq FROM tasks WHERE task_id = ?", (task_id,)
-    ).fetchone()
-    return event_seq
 
 
 def is_event_processed(connection: sqlite3.Connection, message_id: str) -> bool:

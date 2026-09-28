@@ -23,8 +23,10 @@ INVENTORY_DB = ("inventory-worker", "/data/inventory.db")
 
 _SQLITE_QUERY_SCRIPT = """
 import json, sqlite3, sys
-rows = sqlite3.connect(sys.argv[1]).execute(sys.argv[2], sys.argv[3:]).fetchall()
-print(json.dumps(rows))
+connection = sqlite3.connect(sys.argv[1])
+cursor = connection.execute(sys.argv[2], sys.argv[3:])
+columns = [column[0] for column in cursor.description]
+print(json.dumps({"columns": columns, "rows": cursor.fetchall()}))
 """
 
 
@@ -45,6 +47,16 @@ def query_sqlite(database: tuple[str, str], sql: str, *params: str) -> list[list
 
     Funciona mesmo com o container do serviço parado, pois usa o mesmo volume.
     """
+    return _run_query(database, sql, *params)["rows"]
+
+
+def query_sqlite_records(database: tuple[str, str], sql: str, *params: str) -> list[dict]:
+    """Como `query_sqlite`, mas cada linha vem como dicionário coluna → valor."""
+    result = _run_query(database, sql, *params)
+    return [dict(zip(result["columns"], row)) for row in result["rows"]]
+
+
+def _run_query(database: tuple[str, str], sql: str, *params: str) -> dict:
     service, path = database
     output = compose(
         "run", "--rm", "--no-deps", "-T", service,

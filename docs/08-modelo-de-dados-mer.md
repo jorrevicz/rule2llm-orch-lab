@@ -32,9 +32,6 @@
 erDiagram
     ORDERS ||--|| TASKS : "gera (1:1)"
     TASKS ||--o{ TASK_EVENTS : "produz"
-    TASKS ||--o{ STATES : "snapshot de"
-    TASKS ||--o{ DECISIONS : "pontos de decisão de"
-    STATES ||--o| DECISIONS : "apresentado a"
     TASKS ||--o{ PROCESSED_EVENTS : "deduplica"
 
     ORDERS {
@@ -85,37 +82,7 @@ erDiagram
         text payload_json "nullable"
     }
 
-    STATES {
-        text state_id PK
-        text execution_id
-        text task_id FK
-        integer current_event_seq
-        text phase
-        text snapshot_json "SYSTEM_STATE integral"
-        text created_at
-    }
 
-    DECISIONS {
-        text decision_id PK
-        text execution_id
-        text task_id FK
-        text state_id FK
-        text decision_engine "RULES | LLM"
-        text proposed_action
-        text proposed_target "nullable"
-        text proposed_reason_code
-        integer validation_valid "0 | 1"
-        text validation_error "nullable"
-        text executed_action
-        text executed_target "nullable"
-        text executed_reason_code
-        real decision_time_ms
-        real llm_inference_ms "nullable"
-        integer input_tokens "nullable"
-        integer output_tokens "nullable"
-        integer total_tokens "nullable"
-        text created_at
-    }
 
     PROCESSED_EVENTS {
         text message_id PK
@@ -135,9 +102,9 @@ erDiagram
 | `processed_events` | sim (nome citado em §23.1) | Idempotência de transporte no consumo de `orders.events` |
 | ~~`order_items`~~ | descartada (D-02) | Itens guardados como JSON em `orders.items_json` — ver §8.5 |
 | ~~`executions`~~ | descartada (D-05) | Metadados só em `execution_metadata.json` — ver §8.5 |
-| `task_events` | ⚠ divergência | Espelho operacional de `task_events.jsonl` (o `StateBuilder` consulta `recent_events`) |
-| `states` | ⚠ divergência | Espelho operacional de `states.jsonl` |
-| `decisions` | ⚠ divergência | Espelho operacional de `decisions.jsonl` |
+| `task_events` | ⚠ divergência (D-01, adotada) | Trajetória da tarefa: fonte do `recent_events` do `StateBuilder` e de `task_events.jsonl`, exportado ao fim da execução |
+| ~~`states`~~ | descartada (D-01) | Somente `states.jsonl` |
+| ~~`decisions`~~ | descartada (D-01) | Somente `decisions.jsonl` |
 | ~~`outbox`~~ | descartada (D-04) | Publicação direta após o commit — ver §8.5 |
 
 ### Cardinalidades
@@ -236,8 +203,12 @@ Nenhuma seta acima é uma FK — é correlação por identificador transportado 
 Antes do congelamento da configuração definitiva, decidir e registrar em
 `piloto-do-experimento.md`:
 
-1. Persistir `task_events` / `states` / `decisions` **também** em tabela, ou manter só JSONL
-   e o `StateBuilder` lê os últimos `K` eventos de outra forma.
+1. ~~Persistir `task_events` / `states` / `decisions` **também** em tabela, ou manter só JSONL
+   e o `StateBuilder` lê os últimos `K` eventos de outra forma.~~
+   **Decidido (D-01, 2026-09-28):** `task_events` em tabela no `orders.db`, gravada na mesma
+   transação que numera cada evento (D-16); é a fonte da janela `recent_events` e do
+   `task_events.jsonl`, exportado ao fim da execução (sem gravação dupla). `states` e
+   `decisions` ficam **somente** em JSONL (`states.jsonl`, `decisions.jsonl`).
 2. ~~Manter `order_items` / `reservation_items` normalizados, ou guardar `payload` como JSON.~~
    **Decidido (D-02, 2026-09-27): JSON.** Os itens são validados na entrada e não mudam depois;
    ficam em `orders.items_json` e `reservations.items_json`, serializados de forma canônica.

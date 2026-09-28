@@ -1,7 +1,8 @@
 """Esquema de `orders.db` e enumerações de estado (docs/05, docs/08, docs/09).
 
 Tabelas mínimas do piloto §23.1 mais o que o fluxo já exige: `execution_id` para
-correlação e `items_json` (D-02). Novas colunas entram quando uma task as exigir.
+correlação, `items_json` (D-02) e a trajetória `task_events` (D-01). Novas colunas
+entram quando uma task as exigir.
 """
 
 from enum import StrEnum
@@ -65,6 +66,27 @@ CREATE TABLE IF NOT EXISTS processed_events (
     processed_at  TEXT NOT NULL
 );
 
+-- Trajetória da tarefa (D-01): o StateBuilder lê a janela recent_events daqui.
+-- (task_id, event_seq) NÃO é único: uma entrega repetida gera nova linha com o
+-- mesmo event_seq e redelivered = 1.
+CREATE TABLE IF NOT EXISTS task_events (
+    event_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    execution_id    TEXT NOT NULL,
+    task_id         TEXT NOT NULL REFERENCES tasks (task_id),
+    message_id      TEXT,
+    event_seq       INTEGER NOT NULL,
+    event_type      TEXT NOT NULL,
+    attempt_number  INTEGER NOT NULL,
+    service         TEXT NOT NULL,
+    target          TEXT,
+    redelivered     INTEGER NOT NULL DEFAULT 0,
+    published_at    TEXT,
+    recorded_at     TEXT NOT NULL,
+    payload_json    TEXT
+);
+
 CREATE INDEX IF NOT EXISTS ix_tasks_status ON tasks (status);
+CREATE INDEX IF NOT EXISTS ix_task_events_task ON task_events (task_id, event_seq);
+CREATE INDEX IF NOT EXISTS ix_task_events_message ON task_events (message_id);
 CREATE INDEX IF NOT EXISTS ix_processed_events_task ON processed_events (task_id);
 """

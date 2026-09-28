@@ -111,13 +111,13 @@ def run(base_url: str = DEFAULT_BASE_URL, timeout_s: float = 30.0) -> DuplicateR
         publisher.publish(retry, Route.INVENTORY_PRIMARY)
         wait_until(lambda: _orders_state(task_id)[2] == 2, timeout_s)
         _expect(result, "after_new_attempt.inventory(reservations, processed_messages)", _inventory_counts(task_id), (1, 2))
-        _expect(result, "after_new_attempt.orders(status, event_seq, processed_events)", _orders_state(task_id), ("COMPLETED", 4, 2))
+        _expect(result, "after_new_attempt.orders(status, event_seq, processed_events)", _orders_state(task_id), ("COMPLETED", 5, 2))
 
         for _ in range(REDELIVERIES):
             publisher.publish(retry, Route.INVENTORY_PRIMARY)
         depths = wait_for_drained_queues(timeout_s)
         _expect(result, "after_redelivery.inventory(reservations, processed_messages)", _inventory_counts(task_id), (1, 2))
-        _expect(result, "after_redelivery.orders(status, event_seq, processed_events)", _orders_state(task_id), ("COMPLETED", 4, 2))
+        _expect(result, "after_redelivery.orders(status, event_seq, processed_events)", _orders_state(task_id), ("COMPLETED", 5, 2))
         _expect(result, "queues_and_dlq_empty", {name: depths.get(name, 0) for name in QUEUES}, dict.fromkeys(QUEUES, 0))
     except InspectionError as error:
         result.errors.append(f"inspection failed: {error}")
