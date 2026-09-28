@@ -84,6 +84,20 @@ Mensagem fora do contrato (envelope inválido, `event_type` não aceito pelo con
 - A unidade relevante é a **tarefa**. Para cada `task_id`, `event_seq = 1, 2, 3, …`,
   monotonicamente crescente dentro da trajetória.
 
+**Quem numera (D-16):** o `orders-service` é o único dono da numeração da trajetória.
+
+- `TASK_CREATED` = 1 (criação da tarefa; `ORDER_CREATED` pertence ao pedido e não consome número).
+- Cada mensagem publicada pelo Orders recebe o próximo número (ex.: primeira
+  `STOCK_RESERVATION_REQUESTED` = 2).
+- Cada evento **novo** recebido do Inventory recebe o próximo número quando o Orders o
+  registra; uma redelivery deduplicada não consome número.
+- Todo evento interno registrado na trajetória (ex.: `INVENTORY_TIMEOUT`, `*_SCHEDULED`)
+  também consome o próximo número; quais eventos internos são registrados é definido
+  quando cada um é implementado (M3–M4).
+- Nos eventos publicados pelo Inventory, o campo `event_seq` do envelope **repete** o da
+  solicitação respondida: é correlação, não posição na trajetória. A posição é a atribuída
+  pelo Orders ao registrar o evento.
+
 ## 4.4 `event_seq` **não é** relógio de Lamport
 
 `event_seq` é apenas a sequência lógica local da aplicação por tarefa. Não implementa

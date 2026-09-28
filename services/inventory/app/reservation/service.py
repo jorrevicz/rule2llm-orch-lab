@@ -53,8 +53,9 @@ def _succeeded_event(request: MessageEnvelope, order_id: str, route: str) -> Env
         execution_id=request.execution_id,
         task_id=request.task_id,
         event_type=EventType.STOCK_RESERVATION_SUCCEEDED,
-        # PROVISÓRIO: quem atribui o event_seq dos eventos do Inventory é definido em M2-T02.
-        event_seq=request.event_seq + 1,
+        # D-16: o Inventory não numera a trajetória; repete o event_seq da solicitação
+        # respondida (correlação). O Orders atribui a posição ao registrar o evento.
+        event_seq=request.event_seq,
         attempt_number=request.attempt_number,
         decision_id=request.decision_id,
         target=request.target,

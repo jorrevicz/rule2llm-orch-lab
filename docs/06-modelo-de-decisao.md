@@ -31,7 +31,7 @@ objeto**. Schema: `contracts/system_state.schema.json`.
   "task_id": "TASK_0187",
   "state_id": "STATE_0091",
   "timestamp": "2026-08-27T12:00:02.142Z",
-  "current_event_seq": 4,
+  "current_event_seq": 6,
 
   "task": {
     "phase": "RETRYING",
@@ -62,8 +62,8 @@ objeto**. Schema: `contracts/system_state.schema.json`.
   },
 
   "recent_events": [
-    { "event_type": "STOCK_RESERVATION_REQUESTED", "attempt_number": 2, "event_seq": 3 },
-    { "event_type": "INVENTORY_TIMEOUT",           "attempt_number": 2, "event_seq": 4 }
+    { "event_type": "STOCK_RESERVATION_REQUESTED", "attempt_number": 2, "event_seq": 5 },
+    { "event_type": "INVENTORY_TIMEOUT",           "attempt_number": 2, "event_seq": 6 }
   ]
 }
 ```

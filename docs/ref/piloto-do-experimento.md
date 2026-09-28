@@ -562,6 +562,21 @@ O valor deve crescer monotonicamente dentro da trajetória.
 
 É apenas sequência lógica local da aplicação.
 
+> **Decisão D-16 (2026-09-28):** o `orders-service` é o único dono da numeração da trajetória.
+> 
+> - `TASK_CREATED` = 1 (criação da tarefa; `ORDER_CREATED` pertence ao pedido e não consome número).
+> - Cada mensagem publicada pelo Orders recebe o próximo número (ex.: primeira
+>   `STOCK_RESERVATION_REQUESTED` = 2).
+> - Cada evento **novo** recebido do Inventory recebe o próximo número quando o Orders o
+>   registra; uma redelivery deduplicada não consome número.
+> - Todo evento interno registrado na trajetória (ex.: `INVENTORY_TIMEOUT`, `*_SCHEDULED`)
+>   também consome o próximo número; quais eventos internos são registrados é definido
+>   quando cada um é implementado (M3–M4).
+> - Nos eventos publicados pelo Inventory, o campo `event_seq` do envelope **repete** o da
+>   solicitação respondida: é correlação, não posição na trajetória. A posição é a atribuída
+>   pelo Orders ao registrar o evento.
+> Registro: `docs/13-roadmap.md` §13.4.
+
 ## 7.4 Redelivery versus nova tentativa
 
 Esta distinção é obrigatória.
@@ -749,11 +764,11 @@ Exemplo inicial:
   ],
   "recent_events": [
     {
-      "event_seq": 3,
+      "event_seq": 5,
       "event_type": "STOCK_RESERVATION_REQUESTED"
     },
     {
-      "event_seq": 4,
+      "event_seq": 6,
       "event_type": "INVENTORY_TIMEOUT"
     }
   ]

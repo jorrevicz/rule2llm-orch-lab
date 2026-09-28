@@ -46,28 +46,46 @@ def _statuses(connection: sqlite3.Connection) -> tuple[str, str, str | None]:
     return row["task"], row["ord"], row["result"]
 
 
-def test_success_event_completes_task_and_order(connection):
-    changed = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
+def _event_seq(connection: sqlite3.Connection) -> int:
+    return connection.execute("SELECT current_event_seq FROM tasks").fetchone()[0]
 
-    assert changed is True
+
+def test_success_event_completes_task_and_order(connection):
+    outcome = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
+
+    assert outcome.changed_state is True
     assert _statuses(connection) == ("COMPLETED", "COMPLETED", "ok")
 
 
-def test_repeated_success_event_does_not_change_terminal_task(connection):
+def test_trajectory_is_numbered_by_orders(connection):
+    # TASK_CREATED = 1, STOCK_RESERVATION_REQUESTED = 2 (fixture), evento recebido = 3.
+    assert _event_seq(connection) == 2
+
+    outcome = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
+
+    assert outcome.recorded is True
+    assert outcome.event_seq == 3
+    assert _event_seq(connection) == 3
+
+
+def test_late_event_for_terminal_task_is_recorded_without_state_change(connection):
     handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
 
-    changed = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
+    outcome = handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED))
 
-    assert changed is False
+    assert outcome.recorded is True
+    assert outcome.event_seq == 4
+    assert outcome.changed_state is False
     assert _statuses(connection) == ("COMPLETED", "COMPLETED", "ok")
 
 
-def test_success_event_for_unknown_task_changes_nothing(connection):
-    changed = handle_inventory_event(
+def test_event_for_unknown_task_is_not_recorded(connection):
+    outcome = handle_inventory_event(
         connection, _event(EventType.STOCK_RESERVATION_SUCCEEDED, task_id="TASK_999999")
     )
 
-    assert changed is False
+    assert outcome.recorded is False
+    assert _event_seq(connection) == 2
     assert _statuses(connection) == ("DISPATCHED", "PENDING", None)
 
 
@@ -75,4 +93,5 @@ def test_non_success_events_are_not_handled_before_the_decision_engine(connectio
     with pytest.raises(UnsupportedEventError):
         handle_inventory_event(connection, _event(EventType.STOCK_RESERVATION_FAILED))
 
+    assert _event_seq(connection) == 2
     assert _statuses(connection) == ("DISPATCHED", "PENDING", None)

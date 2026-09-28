@@ -1,4 +1,13 @@
-"""Acesso a dados de pedidos e tarefas em `orders.db`."""
+"""Acesso a dados de pedidos e tarefas em `orders.db`.
+
+Funções com `with transaction(...)` próprio são casos de uso de um passo. As que
+não abrem transação devem ser chamadas DENTRO de uma transação do chamador, para
+compor passos que precisam ser atômicos (ex.: numerar e aplicar um evento).
+
+Numeração da trajetória (`event_seq`, D-16): o Orders numera todos os eventos da
+tarefa, de forma monotônica. `TASK_CREATED` = 1; cada mensagem publicada e cada
+evento novo recebido consomem o próximo número.
+"""
 
 import sqlite3
 from dataclasses import dataclass
@@ -12,6 +21,8 @@ from services.orders.app.db.models import (
     order_status_for,
 )
 from shared.ids import IdPrefix, sequential_id
+
+TASK_CREATED_EVENT_SEQ = 1
 
 
 @dataclass(frozen=True)
@@ -57,9 +68,9 @@ def create_order_with_task(
             (order_id, execution_id, OrderStatus.PENDING, items_json, now, now),
         )
         connection.execute(
-            "INSERT INTO tasks (task_id, order_id, execution_id, status, created_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (task_id, order_id, execution_id, TaskStatus.PENDING, now, now),
+            "INSERT INTO tasks (task_id, order_id, execution_id, status, current_event_seq,"
+            " created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (task_id, order_id, execution_id, TaskStatus.PENDING, TASK_CREATED_EVENT_SEQ, now, now),
         )
     return CreatedOrder(order_id=order_id, task_id=task_id, status=OrderStatus.PENDING)
 
@@ -109,26 +120,43 @@ def mark_task_dispatched(
     )
 
 
+def advance_event_seq(connection: sqlite3.Connection, *, task_id: str, now: str) -> int | None:
+    """Reserva o próximo `event_seq` da tarefa. None se a tarefa não existe.
+
+    Deve ser chamada dentro de uma transação do chamador.
+    """
+    updated = connection.execute(
+        "UPDATE tasks SET current_event_seq = current_event_seq + 1, updated_at = ?"
+        " WHERE task_id = ?",
+        (now, task_id),
+    )
+    if updated.rowcount != 1:
+        return None
+    (event_seq,) = connection.execute(
+        "SELECT current_event_seq FROM tasks WHERE task_id = ?", (task_id,)
+    ).fetchone()
+    return event_seq
+
+
 def complete_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
     """Conclui tarefa e pedido (docs/05 §5.4). Retorna False se não houve transição.
 
-    Uma tarefa já terminal não é alterada. A deduplicação por `message_id` entra
-    em M2-T05.
+    Tarefa já terminal não é alterada. Deve ser chamada dentro de uma transação do
+    chamador.
     """
     terminal = tuple(TERMINAL_TASK_STATUSES)
-    with transaction(connection):
-        updated = connection.execute(
-            "UPDATE tasks SET status = ?, last_result = ?, updated_at = ?"
-            f" WHERE task_id = ? AND status NOT IN ({', '.join('?' * len(terminal))})",
-            (TaskStatus.COMPLETED, TaskResult.OK, now, task_id, *terminal),
-        )
-        if updated.rowcount != 1:
-            return False
-        connection.execute(
-            "UPDATE orders SET status = ?, updated_at = ?"
-            " WHERE order_id = (SELECT order_id FROM tasks WHERE task_id = ?)",
-            (order_status_for(TaskStatus.COMPLETED), now, task_id),
-        )
+    updated = connection.execute(
+        "UPDATE tasks SET status = ?, last_result = ?, updated_at = ?"
+        f" WHERE task_id = ? AND status NOT IN ({', '.join('?' * len(terminal))})",
+        (TaskStatus.COMPLETED, TaskResult.OK, now, task_id, *terminal),
+    )
+    if updated.rowcount != 1:
+        return False
+    connection.execute(
+        "UPDATE orders SET status = ?, updated_at = ?"
+        " WHERE order_id = (SELECT order_id FROM tasks WHERE task_id = ?)",
+        (order_status_for(TaskStatus.COMPLETED), now, task_id),
+    )
     return True
 
 

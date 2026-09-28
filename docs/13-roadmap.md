@@ -141,7 +141,7 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
 | M2-T01 | Schema do envelope | `feat(contracts)` | Modelos em `shared/envelope.py` (envelope + `payload` por evento); `contracts/message_envelope.schema.json` e `message_payloads.schema.json` gerados e checados por teste de contrato; consumidores rejeitam mensagem fora do contrato para `tasks.dlq`. **(D)** D-13 | [04 §4.2](04-contrato-mensageria.md) | ✅ |
-| M2-T02 | `event_seq`, `attempt_number`, `message_id` | `feat(orders)` | `event_seq` monotônico por tarefa (incremento transacional em `tasks`); definir quais eventos consomem sequência (`ORDER_CREATED`/`TASK_CREATED`) e quem atribui o `event_seq` dos eventos publicados pelo Inventory (hoje **provisório**: `event_seq` da solicitação + 1); `message_id` novo por mensagem | RF-012, RNF-016, RNF-017 | ⬜ |
+| M2-T02 | `event_seq`, `attempt_number`, `message_id` | `feat(orders)` | Orders numera a trajetória (D-16): `TASK_CREATED` = 1, cada mensagem publicada e cada evento novo recebido consomem o próximo número, na mesma transação que o aplica; Inventory repete o `event_seq` da solicitação (correlação); `message_id` novo por mensagem | RF-012, RNF-016, RNF-017 | ✅ |
 | M2-T03 | Idempotência de transporte | `feat(inventory)` | `processed_messages` com resultado; redelivery reemite o resultado sem reprocessar; `redelivered` lido de `delivery_info` | RF-008, [04 §4.7.1](04-contrato-mensageria.md) | ⬜ |
 | M2-T04 | Idempotência de negócio | `feat(inventory)` | `reservations.task_id UNIQUE`; nova tentativa lógica não cria 2ª reserva | RF-009, [04 §4.7.2](04-contrato-mensageria.md) | ⬜ |
 | M2-T05 | Dedupe no Orders | `feat(orders)` | `processed_events` no consumo de `orders.events` | [04 §4.8](04-contrato-mensageria.md) | ⬜ |
@@ -341,6 +341,7 @@ doc 10 §10.6).
 | D-13 | Envelope inválido no consumo | **Decidido (2026-09-28): rejeição sem requeue → `tcc.dlx` → `tasks.dlq`.** Envelope, `event_type` ou `payload` fora do contrato é problema de contrato, não de negócio; não vira `invalid_data`. Verificado ao vivo | M2-T01 | ✅ |
 | D-14 | Valor inicial de `attempt_number` | **Decidido (2026-09-27): `1`.** A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (`max_attempts = 3` → tentativas 1, 2 e 3). Mantém coerência com o envelope da 1ª publicação (`attempt_number: 1`) e com as regras `attempt_number < max_attempts` do Rules e do Validator | M1-T03 | ✅ |
 | D-15 🔬 | Semântica de `fallback_max_attempts` | Hoje definido mas não usado por Rules nem pelo Validator | M4-T08 | ⬜ |
+| D-16 🔬 | Quem numera a trajetória (`event_seq`) | **Decidido (2026-09-28): o Orders.** `TASK_CREATED` = 1; cada mensagem publicada, evento novo recebido e evento interno registrado consome o próximo número; no Inventory, `event_seq` repete o da solicitação respondida (correlação). Exemplos dos docs 06, 07 e piloto §10.1 ajustados | M2-T02 | ✅ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
 `piloto-do-experimento.md`.

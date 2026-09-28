@@ -122,7 +122,8 @@ def test_created_order_is_dispatched_to_primary_route(client, settings, publishe
     assert route == "inventory.primary"
     assert task["status"] == "DISPATCHED"
     assert task["current_target"] == "inventory.primary"
-    assert task["current_event_seq"] == envelope["event_seq"] == 1
+    # D-16: TASK_CREATED = 1, STOCK_RESERVATION_REQUESTED = 2.
+    assert task["current_event_seq"] == envelope["event_seq"] == 2
 
 
 def test_dispatch_envelope_carries_the_order(client, publisher):

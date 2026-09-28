@@ -65,6 +65,7 @@ def test_success_event_is_published_after_persisting(connection):
     assert event["execution_id"] == request.execution_id
     assert event["attempt_number"] == request.attempt_number
     assert event["message_id"] != request.message_id
+    assert event["event_seq"] == request.event_seq  # D-16: correlação com a solicitação
     assert event["payload"] == {"order_id": "ORD_000001", "route": "primary"}
 
 

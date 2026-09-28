@@ -443,7 +443,7 @@ sequenceDiagram
     Note over TC: dispara após inventory_timeout_ms
     TC->>DB: task avançou nesse attempt_number?
     DB-->>TC: não
-    TC->>DB: registra INVENTORY_TIMEOUT (event_seq=4)
+    TC->>DB: registra INVENTORY_TIMEOUT (event_seq=3)
     TC->>SB: build(task_id)
     SB-->>DE: SYSTEM_STATE {last_result: timeout, attempt_number: 1, max_attempts: 3}
     DE-->>VX: Decision {RETRY, inventory.primary, TRANSIENT_RETRY}
