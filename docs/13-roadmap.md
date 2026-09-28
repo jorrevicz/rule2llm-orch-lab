@@ -119,7 +119,7 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 | M1-T04 | `inventory-service`: worker e `inventory.db` | `feat(inventory)` | Worker em `inventory.primary`; `reservations`, `processed_messages`; reserva simulada da rota primária; publica `STOCK_RESERVATION_SUCCEEDED` em `orders.events` após o commit; Dockerfile e serviço `inventory-worker` (sem mingle/gossip/heartbeat, incompatíveis com o RabbitMQ 4) | RF-006, RF-007, RF-010 | ✅ |
 | M1-T05 | Despacho inicial **provisório** | `feat(orders)` | `CONTINUE` fixo para `inventory.primary`, sem motor de decisão (`orchestration/provisional_dispatch.py`) — **provisório**, substituído em M4-T04. Tarefa gravada como `DISPATCHED` antes da publicação | RF-005 | ✅ |
 | M1-T06 | Consumo de `orders.events` | `feat(orders)` | Worker Celery do Orders (serviço `orders-worker`); evento terminal de sucesso → Task e Order `COMPLETED`, sem consultar o DecisionEngine; tarefa terminal não é alterada | RF-011, [05](05-maquina-de-estados.md) | ✅ |
-| M1-T07 | Smoke test do fluxo normal | `test` | `scripts/pilot/smoke_test.py`; teste de integração via Docker Compose | CLAUDE §35 | ⬜ |
+| M1-T07 | Smoke test do fluxo normal | `test` | `scripts/pilot/smoke_test.py` (pedidos `COMPLETED`, 1 reserva por tarefa, filas e DLQ vazias); `tests/integration` (marcador `integration`); README com o passo a passo | CLAUDE §35 | ✅ |
 
 **Critério de conclusão** (piloto §28 Fase 1)
 

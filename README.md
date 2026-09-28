@@ -18,10 +18,12 @@ executor, instrumentação e cenários.
 O projeto está no **piloto técnico**, e o progresso é acompanhado em
 [`docs/13-roadmap.md`](docs/13-roadmap.md).
 
-- Implementado: estrutura do repositório, configuração experimental
-  (`config/experiment_config.yml`) e biblioteca comum (`shared/`).
-- Planejado: os serviços (`orders-service`, `inventory-service`), a infraestrutura Docker
-  Compose e os motores de decisão, a partir do marco M1.
+- Implementado e testado: fluxo normal ponta a ponta (`POST /orders` → RabbitMQ →
+  `inventory-service` → evento de retorno → pedido `COMPLETED`), com RabbitMQ, os dois
+  serviços e um SQLite por serviço. O despacho inicial ainda é um `CONTINUE` fixo
+  (**provisório**), sem motor de decisão.
+- Planejado: idempotência e contrato formal de mensagens (M2), `StateBuilder` e
+  rastreabilidade (M3), Rules/Validator/Executor (M4) e LLM (M5).
 
 Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
 
@@ -56,7 +58,28 @@ uv pip install --python .venv/bin/python -r requirements-dev.txt
 .venv/bin/python -m pytest
 ```
 
-Para subir o ambiente com `docker compose up`, é preciso aguardar o marco M1.
+## Ambiente experimental (Docker Compose)
+
+```bash
+docker compose up -d --build --wait     # rabbitmq, orders-api, orders-worker, inventory-worker
+curl -X POST localhost:8000/orders -H 'content-type: application/json' \
+     -d '{"items":[{"sku":"SKU-001","quantity":2}]}'
+curl localhost:8000/orders/ORD_000001
+
+.venv/bin/python scripts/pilot/smoke_test.py --orders 3   # smoke test do fluxo normal
+.venv/bin/python -m pytest -m integration                 # testes de integração
+docker compose down -v                                     # derruba e apaga os bancos
+```
+
+| Serviço | Papel |
+|---|---|
+| `rabbitmq` | Broker; topologia declarada em `config/rabbitmq/definitions.json` (UI em `localhost:15672`, usuário `tcc`/`tcc`) |
+| `orders-api` | `orders-service` — API HTTP (`localhost:8000`) |
+| `orders-worker` | `orders-service` — consome `orders.events` |
+| `inventory-worker` | `inventory-service` — consome `inventory.primary` |
+
+`orders-api` e `orders-worker` são o mesmo microsserviço e compartilham `orders.db`;
+o `inventory-service` tem o seu próprio `inventory.db`.
 
 ## Documentação
 
