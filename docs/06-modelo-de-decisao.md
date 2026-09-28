@@ -112,7 +112,24 @@ objeto**. Schema: `contracts/system_state.schema.json`.
 
 **Decisão D-06 (2026-09-28) 🔬:** (1) `SYSTEM_STATE` no formato **aninhado** (`task`, `service`, `messaging`, `alternatives`, `recent_events`), como no Código 4 da metodologia e no doc 06; o campo de latência é `service.latency_ms`. (2) `phase` = estado da tarefa (os 9 `TaskStatus` do doc 05). A regra de fluxo normal vale para `PENDING` (primeiro despacho) e `WAITING` (reavaliação após `WAIT` sem falha pendente); `READY` e `RECOVERED`, do Código 4 da metodologia, não existem na máquina de estados e, com eles, a reavaliação após um `WAIT` por pressão de fila caía em `UNMAPPED_STATE` → `ABORT`. (3) `decision_engine` grafado `RULES` / `LLM` em configuração, banco e artefatos, como nos Códigos 7–9 e 12 da metodologia. O item (2) altera a política do `RulesDecisionEngine` e precisa ser refletido no Código 4 do TCC (roadmap §13.6).
 
-### 6.2.4 Controle de contexto
+### 6.2.4 Origem operacional de cada sinal (M3-T05) 🔬
+
+Definição implementada no `StateBuilder` (`services/orders/app/orchestration/state_builder.py`),
+a mesma para Rules e LLM:
+
+| Campo | Como é obtido |
+|---|---|
+| `task.*`, `service.last_result` | Tabela `tasks` do `orders.db`; `task.phase` = estado da tarefa (D-06) |
+| `task.elapsed_ms` | Instante do snapshot − criação da tarefa |
+| `service.latency_ms` | Da publicação da última `STOCK_RESERVATION_REQUESTED` até a sua resposta; enquanto não há resposta, até o instante do snapshot; `null` antes do primeiro despacho |
+| `service.status` | `unavailable` se a fila do target atual não tem consumidor; `degraded` se `last_result` é `timeout` ou `transient_error`; senão `available` (resolve I-08) |
+| `messaging.queue_size` | Mensagens prontas na fila do target atual (`inventory.primary` se ainda não há target), via `queue.declare` passivo (AMQP, sem o atraso das estatísticas da API de management) |
+| `messaging.redelivered` | A entrega mais recente registrada na trajetória foi repetida (mesmo `message_id`) ou marcada pelo broker como redelivery |
+| `alternatives.fallback_available` | `inventory.fallback` tem consumidor; com o `inventory-service` inteiro fora do ar, é `false` (§6.5) |
+| `alternatives.alternative_targets` | `["inventory.fallback"]` se o fallback está disponível e não foi usado; senão `[]` |
+| `recent_events` | Últimas K ocorrências distintas de `task_events`, em ordem crescente; repetições da mesma mensagem não ocupam a janela (continuam em `task_events.jsonl`) |
+
+### 6.2.5 Controle de contexto
 
 - O `SYSTEM_STATE` é composto **predominantemente por variáveis previamente definidas**, não
   por grandes volumes de log textual.

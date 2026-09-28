@@ -152,10 +152,18 @@ def event_seq_of_message(connection: sqlite3.Connection, message_id: str) -> int
 
 
 def recent_events(connection: sqlite3.Connection, task_id: str, limit: int) -> list[TrajectoryEvent]:
-    """Últimas `limit` ocorrências da trajetória, em ordem crescente (janela K)."""
+    """Últimas `limit` ocorrências distintas da trajetória, em ordem crescente (janela K).
+
+    Repetições da mesma mensagem (mesmo `message_id` já registrado) não ocupam a
+    janela; continuam registradas em `task_events`.
+    """
     rows = connection.execute(
-        "SELECT event_seq, event_type, attempt_number FROM task_events"
-        " WHERE task_id = ? ORDER BY event_id DESC LIMIT ?",
+        "SELECT e.event_seq, e.event_type, e.attempt_number FROM task_events e"
+        " WHERE e.task_id = ? AND NOT EXISTS ("
+        "   SELECT 1 FROM task_events f"
+        "   WHERE e.message_id IS NOT NULL AND f.message_id = e.message_id"
+        "   AND f.event_id < e.event_id)"
+        " ORDER BY e.event_id DESC LIMIT ?",
         (task_id, limit),
     ).fetchall()
     return [

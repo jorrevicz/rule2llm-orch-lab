@@ -1,10 +1,18 @@
+import json
 import sqlite3
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from services.orders.app.main import create_app
+from services.orders.app.observability.recorders import StateRecorder
+from services.orders.app.orchestration.broker_observer import QueueStats
+from services.orders.app.orchestration.coordination import Coordination
+from services.orders.app.orchestration.state_builder import StateBuilder
 from services.orders.app.settings import Settings
+from shared.artifacts import JsonlWriter
+from shared.config import load_experiment_config
 
 VALID_ORDER = {"items": [{"sku": "SKU-002", "quantity": 1}, {"sku": "SKU-001", "quantity": 2}]}
 
@@ -33,9 +41,24 @@ def publisher() -> RecordingPublisher:
     return RecordingPublisher()
 
 
+class StaticObserver:
+    def queue_stats(self, route) -> QueueStats:
+        return QueueStats(message_count=0, consumer_count=1)
+
+
 @pytest.fixture
-def client(settings, publisher) -> TestClient:
-    with TestClient(create_app(settings, publisher)) as test_client:
+def states_path(tmp_path):
+    return tmp_path / "states.orders-api.jsonl"
+
+
+@pytest.fixture
+def client(settings, publisher, states_path) -> TestClient:
+    coordination = Coordination(
+        publisher=publisher,
+        state_builder=StateBuilder(load_experiment_config(Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"), StaticObserver()),
+        state_recorder=StateRecorder(JsonlWriter(states_path)),
+    )
+    with TestClient(create_app(settings, coordination)) as test_client:
         yield test_client
 
 
@@ -167,3 +190,16 @@ def test_read_unknown_order_returns_404(client):
 
 def test_health(client):
     assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_initial_decision_point_records_the_system_state(client, states_path):
+    client.post("/orders", json=VALID_ORDER)
+
+    [line] = states_path.read_text(encoding="utf-8").splitlines()
+    record = json.loads(line)
+    assert record["task_id"] == "TASK_000001"
+    assert record["state_id"].startswith("STATE_")
+    assert record["system_state"]["task"]["phase"] == "PENDING"
+    assert record["recent_events"] == [
+        {"event_type": "TASK_CREATED", "attempt_number": 1, "event_seq": 1}
+    ]

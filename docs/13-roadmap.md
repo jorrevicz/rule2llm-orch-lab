@@ -175,7 +175,7 @@ rastreabilidade (piloto §28 Fase 3).
 | M3-T02 | Schema do `SYSTEM_STATE` | `feat(contracts)` | `shared/system_state.py` (modelo aninhado estrito) e `contracts/system_state.schema.json` gerado; `TaskStatus`/`TaskResult` movidos para `shared/task.py`; teste de contrato valida o exemplo do doc 06 e rejeita `READY`/`RECOVERED` e a forma plana antiga | [06 §6.2](06-modelo-de-decisao.md), RF-013 | ✅ |
 | M3-T03 | Execução e metadados | `feat(observability)` | `shared/artifacts.py`: diretório derivado do `execution_id` (`PILOT_` → `data/pilot/`, `EXP_` → `data/experiment/`) e escritor JSONL com um arquivo por processo (`<artefato>.<writer>.jsonl`); `scripts/pilot/new_execution.py` aloca `PILOT_nnnn` e grava `execution_metadata.json` (`PILOT`, `eligible_for_sample: false`, desconhecidos `null`); `./data` montado nos serviços. **(D)** D-05 | RF-035, RF-036, [10 §10.3](10-rastreabilidade-e-metricas.md) | ✅ |
 | M3-T04 | Eventos da tarefa | `feat(orders)` | Tabela `task_events` gravada na mesma transação que numera cada evento (`TASK_CREATED`, mensagens publicadas, eventos recebidos, `TASK_COMPLETED`; repetição com `event_seq` original e `redelivered = 1`; flag do broker registrado); `scripts/pilot/collect_artifacts.py` exporta `task_events.jsonl` e consolida os arquivos por processo. **(D)** D-01 | RF-032 | ✅ |
-| M3-T05 | `StateBuilder` | `feat(orders)` | `state_id`; janela `recent_events_limit`; `elapsed_ms`; `last_result`; `queue_size` e disponibilidade do consumidor via API de management do RabbitMQ (mesma fonte para Rules e LLM); `states.jsonl` | RF-013–RF-015, RF-031, RNF-012, RNF-019, I-08 | ⬜ |
+| M3-T05 | `StateBuilder` | `feat(orders)` | `state_builder.py`: snapshot validado pelo contrato, `state_id` único, janela K de ocorrências distintas, `elapsed_ms`, `latency_ms`, `last_result`; `queue_size` e consumidores via `queue.declare` passivo (mesma fonte para Rules e LLM); regras de `service.status` e `fallback_available` documentadas no doc 06 §6.2.4 (I-08); `states.<writer>.jsonl` gravado no ponto de decisão inicial | RF-013–RF-015, RF-031, RNF-012, RNF-019, I-08 | ✅ |
 | M3-T06 | Logs estruturados | `feat(observability)` | Logger JSON nos dois serviços → `microservices_logs.jsonl` | RF-034, CLAUDE §36 | ⬜ |
 | M3-T07 | Registro de decisões | `feat(orders)` | Escritor de `decisions.jsonl` no formato do doc 10 §10.3 | RF-033 | ⬜ |
 | M3-T08 | Testes de estado e correlação | `test` | Janela K; aderência ao schema; correlação `execution_id → task_id → state_id → decision_id → message_id/event_seq` | RNF-007 | ⬜ |
@@ -364,7 +364,7 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | D-14 ✅ (piloto §23.1 atualizado para `1`) |
 | I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | M4-T08 (D-15) |
 | I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | M4-T10 (D-07) |
-| I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 |
+| I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 ✅ (doc 06 §6.2.4) |
 | I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
 | I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 ✅ |
 
@@ -377,3 +377,4 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | Decisão | Trecho da metodologia | Ajuste |
 |---|---|---|
 | D-06 | Código 4 (`RulesDecisionEngine`), regra de fluxo normal | `phase in {"PENDING", "READY", "RECOVERED"}` → `phase in {"PENDING", "WAITING"}`; `phase` passa a ser o estado da tarefa |
+| M3-T05 | Tabela 8 (campos do `SYSTEM_STATE`), coluna de origem | Recomendado detalhar a origem operacional de `service.status`, `service.latency_ms`, `messaging.queue_size`, `alternatives.fallback_available` e da janela `recent_events`, conforme o doc 06 §6.2.4 |

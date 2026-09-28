@@ -1,12 +1,14 @@
 """Despacho inicial PROVISÓRIO da tarefa (M1-T05).
 
-Equivale a um `CONTINUE` fixo para `inventory.primary`, SEM StateBuilder, sem
-motor de decisão, sem validação e sem registro de decisão. Existe apenas para o
-fluxo normal funcionar ponta a ponta e é substituído pelo Orchestrator
-(StateBuilder → DecisionEngine → Validator → Executor) em M4-T04.
+Equivale a um `CONTINUE` fixo para `inventory.primary`, SEM motor de decisão, sem
+validação e sem registro de decisão. Existe apenas para o fluxo normal funcionar
+ponta a ponta e é substituído pelo Orchestrator (StateBuilder → DecisionEngine →
+Validator → Executor) em M4-T04.
 
-Numa transação: PENDING → DISPATCHED, envelope montado e `STOCK_RESERVATION_REQUESTED`
-registrado na trajetória. A publicação acontece depois do commit.
+Ponto de decisão "início da tarefa": o `SYSTEM_STATE` é construído e gravado em
+`states.jsonl` (M3-T05), mas nenhum motor o avalia ainda. Depois, numa transação:
+PENDING → DISPATCHED, envelope montado e `STOCK_RESERVATION_REQUESTED` registrado na
+trajetória. A publicação acontece depois do commit.
 """
 
 import json
@@ -16,10 +18,17 @@ from services.orders.app.db.connection import transaction
 from services.orders.app.db.repositories import mark_task_dispatched
 from services.orders.app.db.trajectory import EventSource, record_message
 from services.orders.app.messaging.publisher import CommandPublisher
+from services.orders.app.orchestration.coordination import Coordination
 from shared.envelope import Envelope, MessageEnvelope, build_envelope
 from shared.events import EventType
 from shared.messaging import Route
 from shared.timestamps import utc_now_iso
+
+
+def start_task(connection: sqlite3.Connection, task_id: str, coordination: Coordination) -> Envelope:
+    state = coordination.state_builder.build(connection, task_id)
+    coordination.state_recorder.record(state)
+    return dispatch_initial_reservation(connection, task_id, coordination.publisher)
 
 
 def dispatch_initial_reservation(
