@@ -22,9 +22,10 @@ O projeto está no **piloto técnico**, e o progresso é acompanhado em
   `inventory-service` → evento de retorno → pedido `COMPLETED`), com RabbitMQ, os dois
   serviços e um SQLite por serviço; contrato de mensagens versionado (`contracts/`),
   mensagens fora do contrato na `tasks.dlq`, numeração da trajetória (`event_seq`) e
-  idempotência de transporte (`message_id`) e de negócio (`task_id`). O despacho inicial
-  ainda é um `CONTINUE` fixo (**provisório**), sem motor de decisão.
-- Planejado: `StateBuilder` e rastreabilidade (M3), Rules/Validator/Executor (M4) e LLM (M5).
+  idempotência de transporte (`message_id`) e de negócio (`task_id`); `SYSTEM_STATE`
+  construído pelo `StateBuilder` e artefatos de rastreabilidade por execução. O despacho
+  inicial ainda é um `CONTINUE` fixo (**provisório**), sem motor de decisão.
+- Planejado: Rules/Validator/Executor (M4), LLM (M5), falhas e carga (M6).
 
 Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
 
@@ -72,6 +73,21 @@ curl localhost:8000/orders/ORD_000001
 .venv/bin/python -m pytest -m integration                    # testes de integração
 docker compose down -v                                     # derruba e apaga os bancos
 ```
+
+### Execução de piloto rastreável
+
+```bash
+docker compose down -v                                        # bancos e filas no estado inicial
+eval "$(.venv/bin/python -m scripts.pilot.new_execution)"     # abre PILOT_nnnn e grava os metadados
+docker compose up -d --build --wait                          # serviços gravam em data/pilot/$EXECUTION_ID/
+.venv/bin/python -m scripts.pilot.smoke_test --orders 3
+.venv/bin/python -m scripts.pilot.collect_artifacts          # consolida os artefatos (antes do reset)
+.venv/bin/python -m scripts.pilot.check_traceability         # verifica a cadeia de correlação
+```
+
+Artefatos por execução: `execution_metadata.json`, `task_events.jsonl`, `states.jsonl`,
+`decisions.jsonl` e `microservices_logs.jsonl` (docs/10 §10.2). Dados de piloto nunca
+integram a amostra.
 
 | Serviço | Papel |
 |---|---|
