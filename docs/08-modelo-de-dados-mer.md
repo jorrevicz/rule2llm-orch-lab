@@ -37,7 +37,6 @@ erDiagram
     TASKS ||--o{ STATES : "snapshot de"
     TASKS ||--o{ DECISIONS : "pontos de decisão de"
     STATES ||--o| DECISIONS : "apresentado a"
-    TASKS ||--o{ OUTBOX : "publica via"
     TASKS ||--o{ PROCESSED_EVENTS : "deduplica"
 
     EXECUTIONS {
@@ -139,17 +138,6 @@ erDiagram
         text processed_at
     }
 
-    OUTBOX {
-        integer id PK
-        text task_id FK
-        text message_id "UNIQUE"
-        text target
-        text event_type
-        text envelope_json
-        text status "PENDING | SENT"
-        text created_at
-        text sent_at "nullable"
-    }
 ```
 
 ### Tabelas de `orders.db`
@@ -164,13 +152,13 @@ erDiagram
 | `task_events` | ⚠ divergência | Espelho operacional de `task_events.jsonl` (o `StateBuilder` consulta `recent_events`) |
 | `states` | ⚠ divergência | Espelho operacional de `states.jsonl` |
 | `decisions` | ⚠ divergência | Espelho operacional de `decisions.jsonl` |
-| `outbox` | ⚠ divergência | Publicação transacional (evita perder/duplicar mensagem entre commit e publish) |
+| ~~`outbox`~~ | descartada (D-04) | Publicação direta após o commit — ver §8.5 |
 
 ### Cardinalidades
 
 - `executions (1) — (0..N) orders` / `executions (1) — (0..N) tasks`
 - `orders (1) — (1) tasks` (1 tarefa por pedido; `tasks.order_id` UNIQUE)
-- `tasks (1) — (0..N) task_events` / `states` / `decisions` / `outbox`
+- `tasks (1) — (0..N) task_events` / `states` / `decisions`
 - `states (1) — (0..1) decisions` (um `state_id` é apresentado ao decisor uma vez → no
   máximo uma decisão)
 
@@ -179,7 +167,6 @@ erDiagram
 | Objeto | Restrição |
 |---|---|
 | `tasks.order_id` | `UNIQUE` |
-| `outbox.message_id` | `UNIQUE` |
 | `task_events` | índice `(task_id, event_seq)` — **não** único: redelivery gera nova linha com o mesmo `event_seq` (`redelivered = 1`) |
 | `decisions.state_id` | índice; opcionalmente `UNIQUE` |
 | `orders.status`, `tasks.status` | valores restritos aos enums de [05](05-maquina-de-estados.md) (checado na aplicação) |
@@ -215,18 +202,6 @@ erDiagram
         text response_json "resposta reemitida em redelivery (M2-T03)"
         text processed_at
     }
-
-    PUBLISHED_EVENTS {
-        integer id PK
-        text task_id
-        text message_id "UNIQUE"
-        text event_type "STOCK_RESERVATION_SUCCEEDED | STOCK_RESERVATION_FAILED"
-        text target "orders.events"
-        text envelope_json
-        text status "PENDING | SENT"
-        text created_at
-        text sent_at "nullable"
-    }
 ```
 
 ### Tabelas de `inventory.db`
@@ -237,13 +212,12 @@ erDiagram
 | `processed_messages` | sim | Idempotência de transporte no consumo de `inventory.primary`/`inventory.fallback` |
 | ~~`reservation_items`~~ | descartada (D-02) | Itens guardados como JSON em `reservations.items_json` — ver §8.5 |
 | `stock` | ⚠ divergência | Suporte à **reserva simulada** e ao cenário "dados inconsistentes"; a metodologia fala em "reserva simulada" sem exigir tabela de estoque |
-| `published_events` | ⚠ divergência | Outbox para publicação confiável em `orders.events` |
+| ~~`published_events`~~ | descartada (D-04) | A resposta fica em `processed_messages.response_json` e é reemitida em redelivery — ver §8.5 |
 
 ### Cardinalidades e restrições
 
 - `reservations.task_id` **UNIQUE** (regra central de idempotência de negócio — `piloto §8.2`)
 - `processed_messages.message_id` **PK** (regra central de idempotência de transporte)
-- `published_events.message_id` **UNIQUE**
 - `stock.sku` **PK** (pendente, D-03); a relação com os SKUs de `reservations.items_json` é
   **lógica** (SKU do dataset), sem FK — a reserva é simulada.
 
@@ -254,20 +228,18 @@ flowchart LR
     subgraph ODB["orders.db"]
         O_orders["orders(order_id)"]
         O_tasks["tasks(task_id, order_id)"]
-        O_outbox["outbox(message_id)"]
         O_pe["processed_events(message_id)"]
     end
     subgraph IDB["inventory.db"]
         I_res["reservations(task_id, order_id)"]
         I_pm["processed_messages(message_id)"]
-        I_pub["published_events(message_id)"]
     end
     ENV{{"envelope de mensagem<br/>execution_id · task_id · order_id · message_id"}}
 
-    O_outbox -->|publish| ENV
+    O_tasks -->|publish inventory.*| ENV
     ENV -->|inventory.primary/fallback| I_pm
     ENV -.correlaciona.-> I_res
-    I_pub -->|publish orders.events| ENV
+    I_pm -->|publish orders.events| ENV
     ENV -->|consumo| O_pe
     O_tasks -.mesmo task_id.-> I_res
 ```
@@ -289,8 +261,9 @@ Antes do congelamento da configuração definitiva, decidir e registrar em
    igualmente para Rules e LLM.
 3. Incluir `stock` real (habilita o cenário "dados inconsistentes" de forma mais rica) ou
    manter reserva 100% simulada sem tabela de estoque.
-4. Adotar o padrão **outbox** (`outbox` / `published_events`) para publicação confiável, ou
-   aceitar publicação direta pós-commit.
+4. ~~Adotar o padrão **outbox** (`outbox` / `published_events`) para publicação confiável, ou
+   aceitar publicação direta pós-commit.~~
+   **Decidido (D-04, 2026-09-28): sem outbox; publicação direta após o commit.** Os dois lados já cobrem a janela entre o commit e a publicação sem tabela extra: no Inventory, a resposta fica em `processed_messages.response_json` e é reemitida na redelivery da solicitação (a mensagem só recebe ack depois do processamento, `acks_late`); no Orders, um despacho gravado como `DISPATCHED` cuja publicação se perdeu é detectado pelo `timeout_check` (M4-T06) e vira ponto de decisão. Pode ser revista se o piloto mostrar perda de mensagem. Sem impacto sobre a comparação Rules × LLM (vale para as duas condições).
 5. Incluir `executions` no banco, ou manter apenas `execution_metadata.json`.
 
 Qualquer uma dessas decisões tem impacto metodológico e deve ser refletida no TCC

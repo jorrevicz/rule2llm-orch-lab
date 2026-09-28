@@ -146,7 +146,7 @@ sem LLM, sem falhas e sem carga (piloto §28 Fase 1).
 | M2-T04 | Idempotência de negócio | `feat(inventory)` | `reservations.task_id UNIQUE` como barreira no banco; nova tentativa lógica (novo `message_id`, mesmo `task_id`) de tarefa já reservada não cria 2ª reserva e recebe resposta nova com o resultado da reserva existente | RF-009, [04 §4.7.2](04-contrato-mensageria.md) | ✅ |
 | M2-T05 | Dedupe no Orders | `feat(orders)` | `processed_events` verificado e gravado na mesma transação que numera e aplica o evento; evento repetido (mesmo `message_id`) é ignorado e não consome `event_seq`; resultado (`recorded`/`duplicate`/`unknown_task`) registrado em log | [04 §4.8](04-contrato-mensageria.md) | ✅ |
 | M2-T06 | Testes de contrato e idempotência | `test` | `tests/contracts` (schema em dia com o código, envelopes e payloads inválidos); unitários de redelivery, nova tentativa e dedupe; `scripts/pilot/duplicate_message_test.py` (ao vivo: nova tentativa + 2 redeliveries → 1 reserva, estado e `event_seq` corretos, filas vazias) e `tests/integration/test_idempotency.py`. Limitação: redelivery simulada por republicação (flag `redelivered` só em reentrega real) | CLAUDE §35 | ✅ |
-| M2-T07 | **(D) 🔬** Decisão sobre outbox | `docs(decisoes)` | D-04 registrada (padrão proposto: publicação direta pós-commit; outbox só se o piloto mostrar perda) | [08 §8.5](08-modelo-de-dados-mer.md) | ⬜ |
+| M2-T07 | **(D) 🔬** Decisão sobre outbox | `docs(decisoes)` | D-04 registrada: sem outbox, publicação direta após o commit; `outbox`/`published_events` descartadas nos docs 08/09 | [08 §8.5](08-modelo-de-dados-mer.md) | ✅ |
 
 **Critério de conclusão** (piloto §28 Fase 2)
 
@@ -329,7 +329,7 @@ doc 10 §10.6).
 | D-01 | Persistir `task_events` / `states` / `decisions` também em tabela | `task_events` em tabela (o StateBuilder precisa dos últimos K); `states`/`decisions` só em JSONL até decisão | M3-T04 / M8-T01 | ⬜ |
 | D-02 | Itens do pedido e da reserva | **Decidido (2026-09-27): JSON** em `orders.items_json` e `reservations.items_json`, sem tabelas de itens. Itens imutáveis após a validação; toda tentativa republica o mesmo `payload.items`; nenhuma métrica nem o `SYSTEM_STATE` consultam itens. Sem impacto metodológico | M1-T03 | ✅ |
 | D-03 | Tabela `stock` no Inventory | Reserva 100% simulada × tabela `stock` (enriquece o cenário "dados inconsistentes") | M6-T07 | ⬜ |
-| D-04 🔬 | Padrão outbox | Publicação direta pós-commit (padrão) × outbox | M2-T07 | ⬜ |
+| D-04 🔬 | Padrão outbox | **Decidido (2026-09-28): sem outbox; publicação direta após o commit.** Inventory reemite a resposta gravada em `processed_messages.response_json` na redelivery; despacho perdido do Orders é coberto pelo `timeout_check` (M4-T06). Revisável se o piloto mostrar perda | M2-T07 | ✅ |
 | D-05 | Tabela `executions` | Só `execution_metadata.json` × também tabela | M3-T03 | ⬜ |
 | D-06 🔬 | Formato do `SYSTEM_STATE` | Aninhado (doc 06) × plano (piloto §10.1); conjunto de `phase`; grafia de `decision_engine` | M3-T01 | ⬜ |
 | D-07 🔬 | Política de DLQ | Limite de "falhas sucessivas" e mecanismo (ex.: contagem de entregas) | M4-T10 | ⬜ |

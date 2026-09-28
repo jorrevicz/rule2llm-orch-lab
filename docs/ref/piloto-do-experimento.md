@@ -1697,6 +1697,8 @@ CREATE TABLE tasks (
 );
 ```
 
+> **Decisão D-04 (2026-09-28):** sem padrão outbox; publicação direta após o commit. Os dois lados já cobrem a janela entre o commit e a publicação sem tabela extra: no Inventory, a resposta fica em `processed_messages.response_json` e é reemitida na redelivery da solicitação (a mensagem só recebe ack depois do processamento, `acks_late`); no Orders, um despacho gravado como `DISPATCHED` cuja publicação se perdeu é detectado pelo `timeout_check` (M4-T06) e vira ponto de decisão. Pode ser revista se o piloto mostrar perda de mensagem. Sem impacto sobre a comparação Rules × LLM (vale para as duas condições). Registro: `docs/13-roadmap.md` §13.4 e `docs/08-modelo-de-dados-mer.md` §8.5.
+>
 > **Decisão D-02 (2026-09-27):** os itens do pedido ficam em `orders.items_json` (e os reservados em `reservations.items_json`, §23.2) como JSON canônico, sem tabelas `order_items`/`reservation_items`. Os itens são validados na entrada e não mudam depois; toda nova tentativa (`RETRY`/`FALLBACK`) republica exatamente o mesmo `payload.items`. Registro: `docs/13-roadmap.md` §13.4 e `docs/08-modelo-de-dados-mer.md` §8.5.
 >
 > **Decisão D-14 (2026-09-27):** `attempt_number` começa em `1` (antes: `DEFAULT 0`). A tentativa inicial é a tentativa 1 e conta dentro de `max_attempts` (§14.2), o que mantém coerência com o envelope da primeira publicação (`attempt_number: 1`, §7.2) e com as condições `attempt_number < max_attempts` (§14.3) e `attempt_number >= max_attempts` (§18). Registro: `docs/13-roadmap.md` §13.4.

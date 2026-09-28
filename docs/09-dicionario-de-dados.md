@@ -147,12 +147,11 @@ Idempotência de transporte no consumo de `orders.events`.
 | `event_type` | TEXT | não | — | — | Tipo do evento processado | `STOCK_RESERVATION_SUCCEEDED` |
 | `processed_at` | TEXT | não | — | — | Instante do processamento | `2026-08-27T12:00:03.100Z` |
 
-## `outbox` ⚠
+## ~~`outbox`~~ — descartada (D-04)
 
-Publicação transacional para `tcc.tasks` (evita perder/duplicar mensagem entre commit e publish).
+Publicação direta após o commit (ver [08 §8.5](08-modelo-de-dados-mer.md)).
 
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
+---|---|---|---|---|---|---|
 | `id` | INTEGER | não | PK (AUTOINCREMENT) | — | Chave técnica | `77` |
 | `task_id` | TEXT | não | FK → `tasks`, IX | — | Tarefa | `TASK_000187` |
 | `message_id` | TEXT | não | **U** | — | `message_id` do envelope | `MSG_0192` |
@@ -220,12 +219,12 @@ Idempotência de transporte no consumo de `inventory.primary` / `inventory.fallb
 > resposta em redelivery, inclusive quando a publicação original se perdeu entre o commit e
 > o envio. Com isso, `published_events` (outbox) não é necessária (D-04).
 
-## `published_events` ⚠
+## ~~`published_events`~~ — descartada (D-04)
 
-Outbox para publicação confiável em `orders.events`.
+A resposta publicada fica em `processed_messages.response_json` e é reemitida em
+redelivery (ver [08 §8.5](08-modelo-de-dados-mer.md)).
 
-| Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
-|---|---|---|---|---|---|---|
+---|---|---|---|---|---|---|
 | `id` | INTEGER | não | PK (AUTOINCREMENT) | — | Chave técnica | `54` |
 | `task_id` | TEXT | não | IX | — | Tarefa | `TASK_000187` |
 | `message_id` | TEXT | não | **U** | — | `message_id` do evento publicado | `MSG_0311` |
@@ -245,7 +244,7 @@ Outbox para publicação confiável em `orders.events`.
 | `OrderStatus` | `PENDING`, `COMPLETED`, `FAILED` | `orders.status` |
 | `TaskStatus` | `PENDING`, `DISPATCHED`, `PROCESSING`, `WAITING`, `RETRYING`, `FALLBACK_PROCESSING`, `COMPLETED`, `ABORTED`, `DEAD_LETTERED` | `tasks.status` |
 | `Action` | `CONTINUE`, `RETRY`, `WAIT`, `FALLBACK`, `ABORT` | `decisions.proposed_action` / `executed_action` |
-| `Target` | `inventory.primary`, `inventory.fallback`, `NULL` | `tasks.current_target`, `decisions.*_target`, `outbox.target` |
+| `Target` | `inventory.primary`, `inventory.fallback`, `NULL` | `tasks.current_target`, `decisions.*_target` |
 | `EventType` | ver [04 §4.6](04-contrato-mensageria.md) | `task_events.event_type`, `processed_events.event_type`, … |
 | `ReasonCode` | ver [12 §12.4](12-glossario.md) | `decisions.*_reason_code` |
 | `route` | `primary`, `fallback` | `reservations.route` |
