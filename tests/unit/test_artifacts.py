@@ -5,9 +5,16 @@ from pathlib import Path
 import pytest
 
 from scripts.pilot.llm_readiness import LLMReadiness
-from scripts.pilot.new_execution import EFFECTIVE_CONFIG_FILE, METADATA_FILE, next_pilot_id, open_execution
+from scripts.pilot.new_execution import (
+    EFFECTIVE_CONFIG_FILE,
+    METADATA_FILE,
+    SCENARIOS_DIR,
+    available_scenarios,
+    next_pilot_id,
+    open_execution,
+)
 from shared.artifacts import Artifact, JsonlWriter, execution_dir, shard_path
-from shared.config import load_experiment_config
+from shared.config import load_experiment_config, load_scenario
 
 REPO_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
 
@@ -142,3 +149,35 @@ def test_rules_execution_does_not_touch_the_llm_runtime(tmp_path):
     metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
     assert metadata["decision_engine"] == "RULES"
     assert metadata["readiness_status"] is None
+
+
+# -- cenários (M6-T06) ---------------------------------------------------------------
+
+
+def test_scenario_replaces_workload_and_fault_in_the_effective_config(tmp_path):
+    directory = open_execution(tmp_path, "timeout", REPO_CONFIG, engine="RULES")
+
+    effective = load_experiment_config(directory / EFFECTIVE_CONFIG_FILE)
+    scenario = load_scenario(SCENARIOS_DIR / "timeout.yml")
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    assert effective.fault == scenario.fault and effective.workload == scenario.workload
+    assert effective.messaging == load_experiment_config(REPO_CONFIG).messaging  # resto intacto
+    assert metadata["scenario_id"] == "timeout"
+    assert metadata["scenario_config"] == "config/scenarios/timeout.yml"
+    assert len(metadata["scenario_config_hash"]) == 64
+    assert metadata["seeds"] == {"workload": 1042, "fault": scenario.fault.seed, "llm": effective.llm.seed}
+    assert metadata["fault"]["delay_ms"] == scenario.fault.delay_ms
+
+
+def test_unknown_scenario_is_refused_before_allocating_an_execution(tmp_path):
+    with pytest.raises(SystemExit):
+        open_execution(tmp_path, "not_a_scenario", REPO_CONFIG)
+    assert not (tmp_path / "pilot").exists()
+
+
+def test_the_six_methodology_scenarios_exist_and_load():
+    names = available_scenarios()
+
+    assert names == sorted(["normal", "overload", "intermittent_failure", "timeout", "inconsistent_data", "recovery"])
+    for name in names:
+        assert load_scenario(SCENARIOS_DIR / f"{name}.yml").scenario_id == name

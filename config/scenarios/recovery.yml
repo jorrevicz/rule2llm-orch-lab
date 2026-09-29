@@ -1,0 +1,23 @@
+# Cenário recuperação pós-falha — metodologia §4.4, Tabela 12; roadmap M6.
+# Substitui as seções workload e fault da config base (new_execution --scenario).
+# Mesmo arquivo para Rules e LLM. Valores do PILOTO: provisórios, A CONGELAR (M8-T02).
+
+scenario_id: recovery
+description: >-
+  inventory-service inteiro parado durante a janela (só WAIT/ABORT) e retomado; mede o retorno ao steady state.
+
+workload:
+  dataset: datasets/orders_v1.json
+  requests: 30
+  rate_per_second: 0.25
+  seed: 1042                    # seed que gerou o dataset
+
+fault:
+  type: recovery
+  target: inventory-service
+  start_after_seconds: 20
+  duration_seconds: 15
+  failure_probability: null
+  delay_ms: null
+  overload_rate_per_second: null
+  seed: null

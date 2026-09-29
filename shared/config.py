@@ -7,10 +7,19 @@ silenciosamente ignorado.
 
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, NonNegativeInt, PositiveInt
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    model_validator,
+)
 
 CONFIG_PATH_ENV = "EXPERIMENT_CONFIG_PATH"
 DEFAULT_CONFIG_PATH = Path("config/experiment_config.yml")
@@ -68,21 +77,50 @@ class InventorySection(_Section):
 
 class WorkloadSection(_Section):
     dataset: str
-    requests: PositiveInt | None
-    rate_per_second: float | None
-    seed: int | None
+    requests: PositiveInt | None        # pedidos enviados, na ordem do dataset
+    rate_per_second: PositiveFloat | None  # malha aberta: taxa fixa de envio
+    seed: int | None                    # seed que gerou o dataset (seed_workload)
+
+
+FaultType = Literal["none", "overload", "intermittent_error", "timeout", "inconsistent_data", "recovery"]
+
+# Campos exigidos por tipo de falha (metodologia Código 11; D-20); os demais ficam null.
+FAULT_FIELDS: dict[str, frozenset[str]] = {
+    "none": frozenset(),
+    "intermittent_error": frozenset({"target", "start_after_seconds", "duration_seconds", "failure_probability", "seed"}),
+    "timeout": frozenset({"target", "start_after_seconds", "duration_seconds", "failure_probability", "delay_ms", "seed"}),
+    "inconsistent_data": frozenset({"start_after_seconds", "duration_seconds", "failure_probability", "seed"}),
+    "overload": frozenset({"start_after_seconds", "duration_seconds", "overload_rate_per_second"}),
+    "recovery": frozenset({"target", "start_after_seconds", "duration_seconds"}),
+}
+FAULT_TARGETS: dict[str, str] = {
+    "intermittent_error": "inventory.primary",   # degradação localizada: FALLBACK executável
+    "timeout": "inventory.primary",
+    "recovery": "inventory-service",             # indisponibilidade total: só WAIT/ABORT
+}
 
 
 class FaultSection(_Section):
-    type: Literal[
-        "none",
-        "overload",
-        "intermittent_error",
-        "timeout",
-        "inconsistent_data",
-        "recovery",
-    ]
-    seed: int | None
+    type: FaultType
+    target: Literal["inventory.primary", "inventory-service"] | None = None
+    start_after_seconds: NonNegativeFloat | None = None  # a partir do início da carga
+    duration_seconds: PositiveFloat | None = None
+    failure_probability: Annotated[float, Field(ge=0.0, le=1.0)] | None = None
+    delay_ms: PositiveInt | None = None
+    overload_rate_per_second: PositiveFloat | None = None
+    seed: int | None = None
+
+    @model_validator(mode="after")
+    def _fields_match_the_type(self) -> "FaultSection":
+        required = FAULT_FIELDS[self.type]
+        optional = set(type(self).model_fields) - {"type"}
+        missing = sorted(name for name in required if getattr(self, name) is None)
+        unexpected = sorted(name for name in optional - required if getattr(self, name) is not None)
+        if missing or unexpected:
+            raise ValueError(f"fault {self.type}: missing {missing}, unexpected {unexpected}")
+        if self.type in FAULT_TARGETS and self.target != FAULT_TARGETS[self.type]:
+            raise ValueError(f"fault {self.type} must target {FAULT_TARGETS[self.type]}")
+        return self
 
 
 class ExperimentConfig(_Section):
@@ -93,6 +131,24 @@ class ExperimentConfig(_Section):
     inventory: InventorySection
     workload: WorkloadSection
     fault: FaultSection
+
+
+class ScenarioFile(_Section):
+    """`config/scenarios/<cenário>.yml`: carga e falha de um cenário (RF-041).
+
+    Substitui as seções `workload` e `fault` da config base; o mesmo arquivo vale para
+    Rules e LLM no mesmo cenário (metodologia §4.4.1).
+    """
+
+    scenario_id: str
+    description: str
+    workload: WorkloadSection
+    fault: FaultSection
+
+
+def load_scenario(path: str | Path) -> ScenarioFile:
+    with Path(path).open(encoding="utf-8") as handle:
+        return ScenarioFile.model_validate(yaml.safe_load(handle))
 
 
 def resolve_config_path(path: str | Path | None = None) -> Path:

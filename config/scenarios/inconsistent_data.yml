@@ -1,0 +1,23 @@
+# Cenário dados inconsistentes — metodologia §4.4, Tabela 12; roadmap M6.
+# Substitui as seções workload e fault da config base (new_execution --scenario).
+# Mesmo arquivo para Rules e LLM. Valores do PILOTO: provisórios, A CONGELAR (M8-T02).
+
+scenario_id: inconsistent_data
+description: >-
+  Pedidos da janela sorteados com SKU fora do catálogo do Inventory (D-03).
+
+workload:
+  dataset: datasets/orders_v1.json
+  requests: 30
+  rate_per_second: 0.25
+  seed: 1042                    # seed que gerou o dataset
+
+fault:
+  type: inconsistent_data
+  target: null
+  start_after_seconds: 20
+  duration_seconds: 60
+  failure_probability: 0.3
+  delay_ms: null
+  overload_rate_per_second: null
+  seed: 2048

@@ -1,0 +1,23 @@
+# Cenário normal — metodologia §4.4, Tabela 12; roadmap M6.
+# Substitui as seções workload e fault da config base (new_execution --scenario).
+# Mesmo arquivo para Rules e LLM. Valores do PILOTO: provisórios, A CONGELAR (M8-T02).
+
+scenario_id: normal
+description: >-
+  Steady state: sem falha induzida; base de comparação.
+
+workload:
+  dataset: datasets/orders_v1.json
+  requests: 30
+  rate_per_second: 0.25
+  seed: 1042                    # seed que gerou o dataset
+
+fault:
+  type: none
+  target: null
+  start_after_seconds: null
+  duration_seconds: null
+  failure_probability: null
+  delay_ms: null
+  overload_rate_per_second: null
+  seed: null

@@ -42,7 +42,16 @@ EXPECTED_KEYS = {
     },
     "inventory": {"service_time_ms", "catalog"},  # D-22, D-03
     "workload": {"dataset", "requests", "rate_per_second", "seed"},
-    "fault": {"type", "seed"},
+    "fault": {
+        "type",
+        "target",
+        "start_after_seconds",
+        "duration_seconds",
+        "failure_probability",
+        "delay_ms",
+        "overload_rate_per_second",
+        "seed",
+    },
 }
 
 
@@ -107,3 +116,39 @@ def test_explicit_path_overrides_environment(monkeypatch, tmp_path):
     explicit = tmp_path / "explicit.yml"
 
     assert resolve_config_path(explicit) == explicit
+
+
+# -- seção fault por tipo (M6-T06; metodologia Código 11) ----------------------------
+
+from shared.config import FaultSection  # noqa: E402
+
+VALID_FAULTS = {
+    "none": {},
+    "intermittent_error": {"target": "inventory.primary", "start_after_seconds": 20, "duration_seconds": 30, "failure_probability": 0.25, "seed": 2048},
+    "timeout": {"target": "inventory.primary", "start_after_seconds": 20, "duration_seconds": 30, "failure_probability": 0.25, "delay_ms": 3000, "seed": 2048},
+    "inconsistent_data": {"start_after_seconds": 20, "duration_seconds": 30, "failure_probability": 0.3, "seed": 2048},
+    "overload": {"start_after_seconds": 20, "duration_seconds": 10, "overload_rate_per_second": 15},
+    "recovery": {"target": "inventory-service", "start_after_seconds": 20, "duration_seconds": 15},
+}
+
+
+@pytest.mark.parametrize("fault_type", sorted(VALID_FAULTS))
+def test_each_fault_type_accepts_exactly_its_fields(fault_type):
+    fields = VALID_FAULTS[fault_type]
+    FaultSection(type=fault_type, **fields)
+
+    for name in fields:  # cada campo exigido
+        with pytest.raises(ValidationError):
+            FaultSection(type=fault_type, **{**fields, name: None})
+    with pytest.raises(ValidationError):  # campo de outro tipo
+        extra = "delay_ms" if fault_type != "timeout" else "overload_rate_per_second"
+        FaultSection(type=fault_type, **{**fields, extra: 5})
+
+
+@pytest.mark.parametrize(
+    ("fault_type", "wrong_target"),
+    [("intermittent_error", "inventory-service"), ("timeout", "inventory-service"), ("recovery", "inventory.primary")],
+)
+def test_fault_target_separates_primary_degradation_from_total_unavailability(fault_type, wrong_target):
+    with pytest.raises(ValidationError):
+        FaultSection(type=fault_type, **{**VALID_FAULTS[fault_type], "target": wrong_target})

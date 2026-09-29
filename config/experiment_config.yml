@@ -47,12 +47,20 @@ inventory:
   service_time_ms: 100          # D-22: tempo de serviço simulado (duas rotas, todos os cenários) — A CONGELAR
   catalog: datasets/inventory_catalog_v1.json   # D-03: catálogo de SKUs (sem saldo)
 
+# workload e fault abaixo = cenário normal. Cada execução usa um cenário de
+# config/scenarios/ (new_execution --scenario), que substitui estas duas seções.
 workload:
   dataset: datasets/orders_v1.json
-  requests: null                # A CONGELAR
-  rate_per_second: null         # A CONGELAR
-  seed: null                    # A CONGELAR
+  requests: 30                  # provisório — A CONGELAR
+  rate_per_second: 0.25         # malha aberta — provisório, A CONGELAR
+  seed: 1042                    # seed que gerou o dataset (seed_workload)
 
-fault:
+fault:                          # metodologia Código 11; campos exigidos por tipo em shared/config.py
   type: none                    # none | overload | intermittent_error | timeout | inconsistent_data | recovery
-  seed: null
+  target: null                  # inventory.primary | inventory-service
+  start_after_seconds: null
+  duration_seconds: null
+  failure_probability: null
+  delay_ms: null
+  overload_rate_per_second: null
+  seed: null                    # seed_fault

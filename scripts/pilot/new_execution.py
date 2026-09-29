@@ -1,14 +1,15 @@
 """Abre uma execução de piloto: aloca o `execution_id`, cria o diretório e grava
 `execution_metadata.json` (docs/10 §10.3; metodologia Código 12).
 
-    eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine LLM [--scenario normal])"
+    eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine LLM --scenario timeout)"
     docker compose up -d --build --wait     # usa EXECUTION_ID e EXECUTION_CONFIG_PATH
 
-O motor é escolhido por execução (`--engine RULES|LLM`): a configuração efetiva é gravada
-no diretório da execução (cópia da config base com `decision_engine` ajustado) e os
-serviços a leem pelo caminho em `EXECUTION_CONFIG_PATH` (caminho dentro do container, que
-o compose repassa como `EXPERIMENT_CONFIG_PATH`; no host, `EXPERIMENT_CONFIG_PATH` não é
-alterado). A config base versionada não muda.
+O motor e o cenário são escolhidos por execução (`--engine RULES|LLM`, `--scenario` =
+um arquivo de `config/scenarios/`). A configuração efetiva é gravada no diretório da
+execução: config base com `decision_engine` ajustado e as seções `workload` e `fault`
+do cenário (M6-T06). Os serviços a leem pelo caminho em `EXECUTION_CONFIG_PATH` (caminho
+dentro do container, que o compose repassa como `EXPERIMENT_CONFIG_PATH`; no host,
+`EXPERIMENT_CONFIG_PATH` não é alterado). A config base e o cenário versionados não mudam.
 
 Com `--engine LLM`, roda a readiness e o warm-up do Ollama (`llm_readiness`) e registra
 versão do runtime, digest, quantização, `model_load_ms` e `warmup_inference_ms`. Se a
@@ -31,10 +32,18 @@ from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
+import yaml
+
 from scripts.pilot.llm_readiness import LLMReadiness
 from scripts.pilot.llm_readiness import check as check_llm_readiness
 from shared.artifacts import execution_dir
-from shared.config import ExperimentConfig, load_experiment_config, resolve_config_path
+from shared.config import (
+    ExperimentConfig,
+    ScenarioFile,
+    load_experiment_config,
+    load_scenario,
+    resolve_config_path,
+)
 from shared.ids import IdPrefix, sequential_id
 from shared.timestamps import utc_now_iso
 
@@ -43,7 +52,7 @@ DEFAULT_DATA_ROOT = REPO_ROOT / "data"
 METADATA_FILE = "execution_metadata.json"
 EFFECTIVE_CONFIG_FILE = "experiment_config.yml"
 CONTAINER_DATA_ROOT = Path("/srv/data")
-_ENGINE_LINE = re.compile(r"^(\s*decision_engine:\s*)(RULES|LLM)\b", flags=re.MULTILINE)
+SCENARIOS_DIR = REPO_ROOT / "config" / "scenarios"
 EXECUTION_ID_WIDTH = 4
 _PILOT_ID = re.compile(r"^PILOT_(\d+)$")
 
@@ -94,6 +103,10 @@ def hardware() -> dict[str, object]:
 
 def _display_path(path: Path) -> str:
     return str(path.relative_to(REPO_ROOT)) if path.is_relative_to(REPO_ROOT) else str(path)
+
+
+def available_scenarios(scenarios_dir: Path = SCENARIOS_DIR) -> list[str]:
+    return sorted(path.stem for path in scenarios_dir.glob("*.yml"))
 
 
 def build_metadata(
@@ -148,15 +161,21 @@ def build_metadata(
     }
 
 
-def write_effective_config(base_path: Path, directory: Path, engine: str | None) -> Path:
-    """Cópia da config base com `decision_engine` ajustado (comentários preservados)."""
-    text = base_path.read_text(encoding="utf-8")
+def write_effective_config(
+    base_path: Path, directory: Path, engine: str | None, scenario: ScenarioFile
+) -> Path:
+    """Config base + motor da execução + `workload`/`fault` do cenário."""
+    raw = yaml.safe_load(base_path.read_text(encoding="utf-8"))
     if engine is not None:
-        text, replaced = _ENGINE_LINE.subn(rf"\g<1>{engine}", text)
-        if replaced != 1:
-            raise ValueError("decision_engine not found in the base config")
+        raw["experiment"]["decision_engine"] = engine
+    raw["workload"] = scenario.workload.model_dump(mode="json")
+    raw["fault"] = scenario.fault.model_dump(mode="json")
+    header = (
+        f"# Config efetiva de {directory.name}: {_display_path(base_path)}"
+        f" + cenário {scenario.scenario_id} (gerada por new_execution; não editar).\n"
+    )
     path = directory / EFFECTIVE_CONFIG_FILE
-    path.write_text(text, encoding="utf-8")
+    path.write_text(header + yaml.safe_dump(raw, sort_keys=False, allow_unicode=True), encoding="utf-8")
     return path
 
 
@@ -181,19 +200,28 @@ def open_execution(
     *,
     engine: str | None = None,
     llm_readiness: Callable[[ExperimentConfig], LLMReadiness] = check_llm_readiness,
+    scenarios_dir: Path = SCENARIOS_DIR,
 ) -> Path:
     base_path = resolve_config_path(config_path).resolve()
     if load_experiment_config(base_path).experiment.phase != "pilot":
         raise SystemExit("config phase is not 'pilot': this script only opens pilot executions")
+    scenario_path = scenarios_dir / f"{scenario_id}.yml"
+    if not scenario_path.is_file():
+        raise SystemExit(f"unknown scenario {scenario_id!r}; available: {available_scenarios(scenarios_dir)}")
+    scenario = load_scenario(scenario_path)
     execution_id = next_pilot_id(data_root)
     directory = execution_dir(data_root, execution_id)
     directory.mkdir(parents=True)
-    effective_path = write_effective_config(base_path, directory, engine)
+    effective_path = write_effective_config(base_path, directory, engine, scenario)
     config = load_experiment_config(effective_path)
 
-    metadata = build_metadata(execution_id, scenario_id, config, effective_path)
+    metadata = build_metadata(execution_id, scenario.scenario_id, config, effective_path)
     metadata["base_experiment_config"] = _display_path(base_path)
     metadata["base_experiment_config_hash"] = sha256_of(base_path)
+    metadata["scenario_config"] = _display_path(scenario_path)
+    metadata["scenario_config_hash"] = sha256_of(scenario_path)
+    metadata["fault"] = config.fault.model_dump(mode="json")
+    metadata["workload"] = config.workload.model_dump(mode="json")
     if config.experiment.decision_engine == "LLM":
         apply_llm_readiness(metadata, llm_readiness(config))
     (directory / METADATA_FILE).write_text(
@@ -204,7 +232,7 @@ def open_execution(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--scenario", default="normal")
+    parser.add_argument("--scenario", default="normal", choices=available_scenarios())
     parser.add_argument("--engine", choices=["RULES", "LLM"], default=None)
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT)
     args = parser.parse_args()
