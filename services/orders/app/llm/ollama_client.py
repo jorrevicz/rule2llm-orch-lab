@@ -83,6 +83,10 @@ class OllamaClient:
             load_duration_ms=_ms(body.get("load_duration")),
         )
 
+    def unload(self) -> None:
+        """Descarrega o modelo (`keep_alive: 0`): condição inicial igual a cada execução."""
+        self._post("/api/generate", {"model": self._llm.model, "keep_alive": 0})
+
     def version(self) -> str:
         return self._get("/api/version")["version"]
 

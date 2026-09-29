@@ -81,12 +81,17 @@ docker compose down -v                                     # derruba e apaga os 
 
 ```bash
 docker compose down -v                                        # bancos e filas no estado inicial
-eval "$(.venv/bin/python -m scripts.pilot.new_execution)"     # abre PILOT_nnnn e grava os metadados
+eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine RULES)"   # ou --engine LLM
 docker compose up -d --build --wait                          # serviços gravam em data/pilot/$EXECUTION_ID/
 .venv/bin/python -m scripts.pilot.smoke_test --orders 3
 .venv/bin/python -m scripts.pilot.collect_artifacts          # consolida os artefatos (antes do reset)
 .venv/bin/python -m scripts.pilot.check_traceability         # verifica a cadeia de correlação
 ```
+
+Com `--engine LLM`, o Ollama precisa estar rodando **no host** (`open -a Ollama`; D-08) com o
+modelo `llama3.1:8b` baixado; o script faz readiness e warm-up e registra versão, digest e
+quantização. O motor é escolhido por execução: a config efetiva fica no diretório da execução
+e a config base não muda.
 
 Artefatos por execução: `execution_metadata.json`, `task_events.jsonl`, `states.jsonl`,
 `decisions.jsonl` e `microservices_logs.jsonl` (docs/10 §10.2). Dados de piloto nunca

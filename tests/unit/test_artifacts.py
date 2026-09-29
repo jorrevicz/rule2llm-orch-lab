@@ -4,8 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from scripts.pilot.new_execution import METADATA_FILE, next_pilot_id, open_execution
+from scripts.pilot.llm_readiness import LLMReadiness
+from scripts.pilot.new_execution import EFFECTIVE_CONFIG_FILE, METADATA_FILE, next_pilot_id, open_execution
 from shared.artifacts import Artifact, JsonlWriter, execution_dir, shard_path
+from shared.config import load_experiment_config
 
 REPO_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
 
@@ -80,3 +82,63 @@ def test_open_execution_refuses_a_non_pilot_config(tmp_path):
     with pytest.raises(SystemExit):
         open_execution(tmp_path / "data", "normal", config)
     assert not (tmp_path / "data").exists()
+
+
+# -- motor por execução e readiness do LLM (M5-T06) ---------------------------------
+
+
+def _readiness(status: str = "PASS") -> LLMReadiness:
+    return LLMReadiness(
+        status=status,
+        runtime_version="0.0.0-test",
+        model="llama3.1:8b",
+        model_digest="abc123",
+        quantization="Q4_K_M",
+        model_load_ms=1000.0,
+        warmup_inference_ms=2000.0,
+        failures=[] if status == "PASS" else ["model not available"],
+    )
+
+
+def test_engine_is_chosen_per_execution_without_touching_the_base_config(tmp_path):
+    base_before = REPO_CONFIG.read_text(encoding="utf-8")
+
+    directory = open_execution(tmp_path, "normal", REPO_CONFIG, engine="LLM", llm_readiness=lambda _: _readiness())
+
+    effective = load_experiment_config(directory / EFFECTIVE_CONFIG_FILE)
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    assert effective.experiment.decision_engine == "LLM"
+    assert metadata["decision_engine"] == "LLM"
+    assert REPO_CONFIG.read_text(encoding="utf-8") == base_before
+    assert metadata["base_experiment_config_hash"] != metadata["experiment_config_hash"]
+
+
+def test_llm_execution_records_what_the_runtime_reported(tmp_path):
+    directory = open_execution(tmp_path, "normal", REPO_CONFIG, engine="LLM", llm_readiness=lambda _: _readiness())
+
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    assert metadata["readiness_status"] == "PASS"
+    assert metadata["software"]["llm_runtime_version"] == "0.0.0-test"
+    assert (metadata["llm"]["model_digest"], metadata["llm"]["quantization"]) == ("abc123", "Q4_K_M")
+    assert (metadata["model_load_ms"], metadata["warmup_inference_ms"]) == (1000.0, 2000.0)
+    assert metadata["run_status"] is None
+
+
+def test_failed_llm_readiness_makes_the_execution_invalid(tmp_path):
+    directory = open_execution(tmp_path, "normal", REPO_CONFIG, engine="LLM", llm_readiness=lambda _: _readiness("FAIL"))
+
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    assert metadata["readiness_status"] == "FAIL"
+    assert metadata["run_status"] == "INVALID"
+    assert "model not available" in metadata["invalid_reason"]
+
+
+def test_rules_execution_does_not_touch_the_llm_runtime(tmp_path):
+    def forbidden(_):
+        raise AssertionError("Rules execution must not call the LLM runtime")
+
+    directory = open_execution(tmp_path, "normal", REPO_CONFIG, engine="RULES", llm_readiness=forbidden)
+
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    assert metadata["decision_engine"] == "RULES"
+    assert metadata["readiness_status"] is None

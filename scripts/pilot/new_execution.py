@@ -1,9 +1,16 @@
 """Abre uma execução de piloto: aloca o `execution_id`, cria o diretório e grava
 `execution_metadata.json` (docs/10 §10.3; metodologia Código 12).
 
-    .venv/bin/python -m scripts.pilot.new_execution [--scenario normal]
-    export EXECUTION_ID=PILOT_0001          # valor impresso pelo script
-    docker compose up -d --build --wait
+    eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine LLM [--scenario normal])"
+    docker compose up -d --build --wait     # usa EXECUTION_ID e EXPERIMENT_CONFIG_PATH
+
+O motor é escolhido por execução (`--engine RULES|LLM`): a configuração efetiva é gravada
+no diretório da execução (cópia da config base com `decision_engine` ajustado) e os
+serviços a leem por `EXPERIMENT_CONFIG_PATH`. A config base versionada não muda.
+
+Com `--engine LLM`, roda a readiness e o warm-up do Ollama (`llm_readiness`) e registra
+versão do runtime, digest, quantização, `model_load_ms` e `warmup_inference_ms`. Se a
+readiness reprovar, a execução é registrada como inválida e o script sai com erro.
 
 Somente fase de piloto: `phase = PILOT`, `eligible_for_sample = false`. Campos que
 não podem ser obtidos de forma confiável neste momento ficam `null` (nunca
@@ -18,8 +25,12 @@ import platform
 import re
 import subprocess
 import sys
+from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 
+from scripts.pilot.llm_readiness import LLMReadiness
+from scripts.pilot.llm_readiness import check as check_llm_readiness
 from shared.artifacts import execution_dir
 from shared.config import ExperimentConfig, load_experiment_config, resolve_config_path
 from shared.ids import IdPrefix, sequential_id
@@ -28,6 +39,9 @@ from shared.timestamps import utc_now_iso
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = REPO_ROOT / "data"
 METADATA_FILE = "execution_metadata.json"
+EFFECTIVE_CONFIG_FILE = "experiment_config.yml"
+CONTAINER_DATA_ROOT = Path("/srv/data")
+_ENGINE_LINE = re.compile(r"^(\s*decision_engine:\s*)(RULES|LLM)\b", flags=re.MULTILINE)
 EXECUTION_ID_WIDTH = 4
 _PILOT_ID = re.compile(r"^PILOT_(\d+)$")
 
@@ -132,17 +146,54 @@ def build_metadata(
     }
 
 
+def write_effective_config(base_path: Path, directory: Path, engine: str | None) -> Path:
+    """Cópia da config base com `decision_engine` ajustado (comentários preservados)."""
+    text = base_path.read_text(encoding="utf-8")
+    if engine is not None:
+        text, replaced = _ENGINE_LINE.subn(rf"\g<1>{engine}", text)
+        if replaced != 1:
+            raise ValueError("decision_engine not found in the base config")
+    path = directory / EFFECTIVE_CONFIG_FILE
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def apply_llm_readiness(metadata: dict, readiness: LLMReadiness) -> None:
+    """Registra o que o runtime informou; reprovação invalida a execução (CLAUDE §24)."""
+    metadata["software"]["llm_runtime_version"] = readiness.runtime_version
+    metadata["llm"]["model_digest"] = readiness.model_digest
+    metadata["llm"]["quantization"] = readiness.quantization
+    metadata["llm_readiness"] = asdict(readiness)
+    metadata["readiness_status"] = readiness.status
+    metadata["model_load_ms"] = readiness.model_load_ms
+    metadata["warmup_inference_ms"] = readiness.warmup_inference_ms
+    if readiness.status != "PASS":
+        metadata["run_status"] = "INVALID"
+        metadata["invalid_reason"] = "llm_readiness_failed: " + "; ".join(readiness.failures)
+
+
 def open_execution(
-    data_root: Path = DEFAULT_DATA_ROOT, scenario_id: str = "normal", config_path: Path | None = None
+    data_root: Path = DEFAULT_DATA_ROOT,
+    scenario_id: str = "normal",
+    config_path: Path | None = None,
+    *,
+    engine: str | None = None,
+    llm_readiness: Callable[[ExperimentConfig], LLMReadiness] = check_llm_readiness,
 ) -> Path:
-    resolved_config = resolve_config_path(config_path)
-    config = load_experiment_config(resolved_config)
-    if config.experiment.phase != "pilot":
+    base_path = resolve_config_path(config_path).resolve()
+    if load_experiment_config(base_path).experiment.phase != "pilot":
         raise SystemExit("config phase is not 'pilot': this script only opens pilot executions")
     execution_id = next_pilot_id(data_root)
     directory = execution_dir(data_root, execution_id)
     directory.mkdir(parents=True)
-    metadata = build_metadata(execution_id, scenario_id, config, resolved_config.resolve())
+    effective_path = write_effective_config(base_path, directory, engine)
+    config = load_experiment_config(effective_path)
+
+    metadata = build_metadata(execution_id, scenario_id, config, effective_path)
+    metadata["base_experiment_config"] = _display_path(base_path)
+    metadata["base_experiment_config_hash"] = sha256_of(base_path)
+    if config.experiment.decision_engine == "LLM":
+        apply_llm_readiness(metadata, llm_readiness(config))
     (directory / METADATA_FILE).write_text(
         json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -152,12 +203,19 @@ def open_execution(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--scenario", default="normal")
+    parser.add_argument("--engine", choices=["RULES", "LLM"], default=None)
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT)
     args = parser.parse_args()
 
-    directory = open_execution(args.data_root, args.scenario)
+    directory = open_execution(args.data_root, args.scenario, engine=args.engine)
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    if metadata["run_status"] == "INVALID":
+        print(f"# execução {directory.name} inválida: {metadata['invalid_reason']}", file=sys.stderr)
+        return 1
+    container_config = CONTAINER_DATA_ROOT / directory.relative_to(args.data_root) / EFFECTIVE_CONFIG_FILE
     print(f"export EXECUTION_ID={directory.name}")
-    print(f"# artefatos em {directory}", file=sys.stderr)
+    print(f"export EXPERIMENT_CONFIG_PATH={container_config}")
+    print(f"# artefatos em {directory} (motor {metadata['decision_engine']})", file=sys.stderr)
     return 0
 
 

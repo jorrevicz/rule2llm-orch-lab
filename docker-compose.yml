@@ -29,7 +29,8 @@ services:
       BROKER_URL: amqp://tcc:tcc@rabbitmq:5672//
       ORDERS_DB_PATH: /data/orders.db
       EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
-      EXPERIMENT_CONFIG_PATH: /srv/config/experiment_config.yml
+      # Config efetiva da execução (gravada por new_execution) ou a base.
+      EXPERIMENT_CONFIG_PATH: ${EXPERIMENT_CONFIG_PATH:-/srv/config/experiment_config.yml}
       DATA_ROOT: /srv/data
       SERVICE_ROLE: orders-api
       # D-08: Ollama no host (bare-metal, GPU Metal), fora do compose.
@@ -102,7 +103,8 @@ services:
       BROKER_URL: amqp://tcc:tcc@rabbitmq:5672//
       INVENTORY_DB_PATH: /data/inventory.db
       EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
-      EXPERIMENT_CONFIG_PATH: /srv/config/experiment_config.yml
+      # Config efetiva da execução (gravada por new_execution) ou a base.
+      EXPERIMENT_CONFIG_PATH: ${EXPERIMENT_CONFIG_PATH:-/srv/config/experiment_config.yml}
       DATA_ROOT: /srv/data
       SERVICE_ROLE: inventory-worker
     volumes:
