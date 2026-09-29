@@ -41,6 +41,7 @@ llm:
   response_format: json         # D-09: restrição do runtime só à sintaxe JSON (sem schema)
   num_ctx: 4096                 # contexto explícito (o Ollama corta prompt maior) — A CONGELAR
   keep_alive: 30m               # modelo carregado durante toda a execução — A CONGELAR
+  prompt_template: config/prompts/decision_prompt_v1.txt   # Quadro 2 da metodologia — A CONGELAR
 
 workload:
   dataset: datasets/orders_v1.json

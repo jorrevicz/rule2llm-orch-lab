@@ -107,7 +107,10 @@ def build_metadata(
             "llm_runtime": config.llm.runtime,
             "llm_runtime_version": config.llm.runtime_version,
         },
-        "llm": config.llm.model_dump(exclude={"runtime", "runtime_version"}),
+        "llm": {
+            **config.llm.model_dump(exclude={"runtime", "runtime_version"}),
+            "prompt_template_hash": sha256_of(REPO_ROOT / config.llm.prompt_template),
+        },
         "hardware": hardware(),
         "context_policy": {
             "recent_events_limit": config.context.recent_events_limit,

@@ -58,6 +58,7 @@ class LLMSection(_Section):
     response_format: Literal["json"]  # D-09
     num_ctx: PositiveInt
     keep_alive: str
+    prompt_template: str
 
 
 class WorkloadSection(_Section):

@@ -63,6 +63,8 @@ def test_open_execution_writes_pilot_metadata(tmp_path):
     assert metadata["context_policy"]["recent_events_limit"] >= 1
     assert len(metadata["experiment_config_hash"]) == 64
     assert metadata["message_ordering_policy"]["logical_clock"] is False
+    assert metadata["llm"]["prompt_template"] == "config/prompts/decision_prompt_v1.txt"
+    assert len(metadata["llm"]["prompt_template_hash"]) == 64
     # Preenchidos pelo protocolo de execução (M7), nunca inventados aqui.
     for field in ("run_status", "readiness_status", "invalid_reason", "finished_at"):
         assert metadata[field] is None

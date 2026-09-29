@@ -38,6 +38,7 @@ EXPECTED_KEYS = {
         "response_format",
         "num_ctx",
         "keep_alive",
+        "prompt_template",
     },
     "workload": {"dataset", "requests", "rate_per_second", "seed"},
     "fault": {"type", "seed"},
