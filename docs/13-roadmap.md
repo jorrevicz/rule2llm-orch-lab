@@ -45,7 +45,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
-| [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | 🔄 | `m5-llm` | — |
+| [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
 | [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
@@ -263,8 +263,13 @@ Candidato de substituição registrado: `qwen2.5:3b`.
 
 **Critério de conclusão** (piloto §28 Fase 5)
 
-- [ ] O LLM troca somente o componente que seleciona a ação.
-- [ ] Decisão inválida do LLM → registrada → `ABORT`, sem autocorreção e sem fallback para Rules.
+- [x] O LLM troca somente o componente que seleciona a ação.
+- [x] Decisão inválida do LLM → registrada → `ABORT`, sem autocorreção e sem fallback para Rules.
+
+> Verificado em 2026-09-29: `llama3.1:8b` viável na bancada (M5-T08); piloto LLM `PILOT_0014`
+> com decisões inválidas registradas e abortadas; equivalência com o `LLMDecisionEngine` real;
+> regressão completa com Rules (`PILOT_0016`): 366 testes unitários/contrato e 6 de integração.
+> Decisões do marco: D-08, D-09, D-18, D-19 (🔬, ajustes do TCC em §13.6); achados em §13.7.
 
 ---
 
