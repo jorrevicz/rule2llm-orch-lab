@@ -31,7 +31,10 @@ O projeto está no **piloto técnico**, e o progresso é acompanhado em
   execução; piloto com LLM concluído (`PILOT_0014`). Seis cenários da metodologia (carga em
   malha aberta, falhas na rota primária, indisponibilidade do Inventory, dados
   inconsistentes) executados em piloto com Rules e LLM (M6).
-- Planejado: instrumentação (M7), congelamento (M8) e coleta (M9).
+- Protocolo experimental completo (M7): reset, readiness, métricas por Prometheus (fila,
+  containers, host) e do Ollama no host, consolidação e execuções inválidas registradas
+  (`scripts/experiment/run_experiment.py`).
+- Planejado: congelamento (M8) e coleta (M9).
 
 Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
 
@@ -96,6 +99,19 @@ Com `--engine LLM`, o Ollama precisa estar rodando **no host** (`open -a Ollama`
 modelo `llama3.1:8b` baixado; o script faz readiness e warm-up e registra versão, digest e
 quantização. O motor é escolhido por execução: a config efetiva fica no diretório da execução
 (`EXECUTION_CONFIG_PATH`, lido pelo compose) e a config base não muda.
+
+### Protocolo experimental (Tabela 14)
+
+```bash
+.venv/bin/python -m scripts.experiment.run_experiment \
+    --scenario normal --scenario timeout --engine RULES --engine LLM --repetitions 1
+```
+
+Por execução: abre, reseta (`down -v`, imagens do commit atual), verifica a readiness
+(containers, imagens, filas, bancos, coletores, energia do host), faz o warm-up do LLM,
+aplica carga e falha, exporta as métricas do Prometheus e do Ollama, valida a integridade e
+consolida (`metrics_summary.csv` e demais). Inválidas vão para `invalid_runs.csv` e são
+repetidas com a mesma configuração.
 
 ### Cenários (carga e falha)
 
