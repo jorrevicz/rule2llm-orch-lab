@@ -27,6 +27,11 @@ class EngineOutput:
     failure: str | None = None
     llm_inference_ms: float | None = None
     token_usage: dict[str, int | None] | None = field(default=None)
+    raw_response: str | None = None   # texto devolvido pelo LLM (vai para o log estruturado)
+    done_reason: str | None = None
+
+
+LLM_DECISION_TIMEOUT = "LLM_DECISION_TIMEOUT"
 
 
 class DecisionEngine(Protocol):

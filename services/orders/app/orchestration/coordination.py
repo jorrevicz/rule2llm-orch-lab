@@ -10,6 +10,9 @@ from dataclasses import dataclass
 
 from celery import Celery
 
+from services.orders.app.llm.llm_engine import LLMDecisionEngine
+from services.orders.app.llm.ollama_client import OllamaClient
+from services.orders.app.llm.prompt_builder import PromptBuilder
 from services.orders.app.messaging.publisher import CeleryCommandPublisher
 from services.orders.app.observability.recorders import DecisionRecorder, StateRecorder
 from services.orders.app.orchestration.broker_observer import AmqpBrokerObserver
@@ -29,17 +32,20 @@ class Coordination:
     orchestrator: Orchestrator
 
 
-def build_engine(config: ExperimentConfig) -> DecisionEngine:
+def build_engine(settings: Settings, config: ExperimentConfig) -> DecisionEngine:
     if config.experiment.decision_engine == "RULES":
         return RulesDecisionEngine(config)
-    raise NotImplementedError("LLMDecisionEngine is implemented in M5")
+    return LLMDecisionEngine(
+        OllamaClient(settings.ollama_base_url, config.llm),
+        PromptBuilder.from_file(config.llm.prompt_template),
+    )
 
 
 def build_coordination(settings: Settings, config: ExperimentConfig, app: Celery) -> Coordination:
     return Coordination(
         orchestrator=Orchestrator(
             state_builder=StateBuilder(config, AmqpBrokerObserver(app)),
-            engine=build_engine(config),
+            engine=build_engine(settings, config),
             validator=DecisionValidator(config),
             executor=DecisionExecutor(CeleryCommandPublisher(app), CeleryTaskScheduler(app), config),
             state_recorder=StateRecorder.for_process(settings.artifacts_dir, settings.service_role),

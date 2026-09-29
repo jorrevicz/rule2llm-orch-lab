@@ -31,7 +31,12 @@ class DecisionValidator:
             # maiores exigiriam estender o contrato (D-15).
             raise ValueError("only fallback_max_attempts = 1 is supported (D-15)")
 
-    def validate(self, proposal: ProposedDecision | None, state: SystemState) -> ValidationResult:
+    def validate(
+        self, proposal: ProposedDecision | None, state: SystemState, *, timed_out: bool = False
+    ) -> ValidationResult:
+        """`timed_out`: o motor não chegou a produzir decisão (inferência > timeout)."""
+        if timed_out:
+            return ValidationResult.invalid(ValidationErrorCode.LLM_DECISION_TIMEOUT)
         error = self._first_error(proposal, state)
         return ValidationResult.ok() if error is None else ValidationResult.invalid(error)
 

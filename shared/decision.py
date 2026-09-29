@@ -66,6 +66,7 @@ class ValidationErrorCode(StrEnum):
     TARGET_NOT_ALLOWED = "TARGET_NOT_ALLOWED"
     TERMINAL_TASK = "TERMINAL_TASK"
     MALFORMED_DECISION = "MALFORMED_DECISION"  # saída do motor não legível como decisão
+    LLM_DECISION_TIMEOUT = "LLM_DECISION_TIMEOUT"  # inferência excedeu o timeout (CLAUDE §25)
 
 
 class _Contract(BaseModel):
@@ -108,10 +109,18 @@ class ValidationResult(_Contract):
 INVALID_DECISION_ABORT = Decision(
     action=Action.ABORT, target=None, reason_code=ReasonCode.INVALID_DECISION
 )
+LLM_TIMEOUT_ABORT = Decision(
+    action=Action.ABORT, target=None, reason_code=ReasonCode.LLM_DECISION_TIMEOUT
+)
 
 
 def resolve_action(proposal: ProposedDecision | None, validation: ValidationResult) -> Decision:
-    """Decisão válida → executa a proposta; inválida → `ABORT / INVALID_DECISION`."""
+    """Decisão válida → executa a proposta; inválida → `ABORT / INVALID_DECISION`.
+
+    Sem decisão porque a inferência excedeu o timeout → `ABORT / LLM_DECISION_TIMEOUT`.
+    """
+    if validation.error == ValidationErrorCode.LLM_DECISION_TIMEOUT:
+        return LLM_TIMEOUT_ABORT
     if not validation.valid or proposal is None:
         return INVALID_DECISION_ABORT
     return Decision.model_validate(proposal.model_dump())

@@ -8,6 +8,7 @@ O mesmo fluxo vale para Rules e LLM; só o motor muda (RNF-001, RNF-002).
 e executável após a validação; a construção do estado fica fora (metodologia §4.5).
 """
 
+import logging
 import sqlite3
 import time
 from collections.abc import Callable
@@ -19,13 +20,16 @@ from services.orders.app.observability.recorders import (
     StateRecorder,
     ValidationEntry,
 )
-from services.orders.app.orchestration.decision_engine import DecisionEngine
+from services.orders.app.orchestration.decision_engine import LLM_DECISION_TIMEOUT, DecisionEngine
 from services.orders.app.orchestration.executor import DecisionExecutor, ExecutionResult
 from services.orders.app.orchestration.state_builder import StateBuilder
 from services.orders.app.orchestration.validator import DecisionValidator
 from shared.decision import Decision, ValidationResult, resolve_action
 from shared.ids import IdPrefix, unique_id
+from shared.structured_logging import correlated
 from shared.timestamps import utc_now_iso
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -71,11 +75,22 @@ class Orchestrator:
 
         started = self._timer()
         output = self._engine.decide(state)
-        validation = self._validator.validate(output.proposal, state)
+        validation = self._validator.validate(
+            output.proposal, state, timed_out=output.failure == LLM_DECISION_TIMEOUT
+        )
         executed = resolve_action(output.proposal, validation)
         decision_time_ms = (self._timer() - started) * 1000
 
         decision_id = unique_id(IdPrefix.DECISION)
+        if output.raw_response is not None or output.failure is not None:
+            # Saída bruta do LLM para a análise qualitativa (não entra em decisions.jsonl).
+            logger.info(
+                "engine output: failure=%s done_reason=%s raw=%r",
+                output.failure,
+                output.done_reason,
+                output.raw_response,
+                extra=correlated(task_id=task_id, state_id=state.state_id, decision_id=decision_id),
+            )
         self._decision_recorder.record(
             DecisionRecord(
                 execution_id=state.execution_id,
