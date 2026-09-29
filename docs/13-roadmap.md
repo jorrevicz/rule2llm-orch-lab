@@ -236,7 +236,7 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
 | M5-T01 | **(D) 🔬** Onde roda o Ollama | `docs(decisoes)` | D-08: Ollama no host (bare-metal, GPU Metal), acessado por `host.docker.internal`; D-09: `format: "json"`; parâmetros novos `response_format`, `num_ctx`, `keep_alive` no config; critérios de viabilidade do 8B registrados antes da medição | [03 §3.5](03-stack-tecnologica.md), RNF-021 | ✅ |
-| M5-T02 | `OllamaClient` | `feat(llm)` | `stream=false`; `temperature`, `top_p`, `num_predict`, `seed` do config; timeout. **(D) 🔬** D-09 (modo JSON do runtime) | RF-025 | ⬜ |
+| M5-T02 | `OllamaClient` | `feat(llm)` | `/api/generate` com `stream: false`, `format: "json"` (D-09), `keep_alive` e opções do config (`temperature`, `top_p`, `num_predict = max_tokens`, `seed`, `num_ctx`); sem `context` (stateless); devolve texto, `done_reason`, contagens de tokens e tempos; timeout → `LLMTimeout`, demais falhas → `LLMRuntimeError`; recusa config com `stream` ou `session_memory`. Biblioteca padrão (sem dependência nova) | RF-025, RF-026 | ✅ |
 | M5-T03 | `PromptBuilder` | `feat(llm)` | Template versionado em `config/prompts/decision_prompt_v1.txt`; hash no metadata | [06 §6.8](06-modelo-de-decisao.md), RNF-027 | ⬜ |
 | M5-T04 | `DecisionParser` | `feat(llm)` | Parser estrito, sem correção; saída malformada = decisão inválida | RF-027, CLAUDE §23 | ⬜ |
 | M5-T05 | `LLMDecisionEngine` | `feat(orchestration)` | Stateless; `llm_inference_ms`; tokens só se o runtime os informar; timeout → `LLM_DECISION_TIMEOUT` → `ABORT` | RF-026, RNF-013, [06 §6.13](06-modelo-de-decisao.md) | ⬜ |
