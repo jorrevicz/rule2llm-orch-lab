@@ -46,7 +46,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
-| [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | 🔄 | `m6-falhas-carga` | — |
+| [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ✅ | `m6-falhas-carga` | 2026-09-29 |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
 | [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
 | [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
@@ -298,10 +298,20 @@ Candidato de substituição registrado: `qwen2.5:3b`.
 
 **Critério de conclusão**
 
-- [ ] Os seis cenários são acionáveis por script/config e registrados em `fault_events.jsonl`.
-- [ ] Nenhuma perturbação aleatória não registrada.
-- [ ] Degradação da rota primária é distinguível de indisponibilidade total do Inventory.
-- [ ] `FALLBACK` executado de fato na degradação da rota primária (piloto §35.7).
+- [x] Os seis cenários são acionáveis por script/config e registrados em `fault_events.jsonl`.
+- [x] Nenhuma perturbação aleatória não registrada.
+- [x] Degradação da rota primária é distinguível de indisponibilidade total do Inventory.
+- [x] `FALLBACK` executado de fato na degradação da rota primária (piloto §35.7).
+
+> Verificado em 2026-09-29: `config/scenarios/*.yml` + `run_scenario` executaram os seis
+> cenários com Rules (PILOT_0041–0046) e LLM (PILOT_0033, 0035–0038, 0040), com
+> `FAULT_STARTED`/`FAULT_ENDED`/`FAULT_APPLIED` em `fault_events.jsonl` e janelas fechadas
+> verificadas por `check_traceability`. Todo sorteio é por hash da seed registrada (a rodada
+> Rules repetida deu os mesmos números). Degradação da primária → `RETRY`/`FALLBACK` com
+> reserva no fallback (processo próprio, D-21); `inventory-service` parado → só `WAIT`/`ABORT`
+> e fallback sem consumidor. 424 testes unitários/contrato e 8 de integração. Decisões do
+> marco: D-03, D-20, D-21, D-22, D-23 (🔬, §13.6); correção M6-T11; achados em §13.7
+> (incluindo o controle do host, que entra na readiness do M7).
 
 ---
 
