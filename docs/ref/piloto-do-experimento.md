@@ -2733,6 +2733,8 @@ Os timestamps permitem observar essa defasagem, mas o TCC não pretende implemen
 
 A repetição experimental continua necessária.
 
+> **Decisões D-10, D-24, D-25 e D-26 (2026-09-29) 🔬:** coleta por Prometheus (cAdvisor, node-exporter, `rabbitmq_prometheus`) a cada 1 s, com CSVs extraídos ao fim de cada execução, e amostrador próprio para o processo do Ollama no host; tempo de recuperação pela janela de `k` sucessos com latência ≤ P95 pré-falha; *blast radius* pela trajetória das tarefas. O ambiente final da coleta será um servidor Fedora Linux. Registro: `docs/13-roadmap.md` §13.4; definições: `docs/10-rastreabilidade-e-metricas.md` §10.4.3.1.
+
 ## 35.7 Fallback deve ter significado operacional real
 
 Não basta criar uma fila com outro nome que executa exatamente a mesma rota sujeita à mesma falha.

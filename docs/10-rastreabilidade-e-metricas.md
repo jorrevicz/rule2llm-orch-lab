@@ -190,6 +190,18 @@ throughput, `Δ > 0` favorece LLM.
 | Tipo de decisão | `CONTINUE`/`RETRY`/`WAIT`/`FALLBACK`/`ABORT` escolhida | `decisions.jsonl` |
 | *Blast radius* | Serviços/tarefas/mensagens afetadas por uma falha | `blast_radius.csv` |
 
+### 10.4.3.1 Definições operacionais (M7)
+
+- **Tempo de recuperação (D-24):** recuperado quando `k` pedidos consecutivos (ordem de
+  criação) criados após o fim da falha terminam `COMPLETED` com latência ≤ P95 dos pedidos
+  criados antes do início da falha, na mesma execução. `recovery_time = t_conclusão do 1º
+  pedido da janela − t_início da falha`; sem janela até o fim da execução → "não
+  recuperado". `k` provisório = 5.
+- **Blast radius (D-25):** tarefa afetada = teve algum ponto de decisão além do inicial ou não
+  terminou `COMPLETED`. Registrados à parte: tarefas atingidas diretamente (`FAULT_APPLIED`),
+  serviços afetados, mensagens reentregues e mortas (DLQ).
+- **Amostragem (D-26):** 1 s para filas, containers e Ollama, igual para Rules e LLM.
+
 ### 10.4.4 Análise (metodologia Tabelas 17–18)
 
 Estatística descritiva (média, mediana, desvio padrão, mín., máx., percentis — P95 para

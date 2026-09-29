@@ -47,7 +47,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ✅ | `m6-falhas-carga` | 2026-09-29 |
-| [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
+| [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | 🔄 | `m7-instrumentacao` | — |
 | [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
 | [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
 
@@ -321,16 +321,22 @@ Candidato de substituição registrado: `qwen2.5:3b`.
 doc 10 §10.6).
 **Pré-requisitos:** M6. **Tag:** `m7-instrumentacao`.
 
+> Tasks revisadas em 2026-09-29 com as decisões D-10, D-24, D-25 e D-26 (M7-T01). O ambiente
+> final será um servidor Fedora Linux (informado pelo responsável): as verificações de host
+> dependem da plataforma, e a viabilidade do LLM é refeita no servidor antes do congelamento
+> (M8-T03).
+
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M7-T01 | Reset do ambiente | `feat(scripts)` | `scripts/reset_environment.py`: purge de filas/DLQ, SQLite iniciais, hashes, `initial_state.json`, `reset.log` | RF-037, RNF-024 | ⬜ |
-| M7-T02 | Readiness completo | `feat(scripts)` | `scripts/readiness.py` → `readiness_status`; inclui o estado do host (na tomada, Low Power Mode desligado, sleep impedido durante a execução) e o Ollama ocioso — achados do M6-T10 | RF-038, RNF-023 | ⬜ |
-| M7-T03 | Métricas de fila | `feat(metrics)` | `queue_metrics.csv` (API de management do RabbitMQ, intervalo fixo) | RNF-020 | ⬜ |
-| M7-T04 | Métricas de containers e do Ollama | `feat(metrics)` | `container_stats.csv` (Docker Stats) **e** CPU/RAM do processo do Ollama no host (D-08: fora do Docker Stats), com o mesmo intervalo de coleta | RNF-020 | ⬜ |
-| M7-T05 | **(D)** Prometheus | `docs(decisoes)` | D-10: exporters Prometheus × API de management + Docker Stats | I-09, CLAUDE §33 | ⬜ |
-| M7-T06 | Executor do protocolo | `feat(experiment)` | `scripts/run_experiment.py` (TABELA 14, etapas 1–12); `execution_metadata.json` completo (commit, hashes, versões, hardware); `run_status`; `invalid_runs.csv` | RNF-005, RNF-006 | ⬜ |
-| M7-T07 | Consolidação de métricas | `feat(analysis)` | `latency_metrics.csv`, `throughput_metrics.csv`, `error_metrics.csv`, `recovery_metrics.csv`, overhead decisório — calculados **somente** a partir dos arquivos | RF-042, [10 §10.4](10-rastreabilidade-e-metricas.md) | ⬜ |
-| M7-T08 | Testes dos artefatos | `test` | Todos os artefatos do doc 10 §10.2 gerados e íntegros | RNF-029 | ⬜ |
+| M7-T01 | **(D) 🔬** Decisões de instrumentação | `docs(decisoes)` | D-10, D-24, D-25, D-26 registradas; tasks do M7 revisadas; docs 03, 10 e piloto atualizados | I-09, metodologia Tabelas 15–16 | ✅ |
+| M7-T02 | Prometheus e exporters | `feat(infra)` | Prometheus, cAdvisor e node-exporter no compose; métricas por fila do RabbitMQ (`rabbitmq_prometheus`); coleta a cada 1 s; `config/prometheus/prometheus.yml` | D-10, D-26 | ⬜ |
+| M7-T03 | Reset do ambiente | `feat(scripts)` | `scripts/experiment/reset_environment.py`: `down -v` + subida limpa; `initial_state.json` (hashes e contagens dos dois SQLite, filas vazias), `reset.log` | RF-037, RNF-024 | ⬜ |
+| M7-T04 | Readiness completo | `feat(scripts)` | `scripts/experiment/readiness.py` → `readiness_status`/`readiness_timestamp`: containers saudáveis, filas e consumidores, health da API, bancos no estado inicial, alvos do Prometheus ativos, host (macOS: na tomada, sem Low Power Mode, sleep impedido; Linux: não se aplica) e Ollama ocioso; para LLM, a readiness do M5 | RF-038, RNF-023, achados M6-T10 | ⬜ |
+| M7-T05 | Métricas de fila, containers e Ollama | `feat(metrics)` | `queue_metrics.csv` e `container_stats.csv` extraídos do Prometheus (passo 1 s) ao fim da execução; CPU/RAM do processo do Ollama no host por amostrador próprio (`ps`, 1 s), na mesma tabela | RNF-020, D-10 | ⬜ |
+| M7-T06 | Executor do protocolo | `feat(experiment)` | `scripts/experiment/run_experiment.py` (TABELA 14, etapas 1–12) para uma execução e para um lote; `execution_metadata.json` completo (commit, hashes, versões, hardware, host); `run_status`; `invalid_runs.csv` | RNF-005, RNF-006 | ⬜ |
+| M7-T07 | Consolidação de métricas | `feat(analysis)` | `latency_metrics.csv`, `throughput_metrics.csv`, `error_metrics.csv`, `recovery_metrics.csv` (D-24), `blast_radius.csv` (D-25), overhead decisório e `metrics_summary.csv` — calculados **somente** a partir dos arquivos | RF-042, [10 §10.4](10-rastreabilidade-e-metricas.md) | ⬜ |
+| M7-T08 | Testes dos artefatos | `test` | Unitários das métricas e do protocolo; todos os artefatos do doc 10 §10.2 gerados e íntegros | RNF-029 | ⬜ |
+| M7-T09 | Piloto do protocolo | `chore(pilot)` | Execuções completas pelo protocolo com Rules e LLM; artefatos e métricas conferidos | piloto §28 Fase 7 | ⬜ |
 
 **Critério de conclusão**
 
@@ -392,7 +398,7 @@ doc 10 §10.6).
 | D-07 🔬 | Política de DLQ | **Decidido (2026-09-28):** "falhas sucessivas" = uma falha de processamento, sem retentativa automática; exceção não prevista → rejeição sem requeue → `tasks.dlq`; o worker do Orders consome a DLQ, registra `MESSAGE_DEAD_LETTERED` e marca a tarefa `DEAD_LETTERED` | M4-T10 | ✅ |
 | D-08 🔬 | Localização do Ollama | **Decidido (2026-09-29): no host (bare-metal, GPU Metal)**, acessado por `host.docker.internal:11434`; custo do Ollama coletado à parte no host (M7-T04) | M5-T01 | ✅ |
 | D-09 🔬 | Modo JSON do runtime | **Decidido (2026-09-29): `format: "json"`** (só sintaxe; sem schema de ações/targets) — erros de conteúdo continuam medidos pelo Validator | M5-T02 | ✅ |
-| D-10 | Prometheus | Exporters × API de management + Docker Stats | M7-T05 | ⬜ |
+| D-10 🔬 | Prometheus | **Decidido (2026-09-29): Prometheus + exporters.** Prometheus, cAdvisor (containers) e node-exporter (host) no compose, e o plugin `rabbitmq_prometheus` com métricas por fila; `queue_metrics.csv` e `container_stats.csv` são extraídos do Prometheus ao fim de cada execução. O Ollama roda no host (D-08) e não aparece no cAdvisor: CPU/RAM do processo vêm de um amostrador próprio (`ps`), igual em macOS e Linux. Os indicadores não são visíveis ao decisor (RNF-029). Ambiente final: servidor Fedora Linux (cAdvisor sem as limitações do Docker Desktop) | M7-T01 | ✅ |
 | D-11 🔬 | Valores finais dos parâmetros | Ver [11 §11.5](11-requisitos.md) | M8-T02 | ⬜ |
 | D-12 | Publicação dos dados experimentais | Commit no repositório × artefato de release × armazenamento externo | M9-T04 | ⬜ |
 | D-13 | Envelope inválido no consumo | **Decidido (2026-09-28): rejeição sem requeue → `tcc.dlx` → `tasks.dlq`.** Envelope, `event_type` ou `payload` fora do contrato é problema de contrato, não de negócio; não vira `invalid_data`. Verificado ao vivo | M2-T01 | ✅ |
@@ -405,6 +411,9 @@ doc 10 §10.6).
 | D-21 🔬 | Rotas do Inventory em processos distintos | **Decidido (2026-09-29):** no mesmo container do `inventory-service` e com o mesmo `inventory.db`, um processo Celery consome `inventory.primary` e outro `inventory.fallback`. Degradar a rota primária não bloqueia o fallback; parar o container derruba o serviço inteiro (só `WAIT`/`ABORT`) — metodologia §4.4 | M6-T01 | ✅ |
 | D-22 🔬 | Tempo de serviço simulado | **Decidido (2026-09-29):** novo parâmetro `inventory.service_time_ms` aplicado a toda solicitação, nas duas rotas e em todos os cenários, fora da transação do SQLite. Dá capacidade finita ao Inventory, para que a sobrecarga (taxa acima da capacidade) altere `queue_size` e `latency_ms`. Muda a latência base igualmente para Rules e LLM | M6-T01 | ✅ |
 | D-23 🔬 | `invalid_data` na rota de fallback | **Decidido (2026-09-29), consequência de D-03:** falha `invalid_data` grava `last_result = invalid_data` também no fallback; `fallback_failed` (D-15) fica para timeout e `transient_error` no fallback. Dado inválido não depende da rota. Para o Rules muda só o `reason_code` do `ABORT` (`INVALID_DATA` em vez de `FALLBACK_FAILED`) | M6-T01 | ✅ |
+| D-24 🔬 | Critério de retorno ao *steady state* (tempo de recuperação) | **Decidido (2026-09-29): janela de sucessos.** Recuperado quando `k` pedidos consecutivos (ordem de criação) criados após o fim da falha terminam `COMPLETED` com latência ≤ P95 dos pedidos criados antes do início da falha, na mesma execução. `recovery_time = t_conclusão do 1º pedido da janela − t_início da falha` (metodologia: do início da falha ao retorno); sem janela → "não recuperado". `k` = 5 provisório (A CONGELAR) | M7-T01 | ✅ |
+| D-25 🔬 | *Blast radius* | **Decidido (2026-09-29): pela trajetória.** Tarefa afetada = teve algum ponto de decisão além do inicial ou não terminou `COMPLETED`; registrados à parte as tarefas atingidas diretamente (`FAULT_APPLIED`), os serviços afetados e as mensagens reentregues ou mortas (DLQ) | M7-T01 | ✅ |
+| D-26 | Intervalo de amostragem | **Decidido (2026-09-29): 1 s** para filas, containers e Ollama (mesmo para Rules e LLM); estatísticas do RabbitMQ a cada 1 s. Provisório, A CONGELAR | M7-T01 | ✅ |
 | D-19 🔬 | Limites de `WAIT` e de prazo para qualquer motor | **Decidido (2026-09-29): duas regras no Validator comum** — `WAIT_LIMIT_EXCEEDED` (`wait_count >= max_waits`) e `TASK_DEADLINE_EXCEEDED` (ação ≠ `ABORT` com `elapsed_ms >= task_deadline_ms`); violação → `ABORT / INVALID_DECISION`. Nada muda para o Rules | M5-T11 | ✅ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
@@ -422,7 +431,7 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | D-15 ✅ |
 | I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | D-07 ✅ |
 | I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 ✅ (doc 06 §6.2.4) |
-| I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
+| I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | D-10 ✅ |
 | I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 ✅ |
 
 ## 13.6 Ajustes a refletir no texto do TCC
@@ -446,6 +455,10 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | D-21 | §4.3 (arquitetura) / §4.4 | Rotas primária e fallback consumidas por processos distintos do mesmo `inventory-service` |
 | D-22 | Código 11 | Novo parâmetro `inventory.service_time_ms` (tempo de serviço simulado, comum a todos os cenários) |
 | D-23 | Tabela de ações / D-15 | `invalid_data` prevalece sobre `fallback_failed` na rota de fallback |
+| D-10 | §4.5 / Tabelas 15–16 (coleta) | Uso concreto do Prometheus (cAdvisor, node-exporter, `rabbitmq_prometheus`) e amostrador próprio para o Ollama no host |
+| D-24 | Tabelas 15 e 17 (tempo de recuperação) | Critério operacional de retorno ao *steady state*: janela de `k` sucessos com latência ≤ P95 pré-falha |
+| D-25 | Tabelas 15 e 17 (*blast radius*) | Tarefa afetada definida pela trajetória; atingidas diretamente e mensagens afetadas à parte |
+| D-26 | Tabela 13 (coleta) | Intervalo de amostragem de 1 s |
 
 ## 13.7 Achados do piloto
 

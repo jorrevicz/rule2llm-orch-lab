@@ -70,6 +70,12 @@
 - **Não faz:** não fornece informação operacional adicional a Rules ou a LLM; indicadores
   agregados (P95, estatísticas consolidadas) **não** são visíveis ao orquestrador durante a
   execução (RNF-029).
+- **Como (D-10, D-26):** Prometheus no compose coleta a cada 1 s o cAdvisor (CPU/RAM por
+  container), o node-exporter (host) e o plugin `rabbitmq_prometheus` (métricas por fila);
+  ao fim de cada execução, `queue_metrics.csv` e `container_stats.csv` são extraídos da API
+  do Prometheus. O Ollama roda no host (D-08) e fica fora do cAdvisor: CPU/RAM do processo
+  vêm de um amostrador próprio (`ps`, 1 s), na mesma tabela. O `StateBuilder` continua lendo
+  a fila por `queue.declare` passivo, não pelo Prometheus.
 
 ## 3.4 Fora da execução
 
