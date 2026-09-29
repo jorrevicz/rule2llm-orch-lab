@@ -108,7 +108,7 @@ def test_consistent_artifacts_pass(execution):
     result = check(execution)
 
     assert result.ok, result.errors
-    assert result.counts == {"task_events": 5, "states": 1, "decisions": 1, "microservices_logs": 1}
+    assert result.counts == {"task_events": 5, "states": 1, "decisions": 1, "microservices_logs": 1, "fault_events": 0}
 
 
 def test_gap_in_event_seq_is_reported(execution):

@@ -95,16 +95,32 @@ modelo `llama3.1:8b` baixado; o script faz readiness e warm-up e registra versã
 quantização. O motor é escolhido por execução: a config efetiva fica no diretório da execução
 (`EXECUTION_CONFIG_PATH`, lido pelo compose) e a config base não muda.
 
+### Cenários (carga e falha)
+
+Os seis cenários da metodologia (Tabela 12) estão em `config/scenarios/`: `normal`,
+`overload`, `intermittent_failure`, `timeout`, `inconsistent_data` e `recovery`.
+
+```bash
+eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine RULES --scenario timeout)"
+docker compose up -d --build --wait
+.venv/bin/python -m scripts.scenarios.run_scenario   # carga + falha + espera + coleta + verificação
+```
+
+O executor aplica a carga em malha aberta (`scripts/workload/generate_load.py`) e a janela da
+falha (`scripts/faults/injectors.py`): falha intermitente e atraso degradam só a rota primária
+(`fault_control.json`, D-20); `recovery` para o container do Inventory inteiro. Ao fim grava
+`scenario_summary.json` com pedidos, ações, decisões inválidas e falhas aplicadas.
+
 Artefatos por execução: `execution_metadata.json`, `task_events.jsonl`, `states.jsonl`,
-`decisions.jsonl` e `microservices_logs.jsonl` (docs/10 §10.2). Dados de piloto nunca
-integram a amostra.
+`decisions.jsonl`, `microservices_logs.jsonl`, `fault_events.jsonl` e `workload.jsonl`
+(docs/10 §10.2). Dados de piloto nunca integram a amostra.
 
 | Serviço | Papel |
 |---|---|
 | `rabbitmq` | Broker; topologia declarada em `config/rabbitmq/definitions.json` (UI em `localhost:15672`, usuário `tcc`/`tcc`) |
 | `orders-api` | `orders-service` — API HTTP (`localhost:8000`) |
 | `orders-worker` | `orders-service` — consome `orders.events` |
-| `inventory-worker` | `inventory-service` — consome `inventory.primary` |
+| `inventory-worker` | `inventory-service` — um processo por rota: `inventory.primary` e `inventory.fallback` (D-21) |
 
 `orders-api` e `orders-worker` são o mesmo microsserviço e compartilham `orders.db`;
 o `inventory-service` tem o seu próprio `inventory.db`.

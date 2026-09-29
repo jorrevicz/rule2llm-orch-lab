@@ -70,6 +70,14 @@ def scalar(database: tuple[str, str], sql: str, *params: str):
     return value
 
 
+def queue_consumers() -> dict[str, int]:
+    output = compose(
+        "exec", "-T", "rabbitmq",
+        "rabbitmqctl", "list_queues", "name", "consumers", "--formatter", "json", "-q",
+    )
+    return {queue["name"]: queue["consumers"] for queue in json.loads(output)}
+
+
 def queue_depths() -> dict[str, int]:
     # rabbitmqctl em vez da API de management: as contagens da API têm atraso.
     output = compose(

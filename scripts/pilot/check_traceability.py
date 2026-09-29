@@ -23,7 +23,7 @@ import argparse
 import json
 import os
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -166,6 +166,20 @@ def check_logs(logs: list[dict], execution_id: str, result: CheckResult) -> None
         result.errors.append(f"microservices_logs: {foreign} lines from another execution")
 
 
+def check_fault_events(faults: list[dict], execution_id: str, result: CheckResult) -> None:
+    """Falhas da mesma execução; toda janela aberta foi fechada (sem perturbação órfã)."""
+    if any(event.get("execution_id") != execution_id for event in faults):
+        result.errors.append("fault_events: records from another execution")
+    windows = Counter(
+        (event["fault_id"], event["event_type"])
+        for event in faults
+        if event["event_type"] in {"FAULT_STARTED", "FAULT_ENDED"}
+    )
+    for fault_id in {fault_id for fault_id, _ in windows}:
+        if windows[(fault_id, "FAULT_STARTED")] != windows[(fault_id, "FAULT_ENDED")]:
+            result.errors.append(f"fault_events: window {fault_id} not closed")
+
+
 def check(directory: Path, *, require_metadata: bool = True) -> CheckResult:
     execution_id = directory.name
     result = CheckResult()
@@ -176,17 +190,20 @@ def check(directory: Path, *, require_metadata: bool = True) -> CheckResult:
     states = _read_jsonl(directory / f"{Artifact.STATES}.jsonl")
     decisions = _read_jsonl(directory / f"{Artifact.DECISIONS}.jsonl")
     logs = _read_jsonl(directory / f"{Artifact.MICROSERVICES_LOGS}.jsonl")
+    faults = _read_jsonl(directory / f"{Artifact.FAULT_EVENTS}.jsonl")
     result.counts = {
         "task_events": len(events),
         "states": len(states),
         "decisions": len(decisions),
         "microservices_logs": len(logs),
+        "fault_events": len(faults),
     }
 
     trajectories = check_trajectories(events, execution_id, result)
     state_tasks = check_states(states, execution_id, trajectories, result)
     check_decisions(decisions, execution_id, state_tasks, result)
     check_logs(logs, execution_id, result)
+    check_fault_events(faults, execution_id, result)
     return result
 
 
