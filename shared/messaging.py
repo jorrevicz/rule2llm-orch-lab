@@ -68,6 +68,10 @@ def configure_celery(app: Celery, broker_url: str, *, prefetch_multiplier: int =
         # mensagem, que é tratada pela idempotência de transporte (message_id).
         task_acks_late=True,
         task_reject_on_worker_lost=True,
+        # D-07: falha de processamento não prevista rejeita a mensagem sem requeue
+        # (vai para tasks.dlq) em vez de confirmá-la e descartá-la. Sem retentativa
+        # automática: "falhas sucessivas" = uma falha de processamento.
+        task_acks_on_failure_or_timeout=False,
         worker_prefetch_multiplier=prefetch_multiplier,
         task_serializer="json",
         accept_content=["json"],

@@ -53,8 +53,8 @@ stateDiagram-v2
     WAITING --> ABORTED: max_waits atingido / deadline (ABORT)
     DISPATCHED --> ABORTED: decisão inválida / dados inválidos (ABORT)
 
-    DISPATCHED --> DEAD_LETTERED: falha de mensageria / limite DLQ
-    PROCESSING --> DEAD_LETTERED: falha de mensageria / limite DLQ
+    DISPATCHED --> DEAD_LETTERED: mensagem da tarefa na tasks.dlq (D-07)
+    PROCESSING --> DEAD_LETTERED: mensagem da tarefa na tasks.dlq (D-07)
 
     COMPLETED --> [*]
     ABORTED --> [*]
@@ -71,6 +71,9 @@ stateDiagram-v2
   e a rota primária está degradada de forma localizada (não quando o `inventory-service`
   inteiro está indisponível — nesse caso as ações são `WAIT` ou `ABORT`).
 - **`CONTINUE`** executa a próxima transição normal prevista (ex.: `PENDING → DISPATCHED`).
+- **`DEAD_LETTERED`** (D-07): qualquer estado não terminal vai a `DEAD_LETTERED` quando uma
+  mensagem da tarefa chega à `tasks.dlq` (falha de processamento ou contrato); o diagrama
+  mostra os casos mais comuns.
 
 ## 5.3 Estados externos do pedido
 

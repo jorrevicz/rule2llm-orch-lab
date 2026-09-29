@@ -212,7 +212,7 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 | M4-T07 | `WAIT` | `feat(orchestration)` | Executor `WAIT`: `wait_count + 1`, tarefa `WAITING`, `WAIT_SCHEDULED`, reavaliação agendada (`orders.reevaluate`) após `wait_delay_ms`; `attempt_number` inalterado. A reavaliação registra `WAIT_FINISHED` uma única vez e abre novo ponto de decisão; ignorada se a tarefa terminou ou a espera foi superada. Verificado ao vivo (PILOT_0008): Inventory parado → WAIT, WAIT, ABORT `SERVICE_UNAVAILABLE_LIMIT` | RF-020 | ✅ |
 | M4-T08 | Rota fallback e `FALLBACK` | `feat(inventory)` | Executor `FALLBACK`: tarefa `FALLBACK_PROCESSING`, `fallback_used = 1`, `attempt_number` inalterado (D-15), `FALLBACK_SCHEDULED` e solicitação imediata para `inventory.fallback`; `reservation/fallback.py` no mesmo inventory-service e worker consumindo as duas filas. Verificado ao vivo (PILOT_0009, Inventory pausado): CONTINUE → RETRY → RETRY → FALLBACK → ABORT `FALLBACK_FAILED`; ao retomar, 4 solicitações retidas → 1 reserva | RF-021, [06 §6.5](06-modelo-de-decisao.md), I-06 | ✅ |
 | M4-T09 | `ABORT` e decisão inválida | `feat(orchestration)` | `DecisionExecutor` (uma transação por ação; efeitos externos só após o commit) com `ABORT`: Task `ABORTED`, Order `FAILED`, `TASK_ABORTED` na trajetória com `decision_id` e `reason_code`; decisão inválida → `ABORT / INVALID_DECISION`; tarefa terminal não muda. Feita antes da T04, que depende do fail-safe | RF-022, RF-029 | ✅ |
-| M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: definição de "falhas sucessivas" (limite e mecanismo); `MESSAGE_DEAD_LETTERED` → `DEAD_LETTERED`. Hoje, exceção inesperada numa tarefa Celery é confirmada (ack) e a mensagem é descartada, só com log (`task_acks_on_failure_or_timeout = True`, padrão) — decidir aqui se passa a ir para a DLQ | RF-030, I-07 | ⬜ |
+| M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: falha de processamento não prevista → rejeição sem requeue → `tasks.dlq` (sem retentativa automática); consumidor bruto da `tasks.dlq` no worker do Orders registra `MESSAGE_DEAD_LETTERED` (tarefa Celery, fila de origem, motivo) e leva a tarefa a `DEAD_LETTERED` / pedido `FAILED`. Verificado ao vivo (PILOT_0010) | RF-030, I-07 | ✅ |
 | M4-T11 | Testes das ações | `test` | Rules (cada regra), Validator (cada erro), Executor por ação: `WAIT` não incrementa tentativa, `FALLBACK` só quando admissível, `ABORT` terminal | CLAUDE §35 | ⬜ |
 | M4-T12 | 1º piloto técnico | `chore(pilot)` | `PILOT_0001` (rules, fluxo normal) executado; checklist do doc 11 §11.4 marcado | piloto §32 | ⬜ |
 
@@ -346,7 +346,7 @@ doc 10 §10.6).
 | D-04 🔬 | Padrão outbox | **Decidido (2026-09-28): sem outbox; publicação direta após o commit.** Inventory reemite a resposta gravada em `processed_messages.response_json` na redelivery; despacho perdido do Orders é coberto pelo `timeout_check` (M4-T06). Revisável se o piloto mostrar perda | M2-T07 | ✅ |
 | D-05 | Tabela `executions` | **Decidido (2026-09-28): não criar.** Metadados só em `execution_metadata.json` (metodologia §4.5, Código 12); o reset restaura o SQLite a cada repetição e `run_status` é conhecido pela bancada, não pelo serviço | M3-T03 | ✅ |
 | D-06 🔬 | Formato do `SYSTEM_STATE` | **Decidido (2026-09-28):** aninhado (como o Código 4 da metodologia); `service.latency_ms`; `phase` = `TaskStatus`, com `CONTINUE` em `PENDING`/`WAITING` (substitui `READY`/`RECOVERED` — **altera o Código 4 do TCC**, §13.6); `decision_engine` = `RULES`/`LLM` em tudo, como os Códigos 7–9 e 12 | M3-T01 | ✅ |
-| D-07 🔬 | Política de DLQ | Limite de "falhas sucessivas" e mecanismo (ex.: contagem de entregas) | M4-T10 | ⬜ |
+| D-07 🔬 | Política de DLQ | **Decidido (2026-09-28):** "falhas sucessivas" = uma falha de processamento, sem retentativa automática; exceção não prevista → rejeição sem requeue → `tasks.dlq`; o worker do Orders consome a DLQ, registra `MESSAGE_DEAD_LETTERED` e marca a tarefa `DEAD_LETTERED` | M4-T10 | ✅ |
 | D-08 🔬 | Localização do Ollama | Host macOS (GPU Metal) × container (CPU) | M5-T01 | ⬜ |
 | D-09 🔬 | Modo JSON do runtime | Usar a restrição de formato do Ollama × apenas o prompt | M5-T02 | ⬜ |
 | D-10 | Prometheus | Exporters × API de management + Docker Stats | M7-T05 | ⬜ |
@@ -371,7 +371,7 @@ Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, ta
 | I-04 | `task_deadline_ms` está nos parâmetros do piloto, mas não no `experiment_config.yml` sugerido | piloto §14.1 × §31 | M0-T06 ✅ |
 | I-05 | Default de `tasks.attempt_number`: `0` × `1` | piloto §23 × doc 09 | D-14 ✅ (piloto §23.1 atualizado para `1`) |
 | I-06 | `fallback_max_attempts` definido, sem uso nas regras nem no validador | piloto §14.1, §18 | D-15 ✅ |
-| I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | M4-T10 (D-07) |
+| I-07 | "Falhas sucessivas" da DLQ sem limite nem mecanismo | piloto §7.1, doc 04 | D-07 ✅ |
 | I-08 | Origem do sinal `service.status` (`available`/`degraded`/`unavailable`) não definida | doc 06 §6.2.1 | M3-T05 ✅ (doc 06 §6.2.4) |
 | I-09 | Prometheus "confirmado", sem uso concreto definido | doc 03 §3.2 | M7-T05 (D-10) |
 | I-10 | `CLAUDE.md` cita `piloto-do-experimento.md` sem o caminho `docs/ref/`; `docs/README.md` diz que `docs/ref` não é versionado | `CLAUDE.md` §2, `docs/README.md` | M0-T03 ✅ |
@@ -389,6 +389,7 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | M3-T07 | Códigos 7–8 (`decisions.jsonl`), campo `executed_decision` | Acrescentar `reason_code` à decisão executada (necessário para registrar `ABORT / INVALID_DECISION` e `LLM_DECISION_TIMEOUT`, como já aparece no Código 9) |
 | M4-T03 | Código 6 (`DecisionValidator`) | Acrescentar: `CONTINUE` só com target `inventory.primary` e antes do primeiro despacho (`INVALID_CONTINUE_TARGET`, `CONTINUE_AFTER_DISPATCH`); `RETRY` em `inventory.fallback` inválido (`FALLBACK_RETRY_LIMIT`, D-15); saída ilegível → `MALFORMED_DECISION` |
 | D-15 | Tabela de ações / semântica do `FALLBACK` | `FALLBACK` não incrementa `attempt_number`; falha ou timeout no fallback → `last_result = fallback_failed` |
+| D-07 | Descrição da DLQ ("falhas sucessivas") | Definir: uma falha de processamento, sem retentativa automática, envia a mensagem à `tasks.dlq`; a tarefa passa a `DEAD_LETTERED` |
 
 ## 13.7 Achados do piloto
 

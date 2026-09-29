@@ -251,6 +251,11 @@ def abort_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> boo
     return _finish_task(connection, task_id=task_id, status=TaskStatus.ABORTED, now=now)
 
 
+def dead_letter_task(connection: sqlite3.Connection, *, task_id: str, now: str) -> bool:
+    """Task → DEAD_LETTERED e Order → FAILED (D-07). False se já era terminal."""
+    return _finish_task(connection, task_id=task_id, status=TaskStatus.DEAD_LETTERED, now=now)
+
+
 def _finish_task(
     connection: sqlite3.Connection, *, task_id: str, status: TaskStatus, now: str
 ) -> bool:

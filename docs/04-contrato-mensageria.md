@@ -244,6 +244,7 @@ Notas:
 - O `timeout_check` verifica `attempt_number` para não agir sobre uma tentativa já superada
   (evita agir em cima de um `RETRY` mais recente).
 - A `tasks.dlq` serve para análise experimental; mensagens nela não retornam ao fluxo normal.
+- **Política de DLQ (D-07, 2026-09-28):** "falhas sucessivas" = **uma** falha de processamento, sem retentativa automática. Uma exceção não prevista numa tarefa Celery rejeita a mensagem sem requeue (`task_acks_on_failure_or_timeout = False`), assim como a mensagem fora do contrato (D-13); ela segue por `tcc.dlx` para `tasks.dlq`. O worker do Orders consome a `tasks.dlq` (consumidor bruto, pois as mensagens são tarefas de outros consumidores), registra `MESSAGE_DEAD_LETTERED` na trajetória da tarefa com a tarefa Celery, a fila de origem e o motivo (`x-death`) e, se a tarefa não é terminal, leva-a a `DEAD_LETTERED` (pedido `FAILED`). A mensagem é registrada, não reprocessada; mensagem sem tarefa identificável fica só no log.
 
 ## 4.9 Fluxo em caso de timeout (resumo)
 
