@@ -24,13 +24,13 @@ services:
     build:
       context: .
       dockerfile: services/orders/Dockerfile
-    command: ["uvicorn", "services.orders.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "--factory", "services.orders.app.main:create_app", "--host", "0.0.0.0", "--port", "8000"]
     environment: &orders-env
       BROKER_URL: amqp://tcc:tcc@rabbitmq:5672//
       ORDERS_DB_PATH: /data/orders.db
       EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
       # Config efetiva da execução (gravada por new_execution) ou a base.
-      EXPERIMENT_CONFIG_PATH: ${EXPERIMENT_CONFIG_PATH:-/srv/config/experiment_config.yml}
+      EXPERIMENT_CONFIG_PATH: ${EXECUTION_CONFIG_PATH:-/srv/config/experiment_config.yml}
       DATA_ROOT: /srv/data
       SERVICE_ROLE: orders-api
       # D-08: Ollama no host (bare-metal, GPU Metal), fora do compose.
@@ -104,7 +104,7 @@ services:
       INVENTORY_DB_PATH: /data/inventory.db
       EXECUTION_ID: ${EXECUTION_ID:-PILOT_0000}
       # Config efetiva da execução (gravada por new_execution) ou a base.
-      EXPERIMENT_CONFIG_PATH: ${EXPERIMENT_CONFIG_PATH:-/srv/config/experiment_config.yml}
+      EXPERIMENT_CONFIG_PATH: ${EXECUTION_CONFIG_PATH:-/srv/config/experiment_config.yml}
       DATA_ROOT: /srv/data
       SERVICE_ROLE: inventory-worker
     volumes:

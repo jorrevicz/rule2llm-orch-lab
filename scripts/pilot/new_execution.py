@@ -2,11 +2,13 @@
 `execution_metadata.json` (docs/10 §10.3; metodologia Código 12).
 
     eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine LLM [--scenario normal])"
-    docker compose up -d --build --wait     # usa EXECUTION_ID e EXPERIMENT_CONFIG_PATH
+    docker compose up -d --build --wait     # usa EXECUTION_ID e EXECUTION_CONFIG_PATH
 
 O motor é escolhido por execução (`--engine RULES|LLM`): a configuração efetiva é gravada
 no diretório da execução (cópia da config base com `decision_engine` ajustado) e os
-serviços a leem por `EXPERIMENT_CONFIG_PATH`. A config base versionada não muda.
+serviços a leem pelo caminho em `EXECUTION_CONFIG_PATH` (caminho dentro do container, que
+o compose repassa como `EXPERIMENT_CONFIG_PATH`; no host, `EXPERIMENT_CONFIG_PATH` não é
+alterado). A config base versionada não muda.
 
 Com `--engine LLM`, roda a readiness e o warm-up do Ollama (`llm_readiness`) e registra
 versão do runtime, digest, quantização, `model_load_ms` e `warmup_inference_ms`. Se a
@@ -214,7 +216,7 @@ def main() -> int:
         return 1
     container_config = CONTAINER_DATA_ROOT / directory.relative_to(args.data_root) / EFFECTIVE_CONFIG_FILE
     print(f"export EXECUTION_ID={directory.name}")
-    print(f"export EXPERIMENT_CONFIG_PATH={container_config}")
+    print(f"export EXECUTION_CONFIG_PATH={container_config}")
     print(f"# artefatos em {directory} (motor {metadata['decision_engine']})", file=sys.stderr)
     return 0
 

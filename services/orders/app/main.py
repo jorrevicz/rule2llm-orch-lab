@@ -1,4 +1,8 @@
-"""Aplicação FastAPI do orders-service."""
+"""Aplicação FastAPI do orders-service.
+
+Servida pela fábrica (`uvicorn --factory services.orders.app.main:create_app`): importar
+este módulo não lê configuração nem abre recursos.
+"""
 
 import logging
 from collections.abc import AsyncIterator
@@ -61,5 +65,3 @@ async def _invalid_request(request: Request, exc: RequestValidationError) -> JSO
         content={"detail": jsonable_encoder(exc.errors())},
     )
 
-
-app = create_app()

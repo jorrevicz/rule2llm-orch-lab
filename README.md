@@ -91,7 +91,7 @@ docker compose up -d --build --wait                          # serviços gravam 
 Com `--engine LLM`, o Ollama precisa estar rodando **no host** (`open -a Ollama`; D-08) com o
 modelo `llama3.1:8b` baixado; o script faz readiness e warm-up e registra versão, digest e
 quantização. O motor é escolhido por execução: a config efetiva fica no diretório da execução
-e a config base não muda.
+(`EXECUTION_CONFIG_PATH`, lido pelo compose) e a config base não muda.
 
 Artefatos por execução: `execution_metadata.json`, `task_events.jsonl`, `states.jsonl`,
 `decisions.jsonl` e `microservices_logs.jsonl` (docs/10 §10.2). Dados de piloto nunca
