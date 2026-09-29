@@ -95,9 +95,26 @@ def test_nothing_is_published_when_persistence_fails(connection):
     assert connection.execute("SELECT COUNT(*) FROM reservations").fetchone()[0] == 0
 
 
-def test_fallback_route_is_not_handled_yet(connection):
-    with pytest.raises(ValueError, match="unsupported target"):
-        process_reservation_request(connection, *_request("inventory.fallback"), RecordingPublisher())
+def test_fallback_route_reserves_through_the_same_service(connection):
+    publisher = RecordingPublisher()
+
+    result = process_reservation_request(connection, *_request("inventory.fallback"), publisher)
+
+    assert result.outcome == RequestOutcome.RESERVED
+    assert connection.execute("SELECT route FROM reservations").fetchone()[0] == "fallback"
+    assert publisher.published[0]["payload"]["route"] == "fallback"
+    assert publisher.published[0]["target"] == "inventory.fallback"
+
+
+def test_fallback_for_an_already_reserved_task_does_not_reserve_again(connection):
+    publisher = RecordingPublisher()
+    process_reservation_request(connection, *_request("inventory.primary"), publisher)
+
+    result = process_reservation_request(connection, *_request("inventory.fallback", event_seq=5), publisher)
+
+    assert result.outcome == RequestOutcome.ALREADY_RESERVED
+    assert _count(connection, "reservations") == 1
+    assert publisher.published[-1]["payload"]["route"] == "primary"  # reserva existente
 
 
 def _count(connection: sqlite3.Connection, table: str) -> int:

@@ -144,6 +144,21 @@ def mark_retry_dispatched(connection: sqlite3.Connection, *, task_id: str, now: 
     return updated.rowcount == 1
 
 
+def start_fallback(connection: sqlite3.Connection, *, task_id: str, target: str, now: str) -> bool:
+    """`FALLBACK`: troca o target, marca `fallback_used`; `attempt_number` não muda (D-15).
+
+    Só se o fallback ainda não foi usado e a tarefa não é terminal. Deve ser chamada
+    dentro de uma transação do chamador.
+    """
+    terminal = tuple(TERMINAL_TASK_STATUSES)
+    updated = connection.execute(
+        "UPDATE tasks SET status = ?, current_target = ?, fallback_used = 1, updated_at = ?"
+        f" WHERE task_id = ? AND fallback_used = 0 AND status NOT IN ({', '.join('?' * len(terminal))})",
+        (TaskStatus.FALLBACK_PROCESSING, target, now, task_id, *terminal),
+    )
+    return updated.rowcount == 1
+
+
 def enter_wait(connection: sqlite3.Connection, *, task_id: str, now: str) -> int | None:
     """`WAIT`: tarefa → WAITING e `wait_count + 1`; `attempt_number` não muda.
 

@@ -17,6 +17,7 @@ from services.orders.app.db.repositories import (
     dispatch_context,
     enter_wait,
     mark_retry_dispatched,
+    start_fallback,
     start_first_dispatch,
     start_retry,
 )
@@ -73,6 +74,7 @@ class DecisionExecutor:
             Action.CONTINUE: self._continue,
             Action.RETRY: self._retry,
             Action.WAIT: self._wait,
+            Action.FALLBACK: self._fallback,
             Action.ABORT: self._abort,
         }
 
@@ -153,6 +155,32 @@ class DecisionExecutor:
             )
         )
         return ExecutionResult(Action.WAIT, True)
+
+    def _fallback(
+        self,
+        connection: sqlite3.Connection,
+        decision: Decision,
+        task_id: str,
+        decision_id: str,
+        effects: list[Effect],
+    ) -> ExecutionResult:
+        """Troca `inventory.primary` por `inventory.fallback` (mesmo inventory-service).
+
+        Publica a solicitação na rota de fallback imediatamente, com novo `message_id` e
+        `event_seq`; `attempt_number` não muda e `fallback_used` passa a true (D-15).
+        """
+        now = utc_now_iso()
+        if not start_fallback(connection, task_id=task_id, target=decision.target, now=now):
+            raise RuntimeError(f"FALLBACK is not applicable to task {task_id}")
+        record_internal_event(
+            connection,
+            task_id=task_id,
+            event_type=EventType.FALLBACK_SCHEDULED,
+            now=now,
+            payload={"decision_id": decision_id},
+        )
+        message_id = self._publish_request(connection, task_id, decision_id, now, effects)
+        return ExecutionResult(Action.FALLBACK, True, [message_id])
 
     def dispatch_scheduled_attempt(
         self, connection: sqlite3.Connection, *, task_id: str, decision_id: str

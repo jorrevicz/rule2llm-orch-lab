@@ -75,7 +75,7 @@ services:
         condition: service_healthy
 
   # inventory-service — worker de reserva. Banco próprio (volume inventory-data).
-  # Nesta fase consome apenas inventory.primary; inventory.fallback entra em M4-T08.
+  # Consome as duas rotas lógicas do mesmo serviço: primária e fallback.
   inventory-worker:
     build:
       context: .
@@ -84,7 +84,7 @@ services:
       - celery
       - --app=services.inventory.app.messaging.celery_app
       - worker
-      - --queues=inventory.primary
+      - --queues=inventory.primary,inventory.fallback
       - --concurrency=1
       # Sem coordenação entre workers: mingle/gossip/heartbeat usam filas transitórias
       # (bloqueadas no RabbitMQ 4) e não fazem parte do experimento.

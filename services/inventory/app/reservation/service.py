@@ -27,7 +27,8 @@ from services.inventory.app.db.repositories import (
     insert_reservation,
 )
 from services.inventory.app.messaging.publisher import EventPublisher
-from services.inventory.app.reservation.primary import reserve_primary
+from services.inventory.app.reservation.fallback import reserve_fallback
+from services.inventory.app.reservation.primary import ReservationOutcome, reserve_primary
 from shared.canonical_json import canonical_json
 from shared.envelope import (
     Envelope,
@@ -58,10 +59,6 @@ def process_reservation_request(
     payload: ReservationRequestPayload,
     publisher: EventPublisher,
 ) -> RequestResult:
-    if request.target != Route.INVENTORY_PRIMARY:
-        # A rota inventory.fallback é implementada em M4-T08.
-        raise ValueError(f"unsupported target: {request.target!r}")
-
     now = utc_now_iso()
     with transaction(connection):
         previous = find_processed_message(connection, request.message_id)
@@ -86,7 +83,7 @@ def _reserve(
     else:
         outcome = RequestOutcome.RESERVED
         items = [item.model_dump() for item in payload.items]
-        reservation = reserve_primary(items)
+        reservation = _reserve_by_route(request.target, items)
         reply = _succeeded_event(request, payload.order_id, reservation.route)
         insert_reservation(
             connection,
@@ -106,6 +103,13 @@ def _reserve(
         now=now,
     )
     return RequestResult(outcome, reply)
+
+
+def _reserve_by_route(target: str, items: list[dict]) -> ReservationOutcome:
+    """Rota escolhida pelo target do envelope (decidido pelo orquestrador)."""
+    if target == Route.INVENTORY_FALLBACK:
+        return reserve_fallback(items)
+    return reserve_primary(items)
 
 
 def _succeeded_event(request: MessageEnvelope, order_id: str, route: str) -> Envelope:
