@@ -45,7 +45,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
-| [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
+| [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | 🔄 | `m5-llm` | — |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
 | [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
@@ -235,14 +235,26 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M5-T01 | **(D) 🔬** Onde roda o Ollama | `docs(decisoes)` | D-08: no host macOS (GPU Metal) × em container (apenas CPU no macOS); registro no metadata | [03 §3.5](03-stack-tecnologica.md), RNF-021 | ⬜ |
+| M5-T01 | **(D) 🔬** Onde roda o Ollama | `docs(decisoes)` | D-08: Ollama no host (bare-metal, GPU Metal), acessado por `host.docker.internal`; D-09: `format: "json"`; parâmetros novos `response_format`, `num_ctx`, `keep_alive` no config; critérios de viabilidade do 8B registrados antes da medição | [03 §3.5](03-stack-tecnologica.md), RNF-021 | ✅ |
 | M5-T02 | `OllamaClient` | `feat(llm)` | `stream=false`; `temperature`, `top_p`, `num_predict`, `seed` do config; timeout. **(D) 🔬** D-09 (modo JSON do runtime) | RF-025 | ⬜ |
 | M5-T03 | `PromptBuilder` | `feat(llm)` | Template versionado em `config/prompts/decision_prompt_v1.txt`; hash no metadata | [06 §6.8](06-modelo-de-decisao.md), RNF-027 | ⬜ |
 | M5-T04 | `DecisionParser` | `feat(llm)` | Parser estrito, sem correção; saída malformada = decisão inválida | RF-027, CLAUDE §23 | ⬜ |
 | M5-T05 | `LLMDecisionEngine` | `feat(orchestration)` | Stateless; `llm_inference_ms`; tokens só se o runtime os informar; timeout → `LLM_DECISION_TIMEOUT` → `ABORT` | RF-026, RNF-013, [06 §6.13](06-modelo-de-decisao.md) | ⬜ |
 | M5-T06 | Readiness e warm-up do LLM | `feat(scripts)` | Readiness do Ollama; warm-up (`model_load_ms`, `warmup_inference_ms`); versão/digest/quantização lidos do runtime (nunca inventados) | RF-038, RF-039 | ⬜ |
 | M5-T07 | Testes do LLM e de equivalência | `test` | Cliente falso: JSON inválido, target inventado, timeout → `ABORT`; mesmo `SYSTEM_STATE`, Validator e Executor para Rules e LLM | RNF-009, RNF-010, CLAUDE §35 | ⬜ |
-| M5-T08 | Piloto com LLM | `chore(pilot)` | Piloto com `decision_engine: llm` no fluxo normal; avaliação da viabilidade do `llama3.1:8b` no hardware local | piloto §20.4 | ⬜ |
+| M5-T08 | Viabilidade e piloto com LLM | `chore(pilot)` | Bancada de viabilidade do `llama3.1:8b` pelos critérios técnicos abaixo (fixados antes da medição); piloto com `decision_engine: LLM` no fluxo normal e nos cenários de decisão | piloto §20.4 | ⬜ |
+
+**Critérios de viabilidade do `llama3.1:8b` (M5-T08)** — técnicos, fixados antes da medição.
+A troca de modelo só ocorre se algum falhar (metodologia §4.3.7); desempenho nas decisões
+não é critério (o Rules não é gabarito e escolher pelo resultado enviesaria o tratamento).
+Candidato de substituição registrado: `qwen2.5:3b`.
+
+1. Com os containers do experimento ativos, o modelo fica 100% na GPU (`ollama ps`), sem swap.
+2. p95 de `llm_inference_ms` com o prompt real ≤ 7 s. Derivação com os parâmetros atuais
+   (provisórios): ~11 s de timers no pior caso (4 timeouts de 2 s, 2 esperas de `RETRY` de
+   0,5 s, 2 `WAIT`s de 1 s) + ~7 pontos de decisão devem caber em `task_deadline_ms` = 60 s.
+3. `prompt_eval_count` < `num_ctx` em todas as chamadas (prompt nunca truncado).
+4. `done_reason = stop` em todas as chamadas (resposta nunca cortada por `max_tokens`).
 
 **Critério de conclusão** (piloto §28 Fase 5)
 
@@ -288,7 +300,7 @@ doc 10 §10.6).
 | M7-T01 | Reset do ambiente | `feat(scripts)` | `scripts/reset_environment.py`: purge de filas/DLQ, SQLite iniciais, hashes, `initial_state.json`, `reset.log` | RF-037, RNF-024 | ⬜ |
 | M7-T02 | Readiness completo | `feat(scripts)` | `scripts/readiness.py` → `readiness_status` | RF-038, RNF-023 | ⬜ |
 | M7-T03 | Métricas de fila | `feat(metrics)` | `queue_metrics.csv` (API de management do RabbitMQ, intervalo fixo) | RNF-020 | ⬜ |
-| M7-T04 | Métricas de containers | `feat(metrics)` | `container_stats.csv` (Docker Stats) | RNF-020 | ⬜ |
+| M7-T04 | Métricas de containers e do Ollama | `feat(metrics)` | `container_stats.csv` (Docker Stats) **e** CPU/RAM do processo do Ollama no host (D-08: fora do Docker Stats), com o mesmo intervalo de coleta | RNF-020 | ⬜ |
 | M7-T05 | **(D)** Prometheus | `docs(decisoes)` | D-10: exporters Prometheus × API de management + Docker Stats | I-09, CLAUDE §33 | ⬜ |
 | M7-T06 | Executor do protocolo | `feat(experiment)` | `scripts/run_experiment.py` (TABELA 14, etapas 1–12); `execution_metadata.json` completo (commit, hashes, versões, hardware); `run_status`; `invalid_runs.csv` | RNF-005, RNF-006 | ⬜ |
 | M7-T07 | Consolidação de métricas | `feat(analysis)` | `latency_metrics.csv`, `throughput_metrics.csv`, `error_metrics.csv`, `recovery_metrics.csv`, overhead decisório — calculados **somente** a partir dos arquivos | RF-042, [10 §10.4](10-rastreabilidade-e-metricas.md) | ⬜ |
@@ -352,8 +364,8 @@ doc 10 §10.6).
 | D-05 | Tabela `executions` | **Decidido (2026-09-28): não criar.** Metadados só em `execution_metadata.json` (metodologia §4.5, Código 12); o reset restaura o SQLite a cada repetição e `run_status` é conhecido pela bancada, não pelo serviço | M3-T03 | ✅ |
 | D-06 🔬 | Formato do `SYSTEM_STATE` | **Decidido (2026-09-28):** aninhado (como o Código 4 da metodologia); `service.latency_ms`; `phase` = `TaskStatus`, com `CONTINUE` em `PENDING`/`WAITING` (substitui `READY`/`RECOVERED` — **altera o Código 4 do TCC**, §13.6); `decision_engine` = `RULES`/`LLM` em tudo, como os Códigos 7–9 e 12 | M3-T01 | ✅ |
 | D-07 🔬 | Política de DLQ | **Decidido (2026-09-28):** "falhas sucessivas" = uma falha de processamento, sem retentativa automática; exceção não prevista → rejeição sem requeue → `tasks.dlq`; o worker do Orders consome a DLQ, registra `MESSAGE_DEAD_LETTERED` e marca a tarefa `DEAD_LETTERED` | M4-T10 | ✅ |
-| D-08 🔬 | Localização do Ollama | Host macOS (GPU Metal) × container (CPU) | M5-T01 | ⬜ |
-| D-09 🔬 | Modo JSON do runtime | Usar a restrição de formato do Ollama × apenas o prompt | M5-T02 | ⬜ |
+| D-08 🔬 | Localização do Ollama | **Decidido (2026-09-29): no host (bare-metal, GPU Metal)**, acessado por `host.docker.internal:11434`; custo do Ollama coletado à parte no host (M7-T04) | M5-T01 | ✅ |
+| D-09 🔬 | Modo JSON do runtime | **Decidido (2026-09-29): `format: "json"`** (só sintaxe; sem schema de ações/targets) — erros de conteúdo continuam medidos pelo Validator | M5-T02 | ✅ |
 | D-10 | Prometheus | Exporters × API de management + Docker Stats | M7-T05 | ⬜ |
 | D-11 🔬 | Valores finais dos parâmetros | Ver [11 §11.5](11-requisitos.md) | M8-T02 | ⬜ |
 | D-12 | Publicação dos dados experimentais | Commit no repositório × artefato de release × armazenamento externo | M9-T04 | ⬜ |
@@ -395,6 +407,8 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | M4-T03 | Código 6 (`DecisionValidator`) | Acrescentar: `CONTINUE` só com target `inventory.primary` e antes do primeiro despacho (`INVALID_CONTINUE_TARGET`, `CONTINUE_AFTER_DISPATCH`); `RETRY` em `inventory.fallback` inválido (`FALLBACK_RETRY_LIMIT`, D-15); saída ilegível → `MALFORMED_DECISION` |
 | D-15 | Tabela de ações / semântica do `FALLBACK` | `FALLBACK` não incrementa `attempt_number`; falha ou timeout no fallback → `last_result = fallback_failed` |
 | D-07 | Descrição da DLQ ("falhas sucessivas") | Definir: uma falha de processamento, sem retentativa automática, envia a mensagem à `tasks.dlq`; a tarefa passa a `DEAD_LETTERED` |
+| D-08 | §4.3.7 / Tabela de instrumentação | Ollama no host (GPU); custo de CPU/RAM do runtime medido fora do Docker Stats |
+| D-09 | §4.3.7 / Quadro 2 | Chamada com `format: "json"` (só sintaxe); novos parâmetros `num_ctx` e `keep_alive` |
 
 ## 13.7 Achados do piloto
 

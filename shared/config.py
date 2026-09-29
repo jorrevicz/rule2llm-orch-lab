@@ -55,6 +55,9 @@ class LLMSection(_Section):
     session_memory: bool
     request_timeout_seconds: PositiveInt
     stream: bool
+    response_format: Literal["json"]  # D-09
+    num_ctx: PositiveInt
+    keep_alive: str
 
 
 class WorkloadSection(_Section):

@@ -13,6 +13,8 @@ from shared.artifacts import execution_dir
 DEFAULT_BROKER_URL = "amqp://tcc:tcc@localhost:5672//"
 DEFAULT_DATA_ROOT = "data"
 DEFAULT_SERVICE_ROLE = "orders-api"
+# D-08: Ollama roda no host (bare-metal, GPU Metal), fora dos containers.
+DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_DATABASE_PATH = "orders.db"
 # Execução de desenvolvimento, sem metadados. Execuções de piloto registradas são
 # abertas por `scripts/pilot/new_execution.py` (PILOT_0001 em diante).
@@ -26,6 +28,7 @@ class Settings:
     execution_id: str
     data_root: Path
     service_role: str  # identifica o processo que grava os artefatos (api/worker)
+    ollama_base_url: str
 
     @property
     def artifacts_dir(self) -> Path:
@@ -39,4 +42,5 @@ def load_settings() -> Settings:
         execution_id=os.environ.get("EXECUTION_ID", DEFAULT_EXECUTION_ID),
         data_root=Path(os.environ.get("DATA_ROOT", DEFAULT_DATA_ROOT)),
         service_role=os.environ.get("SERVICE_ROLE", DEFAULT_SERVICE_ROLE),
+        ollama_base_url=os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL),
     )

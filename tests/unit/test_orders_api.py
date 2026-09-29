@@ -21,6 +21,7 @@ def settings(tmp_path) -> Settings:
         execution_id="PILOT_TEST",
         data_root=tmp_path / "data",
         service_role="orders-api",
+        ollama_base_url="http://ollama.invalid",
     )
 
 

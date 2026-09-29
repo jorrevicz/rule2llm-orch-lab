@@ -1447,6 +1447,10 @@ llm:
 - `seed` só deve constar como controle efetivo se o runtime utilizado realmente suportá-la;
 - não inventar metadados que o runtime não forneça.
 
+> **D-08 (2026-09-29) 🔬:** o Ollama roda **no host** (bare-metal, GPU Metal do Apple M2), fora do Docker Compose; os serviços o acessam por `host.docker.internal:11434`. Em container, o Docker no macOS só teria CPU. Consequência para a instrumentação: o custo de CPU/RAM do modelo **não aparece no Docker Stats**; o processo do Ollama precisa de coleta própria no host (M7-T04), para que o overhead do LLM não fique invisível na comparação de custo.
+>
+> **D-09 (2026-09-29) 🔬:** chamada com `format: "json"`: o runtime restringe a saída a JSON **sintaticamente** válido, sem schema. Ação, target e `reason_code` continuam livres, e as decisões inválidas de conteúdo seguem sendo medidas pelo `DecisionValidator`. Um schema restrito (enum de ações/targets) eliminaria na geração parte do comportamento avaliado. Registro: `docs/13-roadmap.md` §13.4.
+
 ## 20.2 Política stateless
 
 Cada decisão deverá reconstruir o prompt:
