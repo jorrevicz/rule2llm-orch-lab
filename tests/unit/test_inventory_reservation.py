@@ -4,6 +4,8 @@ import pytest
 
 from services.inventory.app.db.connection import connect, init_database
 from services.inventory.app.reservation.service import RequestOutcome, process_reservation_request
+from scripts.datasets.generate_dataset import CATALOG_PATH
+from shared.catalog import load_catalog
 from shared.canonical_json import canonical_json
 from shared.envelope import build_envelope, parse_message
 from shared.events import EventType
@@ -34,13 +36,19 @@ class FailingOncePublisher(RecordingPublisher):
 @pytest.fixture
 def connection(tmp_path) -> sqlite3.Connection:
     path = tmp_path / "inventory.db"
-    init_database(path)
+    init_database(path, load_catalog(CATALOG_PATH))
     conn = connect(path)
     yield conn
     conn.close()
 
 
-def _request(target: str = "inventory.primary", *, event_seq: int = 2, attempt_number: int = 1):
+def _request(
+    target: str = "inventory.primary",
+    *,
+    event_seq: int = 2,
+    attempt_number: int = 1,
+    items: list[dict] | None = None,
+):
     envelope = build_envelope(
         execution_id="PILOT_TEST",
         task_id="TASK_000001",
@@ -48,7 +56,7 @@ def _request(target: str = "inventory.primary", *, event_seq: int = 2, attempt_n
         event_seq=event_seq,
         attempt_number=attempt_number,
         target=target,
-        payload={"order_id": "ORD_000001", "items": [{"sku": "SKU-001", "quantity": 2}]},
+        payload={"order_id": "ORD_000001", "items": items or [{"sku": "SKU-001", "quantity": 2}]},
     )
     return parse_message(envelope, {EventType.STOCK_RESERVATION_REQUESTED})
 
@@ -235,3 +243,46 @@ def test_task_id_uniqueness_is_enforced_by_the_database(connection):
             "INSERT INTO reservations (task_id, order_id, status, route, items_json, created_at)"
             " VALUES ('TASK_000001', 'ORD_000001', 'RESERVED', 'primary', '[]', 'now')"
         )
+
+
+# -- catálogo de SKUs e dados inconsistentes (D-03) ----------------------------------
+
+UNKNOWN_ITEMS = [{"sku": "SKU-001", "quantity": 1}, {"sku": "SKU-999", "quantity": 1}]
+
+
+def test_catalog_is_loaded_once_and_reloading_is_harmless(tmp_path):
+    path = tmp_path / "inventory.db"
+    init_database(path, ["SKU-001", "SKU-002"])
+    init_database(path, ["SKU-001", "SKU-002"])
+
+    conn = connect(path)
+    assert [row[0] for row in conn.execute("SELECT sku FROM stock ORDER BY sku")] == ["SKU-001", "SKU-002"]
+    conn.close()
+
+
+@pytest.mark.parametrize("target", ["inventory.primary", "inventory.fallback"])
+def test_unknown_sku_is_invalid_data_on_any_route(connection, target):
+    publisher = RecordingPublisher()
+
+    result = process_reservation_request(connection, *_request(target, items=UNKNOWN_ITEMS), publisher)
+
+    assert result.outcome == RequestOutcome.INVALID_DATA
+    assert _count(connection, "reservations") == 0
+    [reply] = publisher.published
+    assert reply["event_type"] == "STOCK_RESERVATION_FAILED"
+    assert reply["payload"] == {"order_id": "ORD_000001", "route": target.split(".")[1], "failure_reason": "invalid_data"}
+    assert (reply["event_seq"], reply["target"]) == (2, target)
+    parse_message(reply, {EventType.STOCK_RESERVATION_FAILED})  # dentro do contrato
+
+
+def test_invalid_data_reply_is_stored_and_reemitted_on_redelivery(connection):
+    request, payload = _request(items=UNKNOWN_ITEMS)
+    publisher = RecordingPublisher()
+    first = process_reservation_request(connection, request, payload, publisher)
+
+    again = process_reservation_request(connection, request, payload, publisher)
+
+    row = connection.execute("SELECT result, response_json FROM processed_messages").fetchone()
+    assert (row["result"], row["response_json"]) == ("failed", canonical_json(first.reply))
+    assert again.outcome == RequestOutcome.DUPLICATE_MESSAGE
+    assert publisher.published == [first.reply, first.reply]

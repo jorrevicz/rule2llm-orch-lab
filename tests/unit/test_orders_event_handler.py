@@ -122,6 +122,14 @@ def test_failure_on_the_fallback_route_is_fallback_failed(connection):
     assert _last_result(connection) == "fallback_failed"  # D-15
 
 
+def test_invalid_data_on_the_fallback_route_stays_invalid_data(connection):
+    connection.execute("UPDATE tasks SET current_target = 'inventory.fallback'")
+
+    handle_inventory_event(connection, _failed("invalid_data", target="inventory.fallback"))
+
+    assert _last_result(connection) == "invalid_data"  # D-23
+
+
 def test_failure_of_a_superseded_request_is_only_recorded(connection):
     outcome = handle_inventory_event(connection, _failed(event_seq=99))
 

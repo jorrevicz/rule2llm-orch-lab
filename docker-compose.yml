@@ -110,6 +110,7 @@ services:
     volumes:
       - inventory-data:/data
       - ./config:/srv/config:ro
+      - ./datasets:/srv/datasets:ro   # catálogo de SKUs (D-03)
       - ./data:/srv/data
     depends_on:
       rabbitmq:

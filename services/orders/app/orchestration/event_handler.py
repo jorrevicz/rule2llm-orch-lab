@@ -10,8 +10,9 @@ numeração na trajetória (D-16) → registro em `task_events` → aplicação 
   (piloto §5.2) e registra `TASK_COMPLETED`. Um sucesso de tentativa antiga também
   conclui: a reserva existe (idempotência de negócio).
 - Falha reportada para a solicitação corrente grava `last_result` (`transient_error`,
-  `invalid_data`, ou `fallback_failed` na rota de fallback — D-15) e pede um ponto de
-  decisão, que o chamador abre após o commit. Falha de solicitação já superada só é
+  `invalid_data`, ou `fallback_failed` para `transient_error` na rota de fallback —
+  D-15; `invalid_data` não depende da rota — D-23) e pede um ponto de decisão, que o
+  chamador abre após o commit. Falha de solicitação já superada só é
   registrada.
 """
 
@@ -110,10 +111,9 @@ def _register_failure(connection: sqlite3.Connection, event: MessageEnvelope, no
     is_current = request is not None and request["event_seq"] == event.event_seq
     if task["status"] in TERMINAL_TASK_STATUSES or not is_current:
         return False
-    if event.target == Route.INVENTORY_FALLBACK:
-        result = TaskResult.FALLBACK_FAILED
-    else:
-        result = TaskResult(event.payload["failure_reason"])
+    result = TaskResult(event.payload["failure_reason"])
+    if event.target == Route.INVENTORY_FALLBACK and result != TaskResult.INVALID_DATA:
+        result = TaskResult.FALLBACK_FAILED  # D-15; invalid_data prevalece (D-23)
     set_last_result(connection, task_id=event.task_id, result=result, now=now)
     return True
 

@@ -47,6 +47,17 @@ def find_processed_message(
     )
 
 
+def unknown_skus(connection: sqlite3.Connection, skus: list[str]) -> list[str]:
+    """SKUs fora do catálogo do Inventory (D-03), na ordem recebida."""
+    known = {
+        row["sku"]
+        for row in connection.execute(
+            f"SELECT sku FROM stock WHERE sku IN ({', '.join('?' * len(skus))})", skus
+        )
+    }
+    return [sku for sku in skus if sku not in known]
+
+
 def find_reservation(connection: sqlite3.Connection, task_id: str) -> ExistingReservation | None:
     """Reserva já efetivada para a tarefa (idempotência de negócio, `task_id` UNIQUE)."""
     row = connection.execute(

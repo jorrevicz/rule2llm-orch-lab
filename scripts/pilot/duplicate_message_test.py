@@ -97,7 +97,7 @@ def _expect(result: DuplicateResult, name: str, observed: object, expected: obje
 def run(base_url: str = DEFAULT_BASE_URL, timeout_s: float = 30.0) -> DuplicateResult:
     result = DuplicateResult()
     publisher = CeleryCommandPublisher(celery_app)
-    items = [{"sku": "SKU-DUP", "quantity": 1}]
+    items = [{"sku": "SKU-001", "quantity": 1}]
 
     order = create_order(base_url, items)
     result.task_id = task_id = order["task_id"]

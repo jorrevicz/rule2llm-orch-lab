@@ -61,6 +61,10 @@ class LLMSection(_Section):
     prompt_template: str
 
 
+class InventorySection(_Section):
+    catalog: str  # D-03: catálogo de SKUs carregado no inventory.db
+
+
 class WorkloadSection(_Section):
     dataset: str
     requests: PositiveInt | None
@@ -85,6 +89,7 @@ class ExperimentConfig(_Section):
     messaging: MessagingSection
     context: ContextSection
     llm: LLMSection
+    inventory: InventorySection
     workload: WorkloadSection
     fault: FaultSection
 

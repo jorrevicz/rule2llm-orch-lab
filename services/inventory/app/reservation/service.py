@@ -11,6 +11,9 @@ sucesso de uma reserva não persistida.
 - Nova tentativa lógica (novo `message_id`, mesmo `task_id`) de tarefa já
   reservada: não cria segunda reserva; responde com o resultado da reserva
   existente, numa resposta nova (é outra mensagem).
+- Pedido com SKU fora do catálogo do Inventory (D-03): não reserva; responde
+  `STOCK_RESERVATION_FAILED / invalid_data`, em qualquer rota. A resposta também fica
+  em `processed_messages`, para ser reemitida numa redelivery.
 """
 
 import json
@@ -19,12 +22,13 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from services.inventory.app.db.connection import transaction
-from services.inventory.app.db.models import ProcessingResult
+from services.inventory.app.db.models import ProcessingResult, ReservationRoute
 from services.inventory.app.db.repositories import (
     find_processed_message,
     find_reservation,
     insert_processed_message,
     insert_reservation,
+    unknown_skus,
 )
 from services.inventory.app.messaging.publisher import EventPublisher
 from services.inventory.app.reservation.fallback import reserve_fallback
@@ -38,6 +42,7 @@ from shared.envelope import (
 )
 from shared.events import EventType
 from shared.messaging import Route
+from shared.task import TaskResult
 from shared.timestamps import utc_now_iso
 
 
@@ -45,6 +50,7 @@ class RequestOutcome(StrEnum):
     RESERVED = "reserved"
     DUPLICATE_MESSAGE = "duplicate_message"  # redelivery: mesma mensagem já processada
     ALREADY_RESERVED = "already_reserved"    # nova tentativa de tarefa já reservada
+    INVALID_DATA = "invalid_data"            # SKU fora do catálogo (D-03)
 
 
 @dataclass(frozen=True)
@@ -77,12 +83,17 @@ def _reserve(
     now: str,
 ) -> RequestResult:
     existing = find_reservation(connection, request.task_id)
+    items = [item.model_dump() for item in payload.items]
+    result = ProcessingResult.SUCCEEDED
     if existing is not None:
         outcome = RequestOutcome.ALREADY_RESERVED
         reply = _succeeded_event(request, existing.order_id, existing.route)
+    elif unknown_skus(connection, [item["sku"] for item in items]):
+        outcome = RequestOutcome.INVALID_DATA
+        result = ProcessingResult.FAILED
+        reply = _failed_event(request, payload.order_id, TaskResult.INVALID_DATA)
     else:
         outcome = RequestOutcome.RESERVED
-        items = [item.model_dump() for item in payload.items]
         reservation = _reserve_by_route(request.target, items)
         reply = _succeeded_event(request, payload.order_id, reservation.route)
         insert_reservation(
@@ -98,11 +109,15 @@ def _reserve(
         message_id=request.message_id,
         task_id=request.task_id,
         event_type=request.event_type,
-        result=ProcessingResult.SUCCEEDED,
+        result=result,
         response_json=canonical_json(reply),
         now=now,
     )
     return RequestResult(outcome, reply)
+
+
+def _route_name(target: str) -> str:
+    return ReservationRoute.FALLBACK if target == Route.INVENTORY_FALLBACK else ReservationRoute.PRIMARY
 
 
 def _reserve_by_route(target: str, items: list[dict]) -> ReservationOutcome:
@@ -124,4 +139,17 @@ def _succeeded_event(request: MessageEnvelope, order_id: str, route: str) -> Env
         decision_id=request.decision_id,
         target=request.target,
         payload={"order_id": order_id, "route": str(route)},
+    )
+
+
+def _failed_event(request: MessageEnvelope, order_id: str, reason: TaskResult) -> Envelope:
+    return build_envelope(
+        execution_id=request.execution_id,
+        task_id=request.task_id,
+        event_type=EventType.STOCK_RESERVATION_FAILED,
+        event_seq=request.event_seq,  # D-16: correlação com a solicitação respondida
+        attempt_number=request.attempt_number,
+        decision_id=request.decision_id,
+        target=request.target,
+        payload={"order_id": order_id, "route": str(_route_name(request.target)), "failure_reason": str(reason)},
     )

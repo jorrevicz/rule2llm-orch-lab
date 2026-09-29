@@ -43,6 +43,9 @@ llm:
   keep_alive: 30m               # modelo carregado durante toda a execução — A CONGELAR
   prompt_template: config/prompts/decision_prompt_v1.txt   # Quadro 2 da metodologia — A CONGELAR
 
+inventory:
+  catalog: datasets/inventory_catalog_v1.json   # D-03: catálogo de SKUs (sem saldo)
+
 workload:
   dataset: datasets/orders_v1.json
   requests: null                # A CONGELAR

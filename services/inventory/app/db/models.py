@@ -1,4 +1,4 @@
-"""Esquema de `inventory.db` (piloto §23.2, docs/08 §8.3, D-02)."""
+"""Esquema de `inventory.db` (piloto §23.2, docs/08 §8.3, D-02, D-03)."""
 
 from enum import StrEnum
 
@@ -21,7 +21,12 @@ class ProcessingResult(StrEnum):
 # processed_messages guarda, além do message_id (idempotência de transporte), o
 # resultado e a resposta publicada: uma redelivery reemite a MESMA resposta (mesmo
 # message_id), que o Orders deduplica. Colunas além do piloto §23.2: ver docs/09.
+# stock é só o catálogo de SKUs conhecidos (D-03), sem saldo: a reserva é simulada.
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS stock (
+    sku  TEXT PRIMARY KEY
+);
+
 CREATE TABLE IF NOT EXISTS reservations (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id     TEXT NOT NULL UNIQUE,

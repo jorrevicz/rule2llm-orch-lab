@@ -85,7 +85,7 @@ def inventory_down(base_url: str = DEFAULT_BASE_URL, max_waits: int = 2, *, obse
     result = ScenarioResult("inventory_down")
     compose("stop", "inventory-worker")
     try:
-        order = create_order(base_url, [{"sku": "SKU-DOWN", "quantity": 1}])
+        order = create_order(base_url, [{"sku": "SKU-002", "quantity": 1}])
         result.task_id = order["task_id"]
         result.order_status = wait_for_terminal_status(base_url, order["order_id"], timeout_s=30)
     finally:
@@ -109,7 +109,7 @@ def inventory_paused(base_url: str = DEFAULT_BASE_URL, max_attempts: int = 3, *,
     result = ScenarioResult("inventory_paused")
     compose("pause", "inventory-worker")
     try:
-        order = create_order(base_url, [{"sku": "SKU-PAUSED", "quantity": 1}])
+        order = create_order(base_url, [{"sku": "SKU-003", "quantity": 1}])
         result.task_id = order["task_id"]
         result.order_status = wait_for_terminal_status(base_url, order["order_id"], timeout_s=60)
     finally:

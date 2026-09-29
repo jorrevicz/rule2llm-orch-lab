@@ -8,7 +8,7 @@ from shared.config import CONFIG_PATH_ENV, load_experiment_config, resolve_confi
 
 REPO_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
 
-# Chaves do piloto §31 + task_deadline_ms (§14.1) + decision_engine.
+# Chaves do piloto §31 + task_deadline_ms (§14.1) + decision_engine + seção inventory (M6).
 EXPECTED_KEYS = {
     "experiment": {"phase", "decision_engine", "repetitions", "execution_order"},
     "messaging": {
@@ -40,6 +40,7 @@ EXPECTED_KEYS = {
         "keep_alive",
         "prompt_template",
     },
+    "inventory": {"catalog"},  # D-03
     "workload": {"dataset", "requests", "rate_per_second", "seed"},
     "fault": {"type", "seed"},
 }

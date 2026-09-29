@@ -11,6 +11,8 @@ from celery.signals import after_setup_logger, after_setup_task_logger, worker_i
 
 from services.inventory.app.db.connection import init_database
 from services.inventory.app.settings import load_settings
+from shared.catalog import load_catalog
+from shared.config import ExperimentConfig, load_experiment_config
 from shared.messaging import configure_celery
 from shared.structured_logging import JsonlLogHandler, install, jsonl_log_handler
 
@@ -20,9 +22,14 @@ app = Celery("inventory-service", include=["services.inventory.app.messaging.con
 configure_celery(app, settings.broker_url)
 
 
+@cache
+def experiment_config() -> ExperimentConfig:
+    return load_experiment_config()
+
+
 @worker_init.connect
 def _prepare_database(**_: object) -> None:
-    init_database(settings.database_path)
+    init_database(settings.database_path, load_catalog(experiment_config().inventory.catalog))
 
 
 @cache
