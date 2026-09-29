@@ -44,7 +44,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M1](#m1--fluxo-normal-ponta-a-ponta) | Fluxo normal Pedido → Estoque → `COMPLETED` | ✅ | `m1-fluxo-normal` | 2026-09-27 |
 | [M2](#m2--contrato-de-mensagens-e-idempotência) | Envelope versionado, `event_seq`, idempotência, redelivery | ✅ | `m2-idempotencia` | 2026-09-28 |
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
-| [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | 🔄 | `m4-rules` | — |
+| [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ⬜ | `m5-llm` | — |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
@@ -218,8 +218,13 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 
 **Critério de conclusão** (piloto §28 Fase 4 e §32)
 
-- [ ] `CONTINUE`, `RETRY`, `WAIT`, `FALLBACK` e `ABORT` validados sem LLM.
-- [ ] Checklist do 1º piloto técnico ([11 §11.4](11-requisitos.md)) completo.
+- [x] `CONTINUE`, `RETRY`, `WAIT`, `FALLBACK` e `ABORT` validados sem LLM.
+- [x] Checklist do 1º piloto técnico ([11 §11.4](11-requisitos.md)) completo.
+
+> Verificado em 2026-09-28: 294 testes unitários/contrato e 6 de integração, incluindo os
+> cenários reais Inventory parado (WAIT → ABORT) e pausado (RETRY → FALLBACK → ABORT);
+> 1º piloto técnico formal `PILOT_0012`. Decisões do marco: D-15, D-07 e D-17 (técnica);
+> acréscimos ao Validator 🔬 e ajustes do TCC em §13.6; achados do piloto em §13.7.
 
 ---
 

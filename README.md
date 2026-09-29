@@ -23,9 +23,11 @@ O projeto está no **piloto técnico**, e o progresso é acompanhado em
   serviços e um SQLite por serviço; contrato de mensagens versionado (`contracts/`),
   mensagens fora do contrato na `tasks.dlq`, numeração da trajetória (`event_seq`) e
   idempotência de transporte (`message_id`) e de negócio (`task_id`); `SYSTEM_STATE`
-  construído pelo `StateBuilder` e artefatos de rastreabilidade por execução. O despacho
-  inicial ainda é um `CONTINUE` fixo (**provisório**), sem motor de decisão.
-- Planejado: Rules/Validator/Executor (M4), LLM (M5), falhas e carga (M6).
+  construído pelo `StateBuilder` e artefatos de rastreabilidade por execução;
+  `RulesDecisionEngine`, `DecisionValidator` e `DecisionExecutor` comuns, com as cinco
+  ações (`CONTINUE`, `RETRY`, `WAIT`, `FALLBACK`, `ABORT`), timeout operacional e DLQ.
+  1º piloto técnico concluído (`PILOT_0012`).
+- Planejado: `LLMDecisionEngine` com Ollama (M5), falhas e carga (M6), instrumentação (M7).
 
 Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
 
@@ -70,6 +72,7 @@ curl localhost:8000/orders/ORD_000001
 
 .venv/bin/python -m scripts.pilot.smoke_test --orders 3      # smoke test do fluxo normal
 .venv/bin/python -m scripts.pilot.duplicate_message_test     # redelivery e nova tentativa
+.venv/bin/python -m scripts.pilot.decision_scenarios inventory_paused   # RETRY/FALLBACK/ABORT
 .venv/bin/python -m pytest -m integration                    # testes de integração
 docker compose down -v                                     # derruba e apaga os bancos
 ```
