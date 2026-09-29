@@ -108,6 +108,9 @@
 | `INVALID_CONTINUE_TARGET` | Validação: `CONTINUE` com target que não é nulo nem `inventory.primary` (M4-T03, D-18) |
 | `CONTINUE_AFTER_DISPATCH` | Validação: `CONTINUE` depois do primeiro despacho (M4-T03) |
 | `FALLBACK_RETRY_LIMIT` | Validação: `RETRY` em `inventory.fallback` com `fallback_max_attempts = 1` (D-15) |
+| `WAIT_LIMIT_EXCEEDED` | Validação: `WAIT` com `wait_count >= max_waits` (D-19) |
+| `TASK_DEADLINE_EXCEEDED` (erro) | Validação: ação diferente de `ABORT` com `elapsed_ms >= task_deadline_ms` (D-19) |
+| `LLM_DECISION_TIMEOUT` (erro) | Validação: o motor não produziu decisão dentro do timeout (M5-T05) |
 | `MALFORMED_DECISION` | Validação: saída do motor não pôde ser lida como decisão (ex.: JSON inválido) |
 
 > Os conjuntos de `reason_code` e `error` devem ser congelados junto com a política do

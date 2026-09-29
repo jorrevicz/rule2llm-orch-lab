@@ -139,3 +139,43 @@ def test_only_single_fallback_attempt_is_supported():
 
     with pytest.raises(ValueError, match="D-15"):
         DecisionValidator(config)
+
+
+
+# -- D-19: limites operacionais valem para qualquer motor -----------------------------
+
+DEADLINE = CONFIG.messaging.task_deadline_ms
+
+
+@pytest.mark.parametrize(
+    ("proposal", "state", "error"),
+    [
+        (_proposal("WAIT", None), make_state(**{"task.wait_count": 2}), "WAIT_LIMIT_EXCEEDED"),
+        (_proposal("WAIT", None), dispatched(**{"task.wait_count": 3}), "WAIT_LIMIT_EXCEEDED"),
+        (_proposal("RETRY", "inventory.primary"), dispatched(**{"task.elapsed_ms": DEADLINE}), "TASK_DEADLINE_EXCEEDED"),
+        (_proposal("WAIT", None), dispatched(**{"task.elapsed_ms": DEADLINE + 1}), "TASK_DEADLINE_EXCEEDED"),
+        (_proposal("CONTINUE", None), make_state(**{"task.elapsed_ms": DEADLINE}), "TASK_DEADLINE_EXCEEDED"),
+        (_proposal("FALLBACK", "inventory.fallback"), dispatched(**{"task.elapsed_ms": DEADLINE}), "TASK_DEADLINE_EXCEEDED"),
+    ],
+    ids=["wait-at-limit", "wait-above-limit", "retry-after-deadline", "wait-after-deadline", "continue-after-deadline", "fallback-after-deadline"],
+)
+def test_operational_limits_apply_to_any_engine(validator, proposal, state, error):
+    assert _error(validator, proposal, state) == error
+
+
+def test_abort_is_always_allowed_after_the_deadline(validator):
+    assert validator.validate(_proposal("ABORT", None), dispatched(**{"task.elapsed_ms": DEADLINE * 2})).valid
+
+
+def test_wait_below_the_limit_is_still_valid(validator):
+    assert validator.validate(_proposal("WAIT", None), make_state(**{"task.wait_count": 1})).valid
+
+
+def test_rules_never_violates_the_operational_limits(validator):
+    engine = RulesDecisionEngine(CONFIG)
+    for state in (
+        make_state(**{"service.status": "unavailable", "task.wait_count": 2}),
+        make_state(**{"messaging.queue_size": 999, "task.wait_count": 2}),
+        dispatched(**{"service.last_result": "timeout", "task.elapsed_ms": DEADLINE}),
+    ):
+        assert validator.validate(engine.decide(state).proposal, state).valid

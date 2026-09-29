@@ -338,6 +338,9 @@ def validate(decision, state):
     if not decision.reason_code:
         return invalid("MISSING_REASON_CODE")
 
+    if state.task.elapsed_ms >= TASK_DEADLINE_MS and decision.action != "ABORT":
+        return invalid("TASK_DEADLINE_EXCEEDED")              # acréscimo 🔬 (D-19)
+
     if decision.action == "CONTINUE":                       # acréscimo 🔬
         if decision.target not in {None, "inventory.primary"}:   # D-18
             return invalid("INVALID_CONTINUE_TARGET")
@@ -364,6 +367,9 @@ def validate(decision, state):
         if decision.target is not None:
             return invalid("TARGET_NOT_ALLOWED")
 
+    if decision.action == "WAIT" and state.task.wait_count >= state.task.max_waits:
+        return invalid("WAIT_LIMIT_EXCEEDED")                 # acréscimo 🔬 (D-19)
+
     if state.task.phase in {"COMPLETED", "ABORTED", "DEAD_LETTERED"}:
         return invalid("TERMINAL_TASK")
 
@@ -389,6 +395,8 @@ do fallback; fallback ainda não usado; target correto do fallback; ausência de
 `WAIT`; ausência de target em `ABORT`; impossibilidade de agir sobre estado terminal.
 
 **D-18 (2026-09-29) 🔬:** o destino do `CONTINUE` é o do fluxo (`inventory.primary`), não do decisor: o target pode vir nulo ou `inventory.primary`; qualquer outro é inválido (`INVALID_CONTINUE_TARGET`), e o executor sempre despacha a primeira tentativa para `inventory.primary`. Motivo: o `SYSTEM_STATE` de uma tarefa nova não contém a rota primária (`current_target` nulo, `alternative_targets` só com o fallback) e o prompt manda usar só alternativas do estado; o Rules tem a rota no código. No piloto, o `llama3.1:8b` respondeu `CONTINUE` com `target: null` de forma determinística; exigir o target abortaria toda tarefa LLM na 1ª decisão por falta de informação, não por comportamento do modelo.
+
+**D-19 (2026-09-29) 🔬:** os limites operacionais valem para qualquer motor, no Validator comum: `WAIT` com `wait_count >= max_waits` é `WAIT_LIMIT_EXCEEDED`, e qualquer ação exceto `ABORT` com `elapsed_ms >= task_deadline_ms` é `TASK_DEADLINE_EXCEEDED` (mesma lógica do `RETRY_LIMIT_EXCEEDED`; violação → `ABORT / INVALID_DECISION`). Antes, esses limites só existiam como regras do Rules; na bancada, o LLM respondeu `WAIT` em estados sem saída e a tarefa poderia não terminar. Nada muda para o Rules, que já respeita os limites.
 
 **Não** criar um validador especial para o LLM (RNF-009).
 

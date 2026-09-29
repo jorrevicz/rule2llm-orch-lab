@@ -10,7 +10,11 @@ metodologia / piloto §18, na mesma ordem, com três acréscimos 🔬 (ver doc 0
   qualquer outro é `INVALID_CONTINUE_TARGET` (D-18 — o `SYSTEM_STATE` de uma tarefa
   nova não traz a rota primária, então exigi-la puniria o LLM por falta de informação);
 - `RETRY` em `inventory.fallback` é inválido (`FALLBACK_RETRY_LIMIT`, D-15), pois
-  `fallback_max_attempts = 1`.
+  `fallback_max_attempts = 1`;
+- limites operacionais valem para qualquer motor (D-19), como o de tentativas: `WAIT`
+  com `wait_count >= max_waits` é `WAIT_LIMIT_EXCEEDED`, e qualquer ação exceto `ABORT`
+  com `elapsed_ms >= task_deadline_ms` é `TASK_DEADLINE_EXCEEDED`. Sem isso, um motor
+  que não respeite os limites deixaria a tarefa sem fim (visto na bancada do LLM).
 """
 
 from shared.config import ExperimentConfig
@@ -31,6 +35,7 @@ class DecisionValidator:
             # O SYSTEM_STATE não carrega contador de tentativas no fallback; valores
             # maiores exigiriam estender o contrato (D-15).
             raise ValueError("only fallback_max_attempts = 1 is supported (D-15)")
+        self._task_deadline_ms = config.messaging.task_deadline_ms
 
     def validate(
         self, proposal: ProposedDecision | None, state: SystemState, *, timed_out: bool = False
@@ -56,6 +61,9 @@ class DecisionValidator:
         task, alternatives = state.task, state.alternatives
         action = Action(proposal.action)
 
+        if task.elapsed_ms >= self._task_deadline_ms and action != Action.ABORT:  # D-19
+            return ValidationErrorCode.TASK_DEADLINE_EXCEEDED
+
         if action == Action.CONTINUE:
             if proposal.target not in (None, PRIMARY):  # D-18
                 return ValidationErrorCode.INVALID_CONTINUE_TARGET
@@ -80,6 +88,9 @@ class DecisionValidator:
 
         if action in {Action.WAIT, Action.ABORT} and proposal.target is not None:
             return ValidationErrorCode.TARGET_NOT_ALLOWED
+
+        if action == Action.WAIT and task.wait_count >= task.max_waits:  # D-19
+            return ValidationErrorCode.WAIT_LIMIT_EXCEEDED
 
         if task.phase in TERMINAL_TASK_STATUSES:
             return ValidationErrorCode.TERMINAL_TASK
