@@ -9,6 +9,9 @@ import json
 
 import pytest
 
+from services.orders.app.llm.llm_engine import LLMDecisionEngine
+from services.orders.app.llm.ollama_client import Generation
+from services.orders.app.llm.prompt_builder import PromptBuilder
 from services.orders.app.orchestration.decision_engine import EngineOutput
 from services.orders.app.orchestration.orchestrator import Orchestrator
 from services.orders.app.orchestration.rules_engine import RulesDecisionEngine
@@ -93,3 +96,51 @@ def test_records_differ_only_in_engine_specific_fields(runs):
     }
     assert (rules_rec["decision_engine"], llm_rec["decision_engine"]) == ("RULES", "LLM")
     assert rules_rec["llm_inference_ms"] is None and llm_rec["llm_inference_ms"] == 5.0
+
+
+# -- com o LLMDecisionEngine real (cliente Ollama falso) -----------------------------
+
+
+class RulesMirroringClient:
+    """Responde, via "Ollama", exatamente o JSON que o Rules decidiria para o estado."""
+
+    def __init__(self, config, builder: PromptBuilder) -> None:
+        self._rules = RulesDecisionEngine(config)
+        self._builder = builder
+        self.state = None
+
+    def generate(self, prompt: str) -> Generation:
+        text = json.dumps(self._rules.policy(self.state).model_dump(mode="json"))
+        return Generation(text, "stop", 500, 20, 800.0, 790.0, 1.0)
+
+
+class RealLLMEngine(LLMDecisionEngine):
+    def __init__(self, config) -> None:
+        builder = PromptBuilder.from_file(config.llm.prompt_template)
+        self.client = RulesMirroringClient(config, builder)
+        super().__init__(self.client, builder)
+
+    def decide(self, state):
+        self.client.state = state
+        return super().decide(state)
+
+
+@pytest.fixture
+def real_llm_runs(tmp_path):
+    rules = _run(tmp_path, "rules-real", RulesDecisionEngine)
+    llm = _run(tmp_path, "llm-real", RealLLMEngine)
+    yield rules, llm
+    rules[0].connection.close()
+    llm[0].connection.close()
+
+
+def test_real_llm_engine_goes_through_the_same_validation_and_execution(real_llm_runs):
+    (rules_h, rules_out, rules_rec, _), (llm_h, llm_out, llm_rec, _) = real_llm_runs
+
+    assert rules_out.validation == llm_out.validation
+    assert rules_out.executed == llm_out.executed
+    assert rules_h.trajectory() == llm_h.trajectory()
+    assert llm_rec["decision_engine"] == "LLM"
+    assert llm_rec["llm_inference_ms"] == 800.0
+    assert llm_rec["token_usage"] == {"input_tokens": 500, "output_tokens": 20, "total_tokens": 520}
+    assert rules_rec["token_usage"] is None
