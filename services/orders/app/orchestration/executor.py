@@ -15,6 +15,7 @@ from services.orders.app.db.connection import transaction
 from services.orders.app.db.repositories import (
     abort_task,
     dispatch_context,
+    enter_wait,
     mark_retry_dispatched,
     start_first_dispatch,
     start_retry,
@@ -52,6 +53,7 @@ class DecisionExecutor:
         self._scheduler = scheduler
         self._inventory_timeout_ms = config.messaging.inventory_timeout_ms
         self._retry_delay_ms = config.messaging.retry_delay_ms
+        self._wait_delay_ms = config.messaging.wait_delay_ms
 
     def execute(
         self, connection: sqlite3.Connection, decision: Decision, *, task_id: str, decision_id: str
@@ -70,6 +72,7 @@ class DecisionExecutor:
         return {
             Action.CONTINUE: self._continue,
             Action.RETRY: self._retry,
+            Action.WAIT: self._wait,
             Action.ABORT: self._abort,
         }
 
@@ -120,6 +123,36 @@ class DecisionExecutor:
             )
         )
         return ExecutionResult(Action.RETRY, True)
+
+    def _wait(
+        self,
+        connection: sqlite3.Connection,
+        decision: Decision,
+        task_id: str,
+        decision_id: str,
+        effects: list[Effect],
+    ) -> ExecutionResult:
+        """Não envia nada agora: aguarda `wait_delay_ms` e reavalia o estado.
+
+        `wait_count + 1`; `attempt_number` não muda (CLAUDE §14).
+        """
+        now = utc_now_iso()
+        wait_count = enter_wait(connection, task_id=task_id, now=now)
+        if wait_count is None:
+            raise RuntimeError(f"WAIT is not applicable to task {task_id}")
+        record_internal_event(
+            connection,
+            task_id=task_id,
+            event_type=EventType.WAIT_SCHEDULED,
+            now=now,
+            payload={"decision_id": decision_id, "delay_ms": self._wait_delay_ms, "wait_count": wait_count},
+        )
+        effects.append(
+            lambda: self._scheduler.schedule_reevaluation(
+                task_id=task_id, wait_count=wait_count, delay_ms=self._wait_delay_ms
+            )
+        )
+        return ExecutionResult(Action.WAIT, True)
 
     def dispatch_scheduled_attempt(
         self, connection: sqlite3.Connection, *, task_id: str, decision_id: str

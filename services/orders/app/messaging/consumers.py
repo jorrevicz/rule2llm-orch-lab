@@ -2,7 +2,8 @@
 
 - `orders.handle_inventory_event`: eventos do Inventory (contrato validado; D-13);
 - `orders.timeout_check`: verificação de timeout operacional agendada a cada despacho;
-- `orders.dispatch_attempt`: despacho da nova tentativa, `retry_delay_ms` após o `RETRY`.
+- `orders.dispatch_attempt`: despacho da nova tentativa, `retry_delay_ms` após o `RETRY`;
+- `orders.reevaluate`: fim do `WAIT`, `wait_delay_ms` depois, e novo ponto de decisão.
 
 Quando um evento ou timeout pede decisão, o ponto de decisão é aberto depois do
 commit do registro, pelo Orchestrator (mesmo fluxo para Rules e LLM).
@@ -19,12 +20,14 @@ from services.orders.app.messaging.celery_app import app, settings
 from services.orders.app.orchestration.coordination import Coordination, build_coordination
 from services.orders.app.orchestration.event_handler import handle_inventory_event
 from services.orders.app.orchestration.timeouts import register_timeout
+from services.orders.app.orchestration.waits import finish_wait
 from shared.config import load_experiment_config
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
 from shared.messaging import (
     ORDERS_DISPATCH_ATTEMPT_TASK,
     ORDERS_HANDLE_EVENT_TASK,
+    ORDERS_REEVALUATE_TASK,
     ORDERS_TIMEOUT_CHECK_TASK,
 )
 from shared.structured_logging import correlated
@@ -122,5 +125,17 @@ def dispatch_attempt(task_id: str, decision_id: str) -> None:
             "dispatched" if dispatched else "skipped",
             extra=correlated(task_id=task_id, decision_id=decision_id, outcome="dispatched" if dispatched else "skipped"),
         )
+    finally:
+        connection.close()
+
+
+@app.task(name=ORDERS_REEVALUATE_TASK)
+def reevaluate(task_id: str, wait_count: int) -> None:
+    connection = connect(settings.database_path)
+    try:
+        if not finish_wait(connection, task_id=task_id, wait_count=wait_count):
+            return
+        logger.info("wait finished", extra=correlated(task_id=task_id, event_type=EventType.WAIT_FINISHED))
+        _decide(connection, task_id)
     finally:
         connection.close()

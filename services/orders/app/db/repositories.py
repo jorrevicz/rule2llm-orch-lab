@@ -144,6 +144,26 @@ def mark_retry_dispatched(connection: sqlite3.Connection, *, task_id: str, now: 
     return updated.rowcount == 1
 
 
+def enter_wait(connection: sqlite3.Connection, *, task_id: str, now: str) -> int | None:
+    """`WAIT`: tarefa → WAITING e `wait_count + 1`; `attempt_number` não muda.
+
+    Retorna o novo `wait_count` (None se a tarefa é terminal). Deve ser chamada dentro
+    de uma transação do chamador.
+    """
+    terminal = tuple(TERMINAL_TASK_STATUSES)
+    updated = connection.execute(
+        "UPDATE tasks SET wait_count = wait_count + 1, status = ?, updated_at = ?"
+        f" WHERE task_id = ? AND status NOT IN ({', '.join('?' * len(terminal))})",
+        (TaskStatus.WAITING, now, task_id, *terminal),
+    )
+    if updated.rowcount != 1:
+        return None
+    (wait_count,) = connection.execute(
+        "SELECT wait_count FROM tasks WHERE task_id = ?", (task_id,)
+    ).fetchone()
+    return wait_count
+
+
 def dispatch_context(connection: sqlite3.Connection, task_id: str) -> DispatchContext:
     row = connection.execute(
         "SELECT t.task_id, t.order_id, t.execution_id, t.current_target, t.attempt_number,"
