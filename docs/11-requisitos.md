@@ -105,19 +105,30 @@
 
 > Fonte: `piloto-do-experimento.md` §32.
 
-- [ ] `docker compose up` inicializa RabbitMQ, Orders e Inventory
-- [ ] Orders responde ao endpoint de criação de pedido
-- [ ] Orders persiste pedido e tarefa
-- [ ] Uma mensagem versionada chega à `inventory.primary`
-- [ ] Inventory processa a mensagem e persiste uma reserva
-- [ ] Inventory publica evento de sucesso; Orders consome
-- [ ] Pedido e tarefa terminam como `COMPLETED`
-- [ ] A mesma mensagem reenviada **não** duplica a reserva
-- [ ] `message_id`, `task_id` e `event_seq` aparecem nos registros
-- [ ] `states.jsonl` registra o estado apresentado ao decisor
-- [ ] `decisions.jsonl` registra a decisão
-- [ ] `task_events.jsonl` permite reconstruir a trajetória
-- [ ] `execution_metadata.json` contém `"phase": "PILOT"` e `eligible_for_sample: false`
+- [x] `docker compose up` inicializa RabbitMQ, Orders e Inventory
+- [x] Orders responde ao endpoint de criação de pedido
+- [x] Orders persiste pedido e tarefa
+- [x] Uma mensagem versionada chega à `inventory.primary`
+- [x] Inventory processa a mensagem e persiste uma reserva
+- [x] Inventory publica evento de sucesso; Orders consome
+- [x] Pedido e tarefa terminam como `COMPLETED`
+- [x] A mesma mensagem reenviada **não** duplica a reserva
+- [x] `message_id`, `task_id` e `event_seq` aparecem nos registros
+- [x] `states.jsonl` registra o estado apresentado ao decisor
+- [x] `decisions.jsonl` registra a decisão
+- [x] `task_events.jsonl` permite reconstruir a trajetória
+- [x] `execution_metadata.json` contém `"phase": "PILOT"` e `eligible_for_sample: false`
+
+> **Concluído em 2026-09-28 — execução `PILOT_0012`** (`decision_engine: RULES`, cenário
+> `normal`, commit `7074368` sem alterações pendentes; `phase: PILOT`,
+> `eligible_for_sample: false`). Evidência nos artefatos de `data/pilot/PILOT_0012/`
+> (não versionados): 6 pedidos e 6 tarefas `COMPLETED` no `orders.db`, 6 reservas para 6
+> `task_id` distintos no `inventory.db` (a nova tentativa e as duas repetições do teste de
+> duplicação não criaram reserva), trajetórias completas em `task_events.jsonl`
+> (`TASK_CREATED` → `STOCK_RESERVATION_REQUESTED` com `schema_version` 1.0 →
+> `STOCK_RESERVATION_SUCCEEDED` → `TASK_COMPLETED`), 6 snapshots em `states.jsonl` e 6
+> decisões `RULES / CONTINUE / NORMAL_FLOW` válidas em `decisions.jsonl`, cada uma ligada ao
+> seu `state_id`; `check_traceability` sem erros. Dados de piloto: não integram a amostra.
 
 **Não** é requisito deste primeiro marco: carga final, amostra estatística, definição de
 `N_rep`, todas as falhas, análise comparativa, congelamento de todos os limiares.

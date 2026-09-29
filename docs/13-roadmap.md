@@ -214,7 +214,7 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 | M4-T09 | `ABORT` e decisão inválida | `feat(orchestration)` | `DecisionExecutor` (uma transação por ação; efeitos externos só após o commit) com `ABORT`: Task `ABORTED`, Order `FAILED`, `TASK_ABORTED` na trajetória com `decision_id` e `reason_code`; decisão inválida → `ABORT / INVALID_DECISION`; tarefa terminal não muda. Feita antes da T04, que depende do fail-safe | RF-022, RF-029 | ✅ |
 | M4-T10 | **(D) 🔬** DLQ | `feat(messaging)` | D-07: falha de processamento não prevista → rejeição sem requeue → `tasks.dlq` (sem retentativa automática); consumidor bruto da `tasks.dlq` no worker do Orders registra `MESSAGE_DEAD_LETTERED` (tarefa Celery, fila de origem, motivo) e leva a tarefa a `DEAD_LETTERED` / pedido `FAILED`. Verificado ao vivo (PILOT_0010) | RF-030, I-07 | ✅ |
 | M4-T11 | Testes das ações | `test` | Rules (cada regra), Validator (cada erro), Executor por ação; teste de equivalência (mesmo estado, validação, execução e registro para Rules e outro motor); `scripts/pilot/decision_scenarios.py` (Inventory parado / pausado) com testes de integração; `tests/README.md` mapeia cada item do CLAUDE §35 | CLAUDE §35 | ✅ |
-| M4-T12 | 1º piloto técnico | `chore(pilot)` | `PILOT_0001` (rules, fluxo normal) executado; checklist do doc 11 §11.4 marcado | piloto §32 | ⬜ |
+| M4-T12 | 1º piloto técnico | `chore(pilot)` | `PILOT_0012` (RULES, cenário normal, commit limpo `7074368`): 5 pedidos + teste de duplicação, coleta e `check_traceability` sem erros; checklist do doc 11 §11.4 marcado com a evidência. As execuções `PILOT_0001`–`0011` foram de desenvolvimento | piloto §32 | ✅ |
 
 **Critério de conclusão** (piloto §28 Fase 4 e §32)
 
