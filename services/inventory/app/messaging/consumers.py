@@ -16,6 +16,7 @@ from services.inventory.app.reservation.processing import ProcessingSimulator
 from services.inventory.app.reservation.service import process_reservation_request
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
+from shared.faults import FaultEventRecorder, read_control
 from shared.messaging import INVENTORY_RESERVE_TASK
 from shared.structured_logging import correlated
 
@@ -26,7 +27,13 @@ _publisher = CeleryEventPublisher(app)
 
 @cache
 def _simulator() -> ProcessingSimulator:
-    return ProcessingSimulator(experiment_config().inventory.service_time_ms)
+    directory = settings.artifacts_dir
+    return ProcessingSimulator(
+        experiment_config().inventory.service_time_ms,
+        # Lido a cada solicitação: a janela da falha é aberta e fechada pela bancada (D-20).
+        fault_source=lambda: read_control(directory),
+        fault_recorder=FaultEventRecorder.for_process(directory, settings.service_role, settings.execution_id),
+    )
 
 
 @app.task(name=INVENTORY_RESERVE_TASK, bind=True)

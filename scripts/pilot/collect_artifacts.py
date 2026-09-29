@@ -8,7 +8,8 @@ os bancos). Produz, em `data/<pilot|experiment>/<EXECUTION_ID>/`:
 - `task_events.jsonl`: exportado da tabela `task_events` do `orders.db` (fonte única
   da trajetória, D-01), ordenado por tarefa e ordem de registro;
 - `<artefato>.jsonl` para cada artefato gravado em arquivos por processo
-  (`states.*.jsonl`, `decisions.*.jsonl`, `microservices_logs.*.jsonl`), unidos e
+  (`states.*.jsonl`, `decisions.*.jsonl`, `microservices_logs.*.jsonl`,
+  `fault_events.*.jsonl`), unidos e
   ordenados por `timestamp`. Os arquivos por processo são mantidos como dado bruto.
 """
 
@@ -22,7 +23,7 @@ from scripts.pilot.environment import ORDERS_DB, REPO_ROOT, query_sqlite_records
 from shared.artifacts import Artifact, execution_dir
 
 DEFAULT_DATA_ROOT = REPO_ROOT / "data"
-MERGED_ARTIFACTS = (Artifact.STATES, Artifact.DECISIONS, Artifact.MICROSERVICES_LOGS)
+MERGED_ARTIFACTS = (Artifact.STATES, Artifact.DECISIONS, Artifact.MICROSERVICES_LOGS, Artifact.FAULT_EVENTS)
 
 
 def task_event_record(row: dict) -> dict:

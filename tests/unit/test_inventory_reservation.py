@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 import pytest
@@ -7,6 +8,8 @@ from services.inventory.app.reservation.processing import ProcessingSimulator
 from services.inventory.app.reservation.service import RequestOutcome, process_reservation_request
 from scripts.datasets.generate_dataset import CATALOG_PATH
 from shared.catalog import load_catalog
+from shared.faults import FaultEventRecorder
+from tests.unit.test_faults import control
 from shared.canonical_json import canonical_json
 from shared.envelope import build_envelope, parse_message
 from shared.events import EventType
@@ -317,3 +320,88 @@ def test_zero_service_time_does_not_sleep():
     slept = []
     ProcessingSimulator(0, sleep=slept.append).before_reservation(_request()[0])
     assert slept == []
+
+
+# -- falha injetada na rota primária (D-20) -----------------------------------------
+
+
+def _faulty(tmp_path, **overrides):
+    slept = []
+    recorder = FaultEventRecorder.for_process(tmp_path, "inventory-primary", "PILOT_TEST")
+    simulator = ProcessingSimulator(
+        100,
+        fault_source=lambda: control(failure_probability=1.0, **overrides),
+        fault_recorder=recorder,
+        sleep=slept.append,
+    )
+    return simulator, slept
+
+
+def _fault_events(tmp_path):
+    path = tmp_path / "fault_events.inventory-primary.jsonl"
+    return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+
+def test_intermittent_error_fails_the_primary_request_without_reserving(connection, tmp_path):
+    simulator, _ = _faulty(tmp_path)
+    publisher = RecordingPublisher()
+    request, payload = _request()
+
+    result = process_reservation_request(connection, request, payload, publisher, simulator)
+
+    assert result.outcome == RequestOutcome.TRANSIENT_ERROR
+    assert _count(connection, "reservations") == 0
+    assert result.reply["payload"]["failure_reason"] == "transient_error"
+    [event] = _fault_events(tmp_path)
+    assert (event["event_type"], event["task_id"], event["message_id"]) == ("FAULT_APPLIED", "TASK_000001", request.message_id)
+    assert event["effect"] == "transient_error"
+
+
+def test_redelivery_of_a_failed_request_reemits_the_same_failure(connection, tmp_path):
+    simulator, _ = _faulty(tmp_path)
+    publisher = RecordingPublisher()
+    request, payload = _request()
+    first = process_reservation_request(connection, request, payload, publisher, simulator)
+
+    again = process_reservation_request(connection, request, payload, publisher, simulator)
+
+    assert again.outcome == RequestOutcome.DUPLICATE_MESSAGE
+    assert publisher.published == [first.reply, first.reply]
+
+
+def test_fallback_route_is_not_affected_by_a_primary_fault(connection, tmp_path):
+    simulator, slept = _faulty(tmp_path, type="timeout", delay_ms=3000)
+
+    result = process_reservation_request(connection, *_request("inventory.fallback"), RecordingPublisher(), simulator)
+
+    assert result.outcome == RequestOutcome.RESERVED
+    assert slept == [0.1]  # só o tempo de serviço
+    assert _fault_events(tmp_path) == []
+
+
+def test_timeout_delays_the_primary_request_then_reserves(connection, tmp_path):
+    simulator, slept = _faulty(tmp_path, type="timeout", delay_ms=3000)
+
+    result = process_reservation_request(connection, *_request(), RecordingPublisher(), simulator)
+
+    assert result.outcome == RequestOutcome.RESERVED  # resposta tardia
+    assert slept == [0.1, 3.0]
+    assert _fault_events(tmp_path)[0]["effect"] == "delay_ms=3000"
+
+
+def test_request_not_drawn_is_processed_normally(connection, tmp_path):
+    simulator = ProcessingSimulator(0, fault_source=lambda: control(failure_probability=0.0))
+
+    result = process_reservation_request(connection, *_request(), RecordingPublisher(), simulator)
+
+    assert result.outcome == RequestOutcome.RESERVED
+
+
+def test_injected_failure_comes_before_business_idempotency(connection, tmp_path):
+    _process(connection, *_request(), RecordingPublisher())  # tentativa 1 reservou
+    simulator, _ = _faulty(tmp_path)
+
+    result = process_reservation_request(connection, *_new_attempt(), RecordingPublisher(), simulator)
+
+    assert result.outcome == RequestOutcome.TRANSIENT_ERROR  # a rota falhou antes de processar
+    assert _count(connection, "reservations") == 1

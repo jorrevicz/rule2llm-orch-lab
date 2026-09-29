@@ -12,6 +12,9 @@ sucesso de uma reserva não persistida.
 - Nova tentativa lógica (novo `message_id`, mesmo `task_id`) de tarefa já
   reservada: não cria segunda reserva; responde com o resultado da reserva
   existente, numa resposta nova (é outra mensagem).
+- Falha injetada na rota (D-20, cenário de falha intermitente): não reserva; responde
+  `STOCK_RESERVATION_FAILED / transient_error`. A rota falha antes de processar, por
+  isso a falha vem antes da idempotência de negócio.
 - Pedido com SKU fora do catálogo do Inventory (D-03): não reserva; responde
   `STOCK_RESERVATION_FAILED / invalid_data`, em qualquer rota. A resposta também fica
   em `processed_messages`, para ser reemitida numa redelivery.
@@ -53,6 +56,7 @@ class RequestOutcome(StrEnum):
     DUPLICATE_MESSAGE = "duplicate_message"  # redelivery: mesma mensagem já processada
     ALREADY_RESERVED = "already_reserved"    # nova tentativa de tarefa já reservada
     INVALID_DATA = "invalid_data"            # SKU fora do catálogo (D-03)
+    TRANSIENT_ERROR = "transient_error"      # falha injetada na rota (D-20)
 
 
 @dataclass(frozen=True)
@@ -68,14 +72,14 @@ def process_reservation_request(
     publisher: EventPublisher,
     simulator: ProcessingSimulator,
 ) -> RequestResult:
-    simulator.before_reservation(request)  # fora da transação: não segura o lock
+    injected = simulator.before_reservation(request)  # fora da transação: não segura o lock
     now = utc_now_iso()
     with transaction(connection):
         previous = find_processed_message(connection, request.message_id)
         if previous is not None:
             result = RequestResult(RequestOutcome.DUPLICATE_MESSAGE, json.loads(previous.response_json))
         else:
-            result = _reserve(connection, request, payload, now)
+            result = _reserve(connection, request, payload, now, injected)
     publisher.publish(result.reply)
     return result
 
@@ -85,11 +89,16 @@ def _reserve(
     request: MessageEnvelope,
     payload: ReservationRequestPayload,
     now: str,
+    injected: TaskResult | None,
 ) -> RequestResult:
     existing = find_reservation(connection, request.task_id)
     items = [item.model_dump() for item in payload.items]
     result = ProcessingResult.SUCCEEDED
-    if existing is not None:
+    if injected is not None:
+        outcome = RequestOutcome.TRANSIENT_ERROR
+        result = ProcessingResult.FAILED
+        reply = _failed_event(request, payload.order_id, injected)
+    elif existing is not None:
         outcome = RequestOutcome.ALREADY_RESERVED
         reply = _succeeded_event(request, existing.order_id, existing.route)
     elif unknown_skus(connection, [item["sku"] for item in items]):

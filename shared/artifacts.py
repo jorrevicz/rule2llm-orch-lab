@@ -24,6 +24,7 @@ class Artifact(StrEnum):
     DECISIONS = "decisions"
     TASK_EVENTS = "task_events"
     MICROSERVICES_LOGS = "microservices_logs"
+    FAULT_EVENTS = "fault_events"
 
 
 def execution_dir(data_root: Path, execution_id: str) -> Path:
