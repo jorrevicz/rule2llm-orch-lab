@@ -41,7 +41,7 @@ EXPECTED_KEYS = {
         "prompt_template",
     },
     "inventory": {"service_time_ms", "catalog"},  # D-22, D-03
-    "metrics": {"sampling_interval_seconds"},  # D-26
+    "metrics": {"sampling_interval_seconds", "recovery_window_tasks"},  # D-26, D-24
     "workload": {"dataset", "requests", "rate_per_second", "seed"},
     "fault": {
         "type",

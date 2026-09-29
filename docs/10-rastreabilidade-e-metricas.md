@@ -54,9 +54,12 @@ execution_id  →  task_id  →  state_id  →  decision_id
 | `container_stats.csv` | CSV | CPU, RAM, I/O por container | "Qual foi o custo computacional?" |
 | `invalid_runs.csv` | CSV | `execution_id`, cenário, abordagem, motivo da invalidação | "Quais execuções não entraram na amostra e por quê?" |
 
-Consolidação (pós-execução): `metrics_summary.csv`, `latency_metrics.csv`,
-`throughput_metrics.csv`, `error_metrics.csv`, `recovery_metrics.csv`, `blast_radius.csv`,
-`results.csv`, `analysis_summary.md`.
+Consolidação (pós-execução, `scripts/analysis/consolidate.py`, só a partir dos arquivos):
+`latency_metrics.csv` (uma linha por tarefa), `throughput_metrics.csv`, `error_metrics.csv`,
+`recovery_metrics.csv` e `blast_radius.csv` (uma linha por falha) e `metrics_summary.csv` (uma
+linha por execução, unidade da análise entre repetições). Entre execuções (M9): `results.csv`,
+`analysis_summary.md`. Protocolo (M7): `initial_state.json`, `reset.log`, `warmup.log`,
+`invalid_runs.csv` (por fase, em `data/<pilot|experiment>/`).
 
 ## 10.3 Campos dos artefatos JSONL principais
 

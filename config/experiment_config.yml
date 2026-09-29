@@ -50,6 +50,7 @@ inventory:
 metrics:
   sampling_interval_seconds: 1  # D-26: mesmo valor em config/prometheus/prometheus.yml, no
                                 # cAdvisor e no RabbitMQ (teste de coerência) — A CONGELAR
+  recovery_window_tasks: 5      # D-24: k da janela de sucessos do tempo de recuperação — A CONGELAR
 
 # workload e fault abaixo = cenário normal. Cada execução usa um cenário de
 # config/scenarios/ (new_execution --scenario), que substitui estas duas seções.

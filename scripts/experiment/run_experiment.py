@@ -38,7 +38,7 @@ from scripts.experiment.reset_environment import reset_environment
 from scripts.experiment.versions import host_hardware, software_versions
 from scripts.metrics.host_sampler import HostProcessSampler
 from scripts.metrics.prometheus_export import export_container_stats, export_queue_metrics
-from scripts.pilot.environment import DEFAULT_BASE_URL, REPO_ROOT
+from scripts.pilot.environment import DEFAULT_BASE_URL, REPO_ROOT, InspectionError
 from scripts.pilot.llm_readiness import check as check_llm_readiness
 from scripts.pilot.new_execution import METADATA_FILE, apply_llm_readiness, available_scenarios, open_execution
 from scripts.scenarios.run_scenario import apply_scenario, finish
@@ -120,18 +120,19 @@ def run_once(
     data_root: Path = DEFAULT_DATA_ROOT,
     base_url: str = DEFAULT_BASE_URL,
     settle_timeout_s: float = 900.0,
-    build: bool = False,
+    build: bool = True,
 ) -> dict:
     # 1. execução aberta; a readiness do LLM vem depois do reset (etapa 5)
     directory = open_execution(data_root, scenario_id, engine=engine, llm_readiness=None, repetition_id=repetition_id)
     execution_id = directory.name
     config = load_experiment_config(directory / "experiment_config.yml")
 
-    # 2–3. reset e subida limpa
-    initial_state = reset_environment(execution_id, data_root, build=build)
-
-    # 4. readiness do ambiente e do host
-    ready = environment_readiness.check(execution_id, data_root)
+    # 2–4. reset, subida limpa e readiness; falha da bancada aqui → execução inválida
+    try:
+        initial_state = reset_environment(execution_id, data_root, build=build)
+        ready = environment_readiness.check(execution_id, data_root)
+    except (InspectionError, OSError, ValueError) as error:
+        return _mark_invalid(directory, data_root, f"bench_failure: {error.__class__.__name__}: {str(error)[:300]}")
     metadata = _metadata(directory)
     metadata.update(
         readiness_status=ready.status,
@@ -214,16 +215,14 @@ def main() -> int:
     parser.add_argument("--repetitions", type=int, default=1)
     parser.add_argument("--max-attempts", type=int, default=3, help="tentativas por execução inválida")
     parser.add_argument("--settle-timeout", type=float, default=900.0)
-    parser.add_argument("--build", action="store_true", help="reconstrói as imagens no 1º reset")
     args = parser.parse_args()
 
     awake = keep_host_awake()
-    results, build = [], args.build
+    results = []
     try:
         for scenario, engine, repetition in schedule(args.scenario, args.engine, args.repetitions):
             for attempt in range(1, args.max_attempts + 1):
-                metadata = run_once(scenario, engine, repetition, settle_timeout_s=args.settle_timeout, build=build)
-                build = False
+                metadata = run_once(scenario, engine, repetition, settle_timeout_s=args.settle_timeout)
                 results.append({k: metadata.get(k) for k in ("execution_id", "scenario_id", "decision_engine", "repetition_id", "run_status", "invalid_reason")})
                 print(json.dumps(results[-1], ensure_ascii=False), flush=True)
                 if metadata["run_status"] == "VALID":

@@ -47,7 +47,6 @@ def test_any_leftover_row_changes_the_hash(tmp_path):
 def test_services_start_pointed_at_the_execution(tmp_path):
     env = execution_env("PILOT_0042", tmp_path)
 
-    assert env == {
-        "EXECUTION_ID": "PILOT_0042",
-        "EXECUTION_CONFIG_PATH": "/srv/data/pilot/PILOT_0042/experiment_config.yml",
-    }
+    assert env["EXECUTION_ID"] == "PILOT_0042"
+    assert env["EXECUTION_CONFIG_PATH"] == "/srv/data/pilot/PILOT_0042/experiment_config.yml"
+    assert len(env["GIT_COMMIT"]) == 40 and not env["GIT_COMMIT"].endswith("-dirty")

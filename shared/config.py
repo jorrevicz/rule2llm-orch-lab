@@ -77,6 +77,7 @@ class InventorySection(_Section):
 
 class MetricsSection(_Section):
     sampling_interval_seconds: PositiveFloat  # D-26: Prometheus, cAdvisor, RabbitMQ e Ollama
+    recovery_window_tasks: PositiveInt  # D-24: k pedidos consecutivos normais = recuperado
 
 
 class WorkloadSection(_Section):

@@ -89,3 +89,11 @@ def test_every_required_container_must_be_running_and_healthy(monkeypatch):
     rows[0]["Health"] = ""
     rows.pop()
     assert not check_containers().ok
+
+
+def test_service_images_must_be_built_from_the_execution_commit():
+    from scripts.experiment.readiness import check_images
+
+    assert check_images("abc", inspect=lambda service: "abc").ok
+    stale = check_images("abc", inspect=lambda service: "old" if service == "inventory-worker" else "abc")
+    assert not stale.ok and stale.detail["inventory-worker"] == "old"

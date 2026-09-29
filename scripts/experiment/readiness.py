@@ -7,7 +7,8 @@ Critérios da metodologia: (a) containers necessários ativos; (b) filas declara
 (e) coletores de métricas ativos; (f) na abordagem LLM, modelo carregado e warm-up
 concluído — o (f) é a readiness do LLM (`scripts/pilot/llm_readiness.py`), etapa 5.
 
-Acréscimos do piloto (M6-T10): os serviços apontam para esta execução, e o host está
+Acréscimos do piloto: as imagens dos serviços foram construídas do commit atual (M7-T07);
+os serviços apontam para esta execução, e o host está
 no estado controlado — no macOS, na tomada, sem Low Power Mode e com sleep impedido
 (asserção do `caffeinate` do executor); no Linux (servidor da coleta), não se aplica.
 
@@ -26,7 +27,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from scripts.datasets.generate_dataset import REPO_ROOT
-from scripts.experiment.reset_environment import _SNAPSHOT_SCRIPT, INITIAL_STATE_FILE
+from scripts.experiment.reset_environment import _SNAPSHOT_SCRIPT, INITIAL_STATE_FILE, head_commit
 from scripts.pilot.environment import DEFAULT_BASE_URL, QUEUES, compose
 from services.inventory.app.db.connection import init_database as init_inventory_database
 from services.orders.app.db.connection import init_database as init_orders_database
@@ -81,6 +82,20 @@ def check_execution(execution_id: str) -> Check:
         service: compose("exec", "-T", service, "printenv", "EXECUTION_ID").strip() for service in EXECUTION_SERVICES
     }
     return Check("services_on_execution", set(running.values()) == {execution_id}, running)
+
+
+def check_images(commit: str, inspect: Callable[[str], str] | None = None) -> Check:
+    """Imagem de cada serviço construída do commit da execução (rótulo OCI `revision`)."""
+
+    def container_label(service: str) -> str:
+        container = compose("ps", "-q", service).strip()
+        return _command(
+            "docker", "inspect", "--format", '{{ index .Config.Labels "org.opencontainers.image.revision" }}', container
+        ).strip()
+
+    inspect = inspect or container_label
+    revisions = {service: inspect(service) for service in EXECUTION_SERVICES}
+    return Check("images_match_commit", set(revisions.values()) == {commit}, revisions)
 
 
 def check_queues(state: dict) -> Check:
@@ -159,6 +174,7 @@ def check(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT) -> Readiness:
     state = json.loads((directory / INITIAL_STATE_FILE).read_text(encoding="utf-8"))
     checks = [
         check_containers(),
+        check_images(head_commit()),
         check_execution(execution_id),
         check_queues(state),
         check_api_health(),

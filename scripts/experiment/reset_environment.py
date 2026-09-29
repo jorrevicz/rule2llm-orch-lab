@@ -5,8 +5,11 @@
 1. `docker compose down -v`: para tudo e apaga os volumes — `orders.db`, `inventory.db`
    e a base do Prometheus; o RabbitMQ é recriado a partir de `definitions.json`, com
    filas e DLQ vazias (estados transitórios da execução anterior não sobrevivem);
-2. sobe o ambiente já apontado para a execução (`EXECUTION_ID`, `EXECUTION_CONFIG_PATH`)
-   e espera os healthchecks; os bancos são criados vazios, com o catálogo do Inventory;
+2. reconstrói as imagens dos serviços (cache do Docker) com o commit atual no rótulo
+   `org.opencontainers.image.revision` e sobe o ambiente já apontado para a execução
+   (`EXECUTION_ID`, `EXECUTION_CONFIG_PATH`), esperando os healthchecks; os bancos são
+   criados vazios, com o catálogo do Inventory. A readiness confere o rótulo: nenhuma
+   execução roda com imagem de outro commit;
 3. registra o estado inicial em `initial_state.json` (hash lógico e contagem de cada
    tabela dos dois SQLite, filas e consumidores) e os passos em `reset.log`.
 
@@ -21,6 +24,7 @@ import sys
 from pathlib import Path
 
 from scripts.pilot.environment import COMPOSE_FILE, REPO_ROOT, compose, queue_consumers, queue_depths
+from scripts.pilot.new_execution import git_commit
 from shared.artifacts import execution_dir
 from shared.timestamps import utc_now_iso
 
@@ -58,10 +62,18 @@ class ResetLog:
             handle.write(f"{utc_now_iso()} {message}\n")
 
 
+def head_commit() -> str:
+    return (git_commit() or "unknown").removesuffix("-dirty")
+
+
 def execution_env(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT) -> dict[str, str]:
     directory = execution_dir(data_root, execution_id)
     container_config = CONTAINER_DATA_ROOT / directory.relative_to(data_root) / "experiment_config.yml"
-    return {"EXECUTION_ID": execution_id, "EXECUTION_CONFIG_PATH": str(container_config)}
+    return {
+        "EXECUTION_ID": execution_id,
+        "EXECUTION_CONFIG_PATH": str(container_config),
+        "GIT_COMMIT": head_commit(),
+    }
 
 
 def database_snapshot(service: str, path: str) -> dict:
@@ -76,7 +88,7 @@ def capture_initial_state() -> dict:
     }
 
 
-def reset_environment(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT, *, build: bool = False) -> dict:
+def reset_environment(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT, *, build: bool = True) -> dict:
     directory = execution_dir(data_root, execution_id)
     if not (directory / "experiment_config.yml").is_file():
         raise SystemExit(f"execution {execution_id} has no effective config; open it first")
@@ -96,9 +108,8 @@ def reset_environment(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT, *,
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--execution-id", required=True)
-    parser.add_argument("--build", action="store_true", help="reconstrói as imagens (fora da coleta)")
     args = parser.parse_args()
-    print(json.dumps(reset_environment(args.execution_id, build=args.build), indent=2))
+    print(json.dumps(reset_environment(args.execution_id), indent=2))
     return 0
 
 
