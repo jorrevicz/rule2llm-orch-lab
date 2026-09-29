@@ -73,7 +73,9 @@ class DecisionValidator:
         if action == Action.RETRY:
             if task.attempt_number >= task.max_attempts:
                 return ValidationErrorCode.RETRY_LIMIT_EXCEEDED
-            if proposal.target != task.current_target:
+            # O RETRY repete a tentativa corrente: exige tarefa já despachada e o mesmo
+            # target (antes do 1º despacho, target e current_target são ambos nulos).
+            if proposal.target is None or proposal.target != task.current_target:
                 return ValidationErrorCode.INVALID_RETRY_TARGET
             if proposal.target == FALLBACK:
                 return ValidationErrorCode.FALLBACK_RETRY_LIMIT

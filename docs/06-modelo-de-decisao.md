@@ -350,8 +350,8 @@ def validate(decision, state):
     if decision.action == "RETRY":
         if state.task.attempt_number >= state.task.max_attempts:
             return invalid("RETRY_LIMIT_EXCEEDED")
-        if decision.target != state.task.current_target:
-            return invalid("INVALID_RETRY_TARGET")
+        if decision.target is None or decision.target != state.task.current_target:
+            return invalid("INVALID_RETRY_TARGET")      # M5-T12: RETRY exige tarefa já despachada
         if decision.target == "inventory.fallback":         # acréscimo 🔬 (D-15)
             return invalid("FALLBACK_RETRY_LIMIT")
 

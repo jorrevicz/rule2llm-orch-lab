@@ -71,6 +71,8 @@ def test_valid_decisions(validator, proposal, state):
         ),
         (_proposal("RETRY", "inventory.fallback"), dispatched(), "INVALID_RETRY_TARGET"),
         (_proposal("RETRY", "inventory.primary"), make_state(), "INVALID_RETRY_TARGET"),
+        (_proposal("RETRY", None), make_state(), "INVALID_RETRY_TARGET"),  # visto no piloto LLM
+        (_proposal("RETRY", None), dispatched(), "INVALID_RETRY_TARGET"),
         (_proposal("RETRY", "inventory.fallback"), make_state(**ON_FALLBACK), "FALLBACK_RETRY_LIMIT"),
         (
             _proposal("FALLBACK", "inventory.fallback"),
@@ -98,6 +100,8 @@ def test_valid_decisions(validator, proposal, state):
         "retry-limit",
         "retry-other-target",
         "retry-before-dispatch",
+        "retry-null-before-dispatch",
+        "retry-null-after-dispatch",
         "retry-on-fallback",
         "fallback-unavailable",
         "fallback-used",
@@ -179,3 +183,36 @@ def test_rules_never_violates_the_operational_limits(validator):
         dispatched(**{"service.last_result": "timeout", "task.elapsed_ms": DEADLINE}),
     ):
         assert validator.validate(engine.decide(state).proposal, state).valid
+
+
+
+def test_every_approved_proposal_is_an_executable_decision(validator):
+    """Aprovada pelo Validator ⇒ `Decision` executável, para qualquer combinação.
+
+    Garante que resolve_action nunca falha depois de uma validação positiva (no piloto
+    com LLM, um RETRY sem target aprovado derrubava o ponto de decisão).
+    """
+    from itertools import product
+
+    from shared.decision import Decision, resolve_action
+
+    actions = ["CONTINUE", "RETRY", "WAIT", "FALLBACK", "ABORT", "REDIRECT", None]
+    targets = [None, "inventory.primary", "inventory.fallback", "service_c", "null"]
+    states = [
+        make_state(),
+        make_state(**{"task.phase": "WAITING", "task.wait_count": 1}),
+        dispatched(),
+        dispatched(**{"task.attempt_number": 3}),
+        make_state(**{"task.phase": "FALLBACK_PROCESSING", "task.current_target": "inventory.fallback",
+                      "alternatives.fallback_used": True, "alternatives.alternative_targets": []}),
+        dispatched(**{"task.phase": "COMPLETED"}),
+    ]
+    approved = 0
+    for action, target, state in product(actions, targets, states):
+        proposal = _proposal(action, target)
+        result = validator.validate(proposal, state)
+        if result.valid:
+            approved += 1
+            Decision.model_validate(proposal.model_dump())  # não pode falhar
+        assert resolve_action(proposal, result) is not None
+    assert approved > 0
