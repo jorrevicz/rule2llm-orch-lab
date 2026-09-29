@@ -5,6 +5,7 @@ container efêmero); nenhum script de piloto produz dado de amostra.
 """
 
 import json
+import os
 import subprocess
 import time
 import urllib.request
@@ -34,9 +35,11 @@ class InspectionError(RuntimeError):
     pass
 
 
-def compose(*args: str) -> str:
+def compose(*args: str, env: dict[str, str] | None = None) -> str:
+    """`env` acrescenta variáveis ao ambiente do compose (ex.: `EXECUTION_ID`)."""
     command = ["docker", "compose", "-f", str(COMPOSE_FILE), *args]
-    completed = subprocess.run(command, capture_output=True, text=True)
+    process_env = None if env is None else {**os.environ, **env}
+    completed = subprocess.run(command, capture_output=True, text=True, env=process_env)
     if completed.returncode != 0:
         raise InspectionError(f"{' '.join(args[:3])}: {completed.stderr.strip()}")
     return completed.stdout
