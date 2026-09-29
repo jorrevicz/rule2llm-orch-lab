@@ -28,8 +28,10 @@ O projeto está no **piloto técnico**, e o progresso é acompanhado em
   ações (`CONTINUE`, `RETRY`, `WAIT`, `FALLBACK`, `ABORT`), timeout operacional e DLQ.
   1º piloto técnico concluído (`PILOT_0012`). `LLMDecisionEngine` com Ollama no host
   (`llama3.1:8b`, JSON), prompt fixo do Quadro 2, readiness/warm-up e motor escolhido por
-  execução; piloto com LLM concluído (`PILOT_0014`).
-- Planejado: falhas e carga (M6), instrumentação (M7), congelamento (M8) e coleta (M9).
+  execução; piloto com LLM concluído (`PILOT_0014`). Seis cenários da metodologia (carga em
+  malha aberta, falhas na rota primária, indisponibilidade do Inventory, dados
+  inconsistentes) executados em piloto com Rules e LLM (M6).
+- Planejado: instrumentação (M7), congelamento (M8) e coleta (M9).
 
 Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
 
