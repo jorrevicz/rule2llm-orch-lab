@@ -123,6 +123,9 @@ Artefatos por execução: `execution_metadata.json`, `task_events.jsonl`, `state
 | `orders-api` | `orders-service` — API HTTP (`localhost:8000`) |
 | `orders-worker` | `orders-service` — consome `orders.events` |
 | `inventory-worker` | `inventory-service` — um processo por rota: `inventory.primary` e `inventory.fallback` (D-21) |
+| `prometheus` | Coleta comum a cada 1 s (`localhost:9090`; D-10, D-26); nunca lida pelo decisor |
+| `cadvisor` | CPU/RAM por container |
+| `node-exporter` | CPU/RAM do host (no macOS, da VM do Docker Desktop) |
 
 `orders-api` e `orders-worker` são o mesmo microsserviço e compartilham `orders.db`;
 o `inventory-service` tem o seu próprio `inventory.db`.

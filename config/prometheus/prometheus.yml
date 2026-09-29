@@ -1,0 +1,23 @@
+# Coleta comum a Rules e LLM (D-10); intervalo de 1 s (D-26, provisório — A CONGELAR).
+# Os indicadores ficam só com a bancada: o decisor nunca lê o Prometheus (RNF-029).
+global:
+  scrape_interval: 1s
+  scrape_timeout: 1s
+  evaluation_interval: 1s
+
+scrape_configs:
+  # Métricas por fila (mensagens prontas/sem ack, consumidores, reentregas).
+  - job_name: rabbitmq
+    metrics_path: /metrics/per-object
+    static_configs:
+      - targets: ["rabbitmq:15692"]
+
+  # CPU/RAM por container.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # Host (CPU/RAM totais; no macOS mede a VM do Docker Desktop).
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]

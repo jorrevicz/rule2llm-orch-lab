@@ -75,6 +75,10 @@ class InventorySection(_Section):
     catalog: str  # D-03: catálogo de SKUs carregado no inventory.db
 
 
+class MetricsSection(_Section):
+    sampling_interval_seconds: PositiveFloat  # D-26: Prometheus, cAdvisor, RabbitMQ e Ollama
+
+
 class WorkloadSection(_Section):
     dataset: str
     requests: PositiveInt | None        # pedidos enviados, na ordem do dataset
@@ -129,6 +133,7 @@ class ExperimentConfig(_Section):
     context: ContextSection
     llm: LLMSection
     inventory: InventorySection
+    metrics: MetricsSection
     workload: WorkloadSection
     fault: FaultSection
 

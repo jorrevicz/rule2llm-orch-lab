@@ -47,6 +47,10 @@ inventory:
   service_time_ms: 100          # D-22: tempo de serviço simulado (duas rotas, todos os cenários) — A CONGELAR
   catalog: datasets/inventory_catalog_v1.json   # D-03: catálogo de SKUs (sem saldo)
 
+metrics:
+  sampling_interval_seconds: 1  # D-26: mesmo valor em config/prometheus/prometheus.yml, no
+                                # cAdvisor e no RabbitMQ (teste de coerência) — A CONGELAR
+
 # workload e fault abaixo = cenário normal. Cada execução usa um cenário de
 # config/scenarios/ (new_execution --scenario), que substitui estas duas seções.
 workload:
