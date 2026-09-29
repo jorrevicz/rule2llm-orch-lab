@@ -127,16 +127,15 @@ Publicação direta após o commit (ver [08 §8.5](08-modelo-de-dados-mer.md)).
 
 # Banco `inventory.db` (inventory-service)
 
-## `stock` ⚠
+## `stock` ⚠ (D-03, adotada)
 
-Suporte à reserva **simulada** e ao cenário "dados inconsistentes".
+Catálogo de SKUs conhecidos pelo Inventory, **sem saldo**, carregado de
+`datasets/inventory_catalog_v1.json` na inicialização do banco. Pedido com SKU fora do
+catálogo → `STOCK_RESERVATION_FAILED / invalid_data`.
 
 | Coluna | Afinidade | Nulo? | Chave | Default | Descrição | Exemplo |
 |---|---|---|---|---|---|---|
 | `sku` | TEXT | não | PK | — | Código do item | `SKU-001` |
-| `quantity_available` | INTEGER | não | — | — | Quantidade disponível | `100` |
-| `quantity_reserved` | INTEGER | não | — | `0` | Quantidade reservada acumulada | `12` |
-| `updated_at` | TEXT | não | — | — | Última atualização | `2026-08-27T12:00:03.001Z` |
 
 ## `reservations`
 

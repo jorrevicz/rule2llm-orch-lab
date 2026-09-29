@@ -46,7 +46,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M3](#m3--statebuilder-system_state-e-rastreabilidade) | `StateBuilder`, `SYSTEM_STATE`, JSONL de rastreabilidade | ✅ | `m3-rastreabilidade` | 2026-09-28 |
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
-| [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ⬜ | `m6-falhas-carga` | — |
+| [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | 🔄 | `m6-falhas-carga` | — |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ⬜ | `m7-instrumentacao` | — |
 | [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
 | [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
@@ -278,24 +278,29 @@ Candidato de substituição registrado: `qwen2.5:3b`.
 **Objetivo:** tornar os seis cenários reproduzíveis e controláveis (piloto §28 Fase 6).
 **Pré-requisitos:** M5 (fluxo + Rules + LLM funcionando). **Tag:** `m6-falhas-carga`.
 
+> Tasks revisadas em 2026-09-29 com as decisões D-03, D-20, D-21, D-22 e D-23 (M6-T01): um
+> único ponto de injeção no Inventory e um executor de cenários substituem um script por
+> falha; os seis cenários passam a ser arquivos de configuração.
+
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M6-T01 | Dataset | `feat(datasets)` | `datasets/orders_v1.json` determinístico (seed) | RNF-005 | ⬜ |
-| M6-T02 | Gerador de carga | `feat(workload)` | `scripts/workload/generate_load.py` (nº de requisições, taxa, seed) | RF-040 | ⬜ |
-| M6-T03 | Injeção controlada na rota primária | `feat(inventory)` | Erro transitório/latência na **rota primária**, ativados por controle externo registrado; rota fallback não afetada | piloto §35.7, [06 §6.5](06-modelo-de-decisao.md) | ⬜ |
-| M6-T04 | Cenário timeout | `feat(faults)` | `scripts/faults/timeout.py` | [11 §11.3](11-requisitos.md) | ⬜ |
-| M6-T05 | Cenário falha intermitente | `feat(faults)` | `scripts/faults/intermittent_failure.py` | [11 §11.3](11-requisitos.md) | ⬜ |
-| M6-T06 | Cenário sobrecarga | `feat(faults)` | `scripts/faults/overload.py` | [11 §11.3](11-requisitos.md) | ⬜ |
-| M6-T07 | Cenário dados inconsistentes | `feat(faults)` | `scripts/faults/inconsistent_data.py` → `invalid_data`. **(D)** D-03 | [11 §11.3](11-requisitos.md) | ⬜ |
-| M6-T08 | Cenário recuperação pós-falha | `feat(faults)` | `scripts/faults/recovery.py` (stop/start do `inventory-service` → só `WAIT`/`ABORT`) | [11 §11.3](11-requisitos.md) | ⬜ |
-| M6-T09 | Configuração de cenários | `feat(config)` | `config/scenarios/*.yml`; `fault_events.jsonl` | RF-041 | ⬜ |
-| M6-T10 | Piloto dos cenários | `chore(pilot)` | Os 6 cenários executados em piloto com rules e llm; `FALLBACK` confirmado como realmente executável | piloto §35.7 | ⬜ |
+| M6-T01 | **(D) 🔬** Decisões dos cenários | `docs(decisoes)` | D-03, D-20, D-21, D-22, D-23 registradas; tasks do M6 revisadas; docs 02, 03, 04, 06, 08, 09, 10 e piloto atualizados | metodologia §4.4, Código 11 | ✅ |
+| M6-T02 | Catálogo e dataset | `feat(datasets)` | `scripts/datasets/generate_dataset.py` (seed) → `datasets/inventory_catalog_v1.json` e `datasets/orders_v1.json`; teste que regenera os arquivos e compara | RNF-005 | ⬜ |
+| M6-T03 | Catálogo no Inventory e `invalid_data` | `feat(inventory)` | Tabela `stock` (catálogo) carregada na inicialização; SKU fora do catálogo → `STOCK_RESERVATION_FAILED / invalid_data` nas duas rotas; D-23 no Orders; scripts de piloto com SKUs do catálogo | D-03, D-23 | ⬜ |
+| M6-T04 | Rotas em processos distintos e tempo de serviço | `feat(inventory)` | Um processo Celery por rota no mesmo container (supervisor); `inventory.service_time_ms` aplicado fora da transação | D-21, D-22 | ⬜ |
+| M6-T05 | Injeção controlada na rota primária | `feat(inventory)` | `fault_control.json` da execução lido a cada solicitação; sorteio por hash de (`seed`, `task_id`, `attempt_number`); `intermittent_error` → falha `transient_error`; `timeout` → atraso `delay_ms`; `FAULT_APPLIED` em `fault_events`; fallback não afetado | D-20, piloto §35.7 | ⬜ |
+| M6-T06 | Configuração dos cenários | `feat(config)` | Seção `fault` do Código 11 validada por tipo; `config/scenarios/*.yml` (6 cenários); `new_execution --scenario` grava a config efetiva (base + cenário) e o hash do cenário | RF-041 | ⬜ |
+| M6-T07 | Gerador de carga | `feat(workload)` | `scripts/workload/generate_load.py`: malha aberta (taxa fixa, independente do tempo de resposta), rajada da sobrecarga e pedidos inconsistentes na janela; `workload.jsonl` | RF-040 | ⬜ |
+| M6-T08 | Scripts de falha e executor de cenário | `feat(faults)` | `scripts/faults/` (rota primária e indisponibilidade do Inventory) com `FAULT_STARTED`/`FAULT_ENDED` em `fault_events`; `scripts/scenarios/run_scenario.py` (carga + falha + espera + coleta) | RF-041 | ⬜ |
+| M6-T09 | Testes dos cenários | `test` | Unitários (sorteio, controle, janelas, config); integração com cenário curto | CLAUDE §35 | ⬜ |
+| M6-T10 | Piloto dos cenários | `chore(pilot)` | 6 cenários × Rules e LLM em piloto; `FALLBACK` executado de fato; carga provisória calibrada | piloto §35.7 | ⬜ |
 
 **Critério de conclusão**
 
 - [ ] Os seis cenários são acionáveis por script/config e registrados em `fault_events.jsonl`.
 - [ ] Nenhuma perturbação aleatória não registrada.
 - [ ] Degradação da rota primária é distinguível de indisponibilidade total do Inventory.
+- [ ] `FALLBACK` executado de fato na degradação da rota primária (piloto §35.7).
 
 ---
 
@@ -369,7 +374,7 @@ doc 10 §10.6).
 |---|---|---|---|:---:|
 | D-01 | Persistir `task_events` / `states` / `decisions` também em tabela | **Decidido (2026-09-28):** `task_events` em tabela (fonte da janela K e do `task_events.jsonl`, exportado ao fim da execução); `states` e `decisions` somente em JSONL | M3-T04 | ✅ |
 | D-02 | Itens do pedido e da reserva | **Decidido (2026-09-27): JSON** em `orders.items_json` e `reservations.items_json`, sem tabelas de itens. Itens imutáveis após a validação; toda tentativa republica o mesmo `payload.items`; nenhuma métrica nem o `SYSTEM_STATE` consultam itens. Sem impacto metodológico | M1-T03 | ✅ |
-| D-03 | Tabela `stock` no Inventory | Reserva 100% simulada × tabela `stock` (enriquece o cenário "dados inconsistentes") | M6-T07 | ⬜ |
+| D-03 🔬 | Tabela `stock` no Inventory | **Decidido (2026-09-29): catálogo de SKUs, sem saldo.** Tabela `stock` (só `sku`) carregada de `datasets/inventory_catalog_v1.json` na inicialização do `inventory.db`; SKU fora do catálogo → `STOCK_RESERVATION_FAILED / invalid_data` em qualquer rota. No cenário "dados inconsistentes", o gerador de carga troca o SKU de uma fração dos pedidos da janela (sorteio por hash da seed e do índice do pedido) por um SKU fora do catálogo: validação real, os mesmos pedidos nas duas abordagens, sem dependência da ordem de processamento | M6-T01 | ✅ |
 | D-04 🔬 | Padrão outbox | **Decidido (2026-09-28): sem outbox; publicação direta após o commit.** Inventory reemite a resposta gravada em `processed_messages.response_json` na redelivery; despacho perdido do Orders é coberto pelo `timeout_check` (M4-T06). Revisável se o piloto mostrar perda | M2-T07 | ✅ |
 | D-05 | Tabela `executions` | **Decidido (2026-09-28): não criar.** Metadados só em `execution_metadata.json` (metodologia §4.5, Código 12); o reset restaura o SQLite a cada repetição e `run_status` é conhecido pela bancada, não pelo serviço | M3-T03 | ✅ |
 | D-06 🔬 | Formato do `SYSTEM_STATE` | **Decidido (2026-09-28):** aninhado (como o Código 4 da metodologia); `service.latency_ms`; `phase` = `TaskStatus`, com `CONTINUE` em `PENDING`/`WAITING` (substitui `READY`/`RECOVERED` — **altera o Código 4 do TCC**, §13.6); `decision_engine` = `RULES`/`LLM` em tudo, como os Códigos 7–9 e 12 | M3-T01 | ✅ |
@@ -385,6 +390,10 @@ doc 10 §10.6).
 | D-16 🔬 | Quem numera a trajetória (`event_seq`) | **Decidido (2026-09-28): o Orders.** `TASK_CREATED` = 1; cada mensagem publicada, evento novo recebido e evento interno registrado consome o próximo número; no Inventory, `event_seq` repete o da solicitação respondida (correlação). Exemplos dos docs 06, 07 e piloto §10.1 ajustados | M2-T02 | ✅ |
 | D-17 | Prefetch do worker do Orders | **Decidido (2026-09-28, técnico):** prefetch sem limite (`worker_prefetch_multiplier = 0`) só no `orders-worker`. Com limite 1, as tarefas internas com atraso (timeout, nova tentativa, reavaliação), que dividem `orders.events` com os eventos, ocupavam o único slot de entrega e retinham as respostas do Inventory até vencer — observado ao vivo (resposta retida 2 s, timeouts falsos). Mensagens seguem sem ack até o processamento (reentregues se o worker cair). Vale igualmente para Rules e LLM | M4-T06 | ✅ |
 | D-18 🔬 | Destino do `CONTINUE` | **Decidido (2026-09-29):** target nulo ou `inventory.primary` (o destino é o do fluxo); o `SYSTEM_STATE` de tarefa nova não traz a rota primária, e exigi-la abortaria toda tarefa LLM na 1ª decisão | M5-T09 | ✅ |
+| D-20 🔬 | Injeção de falhas na rota primária | **Decidido (2026-09-29): arquivo de controle + sorteio por hash.** O script de falha grava `fault_control.json` no diretório da execução (tipo, rota, probabilidade, `delay_ms`, seed) e o apaga ao fim da janela; o Inventory o lê a cada solicitação. Uma solicitação da rota afetada falha se `hash(seed, task_id, attempt_number) < failure_probability`: as mesmas tarefas falham nas mesmas tentativas em Rules e LLM, qualquer que seja a ordem de consumo. `intermittent_error` → `STOCK_RESERVATION_FAILED / transient_error`; `timeout` → atraso `delay_ms` antes de processar (resposta tardia). O decisor não vê a falha injetada, só seus efeitos (metodologia Tabela 9) | M6-T01 | ✅ |
+| D-21 🔬 | Rotas do Inventory em processos distintos | **Decidido (2026-09-29):** no mesmo container do `inventory-service` e com o mesmo `inventory.db`, um processo Celery consome `inventory.primary` e outro `inventory.fallback`. Degradar a rota primária não bloqueia o fallback; parar o container derruba o serviço inteiro (só `WAIT`/`ABORT`) — metodologia §4.4 | M6-T01 | ✅ |
+| D-22 🔬 | Tempo de serviço simulado | **Decidido (2026-09-29):** novo parâmetro `inventory.service_time_ms` aplicado a toda solicitação, nas duas rotas e em todos os cenários, fora da transação do SQLite. Dá capacidade finita ao Inventory, para que a sobrecarga (taxa acima da capacidade) altere `queue_size` e `latency_ms`. Muda a latência base igualmente para Rules e LLM | M6-T01 | ✅ |
+| D-23 🔬 | `invalid_data` na rota de fallback | **Decidido (2026-09-29), consequência de D-03:** falha `invalid_data` grava `last_result = invalid_data` também no fallback; `fallback_failed` (D-15) fica para timeout e `transient_error` no fallback. Dado inválido não depende da rota. Para o Rules muda só o `reason_code` do `ABORT` (`INVALID_DATA` em vez de `FALLBACK_FAILED`) | M6-T01 | ✅ |
 | D-19 🔬 | Limites de `WAIT` e de prazo para qualquer motor | **Decidido (2026-09-29): duas regras no Validator comum** — `WAIT_LIMIT_EXCEEDED` (`wait_count >= max_waits`) e `TASK_DEADLINE_EXCEEDED` (ação ≠ `ABORT` com `elapsed_ms >= task_deadline_ms`); violação → `ABORT / INVALID_DECISION`. Nada muda para o Rules | M5-T11 | ✅ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
@@ -421,6 +430,11 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | D-07 | Descrição da DLQ ("falhas sucessivas") | Definir: uma falha de processamento, sem retentativa automática, envia a mensagem à `tasks.dlq`; a tarefa passa a `DEAD_LETTERED` |
 | D-08 | §4.3.7 / Tabela de instrumentação | Ollama no host (GPU); custo de CPU/RAM do runtime medido fora do Docker Stats |
 | D-09 | §4.3.7 / Quadro 2 | Chamada com `format: "json"` (só sintaxe); novos parâmetros `num_ctx` e `keep_alive` |
+| D-03 | Tabela 12 (dados inconsistentes) / §4.3 (reserva simulada) | Operacionalização: catálogo de SKUs no Inventory; pedidos com SKU fora do catálogo, sorteados pela seed na janela da falha |
+| D-20 | Código 11 (`fault`) / §4.4.1 (seeds) | Sorteio por hash de (`seed_fault`, `task_id`, `attempt_number`); campo `delay_ms` para o atraso; ativação por arquivo de controle da execução |
+| D-21 | §4.3 (arquitetura) / §4.4 | Rotas primária e fallback consumidas por processos distintos do mesmo `inventory-service` |
+| D-22 | Código 11 | Novo parâmetro `inventory.service_time_ms` (tempo de serviço simulado, comum a todos os cenários) |
+| D-23 | Tabela de ações / D-15 | `invalid_data` prevalece sobre `fallback_failed` na rota de fallback |
 
 ## 13.7 Achados do piloto
 

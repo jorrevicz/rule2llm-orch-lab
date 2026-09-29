@@ -984,6 +984,8 @@ falha/degradação da rota primária
 
 Essa distinção deverá ser refletida nos scripts de falha.
 
+> **Decisões D-20, D-21, D-22 e D-23 (2026-09-29) 🔬:** cada rota do Inventory é consumida por um processo próprio no mesmo container (D-21), de modo que degradar a rota primária não bloqueia o fallback e parar o container derruba o serviço inteiro. A falha da rota primária é ativada por um arquivo de controle da execução (`fault_control.json`) e sorteada por hash de (`seed`, `task_id`, `attempt_number`): `intermittent_error` → `STOCK_RESERVATION_FAILED / transient_error`; `timeout` → atraso `delay_ms` (D-20). Toda solicitação tem tempo de serviço simulado `inventory.service_time_ms` (D-22). `invalid_data` no fallback grava `last_result = invalid_data`, não `fallback_failed` (D-23). Registro: `docs/13-roadmap.md` §13.4; operacionalização: `docs/06-modelo-de-decisao.md` §6.5.
+
 ---
 
 # 13. Contrato da decisão
@@ -1744,6 +1746,8 @@ CREATE TABLE processed_messages (
     processed_at TEXT NOT NULL
 );
 ```
+
+> **Decisão D-03 (2026-09-29) 🔬:** acrescenta-se a tabela `stock`, apenas com o catálogo de SKUs (`sku` PK, sem saldo), carregada de `datasets/inventory_catalog_v1.json` na inicialização. Pedido com SKU fora do catálogo → `STOCK_RESERVATION_FAILED / invalid_data`, em qualquer rota. O cenário "dados inconsistentes" envia, na janela da falha, uma fração de pedidos (sorteada pela seed) com SKU fora do catálogo. Registro: `docs/13-roadmap.md` §13.4.
 
 ---
 

@@ -128,10 +128,7 @@ erDiagram
 ```mermaid
 erDiagram
     STOCK {
-        text sku PK
-        integer quantity_available
-        integer quantity_reserved
-        text updated_at
+        text sku PK "catálogo de SKUs (D-03)"
     }
 
     RESERVATIONS {
@@ -163,15 +160,16 @@ erDiagram
 | `reservations` | sim | Reserva efetivada; `task_id UNIQUE` garante idempotência de negócio; itens em `items_json` (D-02) |
 | `processed_messages` | sim | Idempotência de transporte no consumo de `inventory.primary`/`inventory.fallback` |
 | ~~`reservation_items`~~ | descartada (D-02) | Itens guardados como JSON em `reservations.items_json` — ver §8.5 |
-| `stock` | ⚠ divergência | Suporte à **reserva simulada** e ao cenário "dados inconsistentes"; a metodologia fala em "reserva simulada" sem exigir tabela de estoque |
+| `stock` | ⚠ adotada (D-03) | Catálogo de SKUs, sem saldo, carregado de `datasets/inventory_catalog_v1.json` na inicialização; base da validação que gera `invalid_data` (cenário "dados inconsistentes") |
 | ~~`published_events`~~ | descartada (D-04) | A resposta fica em `processed_messages.response_json` e é reemitida em redelivery — ver §8.5 |
 
 ### Cardinalidades e restrições
 
 - `reservations.task_id` **UNIQUE** (regra central de idempotência de negócio — `piloto §8.2`)
 - `processed_messages.message_id` **PK** (regra central de idempotência de transporte)
-- `stock.sku` **PK** (pendente, D-03); a relação com os SKUs de `reservations.items_json` é
-  **lógica** (SKU do dataset), sem FK — a reserva é simulada.
+- `stock.sku` **PK** (D-03); a relação com os SKUs de `reservations.items_json` é
+  **lógica** (a reserva só é gravada se todos os SKUs estão no catálogo), sem FK e sem
+  saldo — a reserva continua simulada.
 
 ## 8.4 Correlação lógica entre os dois bancos
 
@@ -215,8 +213,12 @@ Antes do congelamento da configuração definitiva, decidir e registrar em
    Assim, toda nova tentativa (`RETRY`/`FALLBACK`) republica exatamente o mesmo conteúdo. Nenhuma
    métrica nem o `SYSTEM_STATE` dependem de consultas por item. Sem impacto metodológico: vale
    igualmente para Rules e LLM.
-3. Incluir `stock` real (habilita o cenário "dados inconsistentes" de forma mais rica) ou
-   manter reserva 100% simulada sem tabela de estoque.
+3. ~~Incluir `stock` real (habilita o cenário "dados inconsistentes" de forma mais rica) ou
+   manter reserva 100% simulada sem tabela de estoque.~~
+   **Decidido (D-03, 2026-09-29): catálogo de SKUs, sem saldo.** `stock` guarda só o `sku`;
+   pedido com SKU fora do catálogo gera `STOCK_RESERVATION_FAILED / invalid_data`. Saldo
+   foi descartado porque o resultado dependeria da ordem de processamento e das reservas de
+   tarefas abortadas, o que reduz a reprodutibilidade entre Rules e LLM.
 4. ~~Adotar o padrão **outbox** (`outbox` / `published_events`) para publicação confiável, ou
    aceitar publicação direta pós-commit.~~
    **Decidido (D-04, 2026-09-28): sem outbox; publicação direta após o commit.** Os dois lados já cobrem a janela entre o commit e a publicação sem tabela extra: no Inventory, a resposta fica em `processed_messages.response_json` e é reemitida na redelivery da solicitação (a mensagem só recebe ack depois do processamento, `acks_late`); no Orders, um despacho gravado como `DISPATCHED` cuja publicação se perdeu é detectado pelo `timeout_check` (M4-T06) e vira ponto de decisão. Pode ser revista se o piloto mostrar perda de mensagem. Sem impacto sobre a comparação Rules × LLM (vale para as duas condições).

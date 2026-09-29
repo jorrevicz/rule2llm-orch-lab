@@ -145,7 +145,7 @@ O `RETRY` experimental **nunca** é delegado ao `autoretry` do Celery.
 | `TASK_CREATED` | orders | Tarefa criada e associada ao pedido |
 | `STOCK_RESERVATION_REQUESTED` | orders → inventory | Solicitação de reserva publicada |
 | `STOCK_RESERVATION_SUCCEEDED` | inventory → orders | Reserva efetivada (evento terminal de sucesso) |
-| `STOCK_RESERVATION_FAILED` | inventory → orders | Reserva falhou |
+| `STOCK_RESERVATION_FAILED` | inventory → orders | Reserva falhou; `payload.failure_reason` = `transient_error` (falha injetada na rota primária, D-20) ou `invalid_data` (SKU fora do catálogo, D-03) |
 | `INVENTORY_TIMEOUT` | orders (interno) | Nenhum evento de conclusão dentro de `inventory_timeout_ms` |
 | `TRANSIENT_ERROR` | inventory / orders | Falha transitória observada |
 | `WAIT_SCHEDULED` | orders | Ação `WAIT` agendada |

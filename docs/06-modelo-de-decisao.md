@@ -191,6 +191,18 @@ Os scripts de falha devem permitir diferenciar "rota primária degradada" de
 "`inventory-service` indisponível" para que `FALLBACK` represente uma ação realmente
 executável (`piloto-do-experimento.md` §12, §35.7).
 
+**Operacionalização (M6, D-20/D-21):**
+
+| Perturbação | Como é aplicada | Efeito observável pelo decisor |
+|---|---|---|
+| Falha intermitente da rota primária | `fault_control.json` com `intermittent_error`; o processo da rota primária responde `STOCK_RESERVATION_FAILED / transient_error` às solicitações sorteadas | `last_result = transient_error`, `service.status = degraded` |
+| Atraso na rota primária | `fault_control.json` com `timeout`; o processo da rota primária espera `delay_ms` antes de processar | `INVENTORY_TIMEOUT` → `last_result = timeout`; fila primária cresce |
+| `inventory-service` indisponível | container parado durante a janela (os dois processos) | sem consumidor → `service.status = unavailable`, `fallback_available = false` |
+
+Na degradação da rota primária o processo do fallback não é afetado (processo próprio,
+D-21), portanto `FALLBACK` é executável. Falha `invalid_data` não depende da rota: no
+fallback também grava `last_result = invalid_data` (D-23).
+
 ## 6.6 `RulesDecisionEngine` — política ordenada
 
 > Fonte: metodologia Código 4; `piloto-do-experimento.md` §14.3.

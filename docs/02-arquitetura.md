@@ -116,6 +116,14 @@ flowchart LR
 7. Publicar evento de sucesso ou falha em `orders.events`.
 8. Registrar eventos e erros para rastreabilidade.
 
+> **D-21 (2026-09-29) 🔬:** no mesmo container e com o mesmo `inventory.db`, cada rota é
+> consumida por um processo Celery próprio (`inventory.primary` e `inventory.fallback`).
+> A degradação da rota primária não bloqueia o fallback; parar o container torna o serviço
+> inteiro indisponível. **D-22:** toda solicitação tem um tempo de serviço simulado
+> (`inventory.service_time_ms`), igual nas duas rotas e em todos os cenários. **D-03:** o
+> Inventory valida os SKUs contra o próprio catálogo (tabela `stock`); SKU desconhecido →
+> `STOCK_RESERVATION_FAILED / invalid_data`.
+
 ### 2.3.3 Camada de coordenação do `orders-service`
 
 | Módulo | Responsabilidade | Não faz |

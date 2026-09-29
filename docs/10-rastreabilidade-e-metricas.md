@@ -47,7 +47,8 @@ execution_id  →  task_id  →  state_id  →  decision_id
 | `states.jsonl` | JSONL | `SYSTEM_STATE` integral + `recent_events` efetivamente enviados | "O que o decisor sabia naquele instante?" |
 | `task_events.jsonl` | JSONL | Trajetória completa de cada tarefa | "Como a tarefa evoluiu?" |
 | `decisions.jsonl` | JSONL | Proposta, validação, ação executada, tempos, tokens | "O que foi proposto, validado e executado?" |
-| `fault_events.jsonl` | JSONL | Tipo, início, duração, fim de cada falha injetada | "Qual perturbação foi aplicada e quando?" |
+| `fault_events.jsonl` | JSONL | `FAULT_STARTED`/`FAULT_ENDED` de cada janela (tipo, alvo, parâmetros) e `FAULT_APPLIED` de cada solicitação ou pedido afetado (M6) | "Qual perturbação foi aplicada e quando?" |
+| `workload.jsonl` | JSONL | Cada pedido enviado pelo gerador de carga: índice no dataset, instante, `order_id`, status HTTP, tempo de resposta (M6) | "Qual carga foi de fato aplicada?" |
 | `microservices_logs.jsonl` | JSONL | Eventos internos e erros dos serviços | "O que os serviços registraram?" |
 | `queue_metrics.csv` | CSV | Fila, reentrega, rejeição, DLQ ao longo do tempo | "Como as filas se comportaram?" |
 | `container_stats.csv` | CSV | CPU, RAM, I/O por container | "Qual foi o custo computacional?" |

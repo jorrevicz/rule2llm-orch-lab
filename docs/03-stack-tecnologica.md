@@ -146,16 +146,30 @@ context:
 llm:
   # ver §3.5
 
+inventory:                         # D-22, D-03
+  service_time_ms: 100             # tempo de serviço simulado por solicitação (duas rotas); A CONGELAR
+  catalog: datasets/inventory_catalog_v1.json
+
 workload:
   dataset: datasets/orders_v1.json
   requests: null                   # A CONGELAR
-  rate_per_second: null            # A CONGELAR
-  seed: null                       # A CONGELAR
+  rate_per_second: null            # A CONGELAR (malha aberta: taxa fixa de envio)
+  seed: null                       # seed que gerou o dataset (seed_workload); A CONGELAR
 
-fault:
+fault:                             # metodologia Código 11; D-20
   type: none                       # none | overload | intermittent_error | timeout | inconsistent_data | recovery
-  seed: null
+  target: null                     # inventory.primary | inventory-service | null
+  start_after_seconds: null        # início da janela, a partir do início da carga
+  duration_seconds: null
+  failure_probability: null        # intermittent_error, timeout, inconsistent_data
+  delay_ms: null                   # timeout: atraso na rota primária
+  overload_rate_per_second: null   # overload: taxa de envio durante a janela
+  seed: null                       # seed_fault
 ```
+
+Cada cenário é um arquivo `config/scenarios/<cenário>.yml` com as seções `workload` e
+`fault`; `new_execution --scenario` grava a config efetiva (base + cenário) no diretório
+da execução (M6-T06). Mesmo arquivo para Rules e LLM no mesmo cenário.
 
 Parâmetros que **não** devem permanecer indefinidos antes da coleta definitiva:
 `inventory_timeout_ms`, `max_attempts`, `retry_delay_ms`, `wait_delay_ms`, `max_waits`,
