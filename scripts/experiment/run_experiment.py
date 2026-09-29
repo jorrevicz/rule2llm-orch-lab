@@ -59,6 +59,7 @@ REQUIRED_ARTIFACTS = (
     f"{Artifact.STATES}.jsonl",
     f"{Artifact.DECISIONS}.jsonl",
     f"{Artifact.MICROSERVICES_LOGS}.jsonl",
+    f"{Artifact.FAULT_EVENTS}.jsonl",
     "workload.jsonl",
     "queue_metrics.csv",
     "container_stats.csv",
@@ -73,12 +74,38 @@ def _metadata(directory: Path) -> dict:
     return json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
 
 
+def unreadable_artifacts(directory: Path) -> list[str]:
+    """Artefatos obrigatórios presentes mas corrompidos (JSON/CSV que não abre)."""
+    broken = []
+    for name in REQUIRED_ARTIFACTS:
+        path = directory / name
+        if not path.is_file():
+            continue
+        try:
+            if name.endswith(".jsonl"):
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        json.loads(line)
+            elif name.endswith(".json"):
+                json.loads(path.read_text(encoding="utf-8"))
+            elif name.endswith(".csv"):
+                with path.open(encoding="utf-8") as handle:
+                    if not next(csv.reader(handle), None):
+                        raise ValueError("no header")
+        except (ValueError, UnicodeDecodeError):
+            broken.append(name)
+    return broken
+
+
 def validate(directory: Path, summary: dict, *, http_errors: int) -> list[str]:
     """Etapa 11: falhas da bancada (não do mecanismo) que invalidam a execução."""
     reasons = []
     missing = [name for name in REQUIRED_ARTIFACTS if not (directory / name).is_file()]
     if missing:
         reasons.append(f"missing artifacts: {missing}")
+    broken = unreadable_artifacts(directory)
+    if broken:
+        reasons.append(f"corrupted artifacts: {broken}")
     if not summary["settled"]:
         reasons.append("scenario did not settle (tasks not terminal or queues not drained)")
     if not summary["traceability_ok"]:
@@ -121,9 +148,13 @@ def run_once(
     base_url: str = DEFAULT_BASE_URL,
     settle_timeout_s: float = 900.0,
     build: bool = True,
+    scenarios_dir: Path | None = None,
 ) -> dict:
     # 1. execução aberta; a readiness do LLM vem depois do reset (etapa 5)
-    directory = open_execution(data_root, scenario_id, engine=engine, llm_readiness=None, repetition_id=repetition_id)
+    directory = open_execution(
+        data_root, scenario_id, engine=engine, llm_readiness=None, repetition_id=repetition_id,
+        **({"scenarios_dir": scenarios_dir} if scenarios_dir else {}),
+    )
     execution_id = directory.name
     config = load_experiment_config(directory / "experiment_config.yml")
 

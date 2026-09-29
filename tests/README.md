@@ -34,6 +34,14 @@ arquivo de controle (`unit/test_faults.py`), rotas em processos distintos
 `unit/test_artifacts.py`), plano de carga (`unit/test_generate_load.py`), janelas de falha
 (`unit/test_fault_injectors.py`) e, ao vivo, `integration/test_fault_scenarios.py`.
 
+Protocolo e instrumentação (M7): coleta coerente a 1 s (`unit/test_instrumentation_config.py`),
+reset e hash lógico (`unit/test_reset_environment.py`), readiness e cada reprovação
+(`unit/test_readiness.py`), exportação do Prometheus e amostrador do Ollama
+(`unit/test_metrics_export.py`), ordem alternada, integridade e execuções inválidas
+(`unit/test_run_experiment.py`), consolidação das métricas (`unit/test_consolidate.py`) e, ao
+vivo, o protocolo completo com todos os artefatos (`integration/test_protocol.py` — reseta o
+ambiente).
+
 Também cobertos: LLM stateless e parâmetros do runtime (`unit/test_ollama_client.py`), prompt fixo (`unit/test_prompt_builder.py`), readiness/warm-up (`unit/test_llm_readiness.py`); timeout operacional (`unit/test_timeouts.py`), DLQ e `DEAD_LETTERED`
 (`unit/test_dead_letters.py`), numeração e trajetória (`unit/test_orders_event_handler.py`),
 `StateBuilder` (`unit/test_state_builder.py`), rastreabilidade

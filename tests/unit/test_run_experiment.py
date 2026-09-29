@@ -19,7 +19,8 @@ def test_schedule_alternates_the_engine_that_opens_each_repetition():
 @pytest.fixture
 def complete_execution(tmp_path):
     for name in REQUIRED_ARTIFACTS:
-        (tmp_path / name).write_text("x", encoding="utf-8")
+        content = "{}" if name.endswith(".json") else "{}\n" if name.endswith(".jsonl") else "a,b\n" if name.endswith(".csv") else "x"
+        (tmp_path / name).write_text(content, encoding="utf-8")
     return tmp_path
 
 
@@ -61,3 +62,11 @@ def test_invalid_runs_are_appended_with_their_reason(tmp_path):
     rows = list(csv.DictReader((tmp_path / "pilot" / "invalid_runs.csv").open()))
     assert [r["execution_id"] for r in rows] == ["PILOT_0001", "PILOT_0002"]
     assert rows[0]["invalid_reason"] == "readiness_failed: host_power"
+
+
+@pytest.mark.parametrize(("name", "content"), [("decisions.jsonl", '{"ok": 1}\n{broken'), ("execution_metadata.json", "{"), ("queue_metrics.csv", "")])
+def test_corrupted_artifact_invalidates_the_run(complete_execution, name, content):
+    (complete_execution / name).write_text(content, encoding="utf-8")
+
+    reasons = validate(complete_execution, summary(), http_errors=0)
+    assert any("corrupted" in reason and name in reason for reason in reasons)
