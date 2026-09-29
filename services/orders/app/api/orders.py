@@ -31,7 +31,10 @@ def get_coordination(request: Request) -> Coordination:
 def get_connection(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Iterator[sqlite3.Connection]:
-    connection = connect(settings.database_path)
+    # O FastAPI abre a dependência numa thread do pool e roda o endpoint (síncrono) em
+    # outra; a conexão é de uma requisição só e nunca é usada ao mesmo tempo por duas
+    # threads. Com check_same_thread, requisições simultâneas falhavam com 500 (M6-T11).
+    connection = connect(settings.database_path, check_same_thread=False)
     try:
         yield connection
     finally:

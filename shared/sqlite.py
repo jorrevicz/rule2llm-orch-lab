@@ -12,8 +12,12 @@ from pathlib import Path
 BUSY_TIMEOUT_SECONDS = 5.0
 
 
-def connect(path: Path) -> sqlite3.Connection:
-    connection = sqlite3.connect(path, timeout=BUSY_TIMEOUT_SECONDS, isolation_level=None)
+def connect(path: Path, *, check_same_thread: bool = True) -> sqlite3.Connection:
+    """`check_same_thread=False` só quando a conexão passa de uma thread a outra sem uso
+    simultâneo (dependência do FastAPI, criada numa thread do pool e usada em outra)."""
+    connection = sqlite3.connect(
+        path, timeout=BUSY_TIMEOUT_SECONDS, isolation_level=None, check_same_thread=check_same_thread
+    )
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute("PRAGMA journal_mode = WAL")

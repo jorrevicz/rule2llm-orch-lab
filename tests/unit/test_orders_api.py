@@ -203,3 +203,30 @@ def test_initial_decision_is_recorded(client, harness):
         "target": "inventory.primary",
         "reason_code": "NORMAL_FLOW",
     }
+
+
+def test_request_connection_survives_the_thread_switch_between_dependency_and_endpoint(settings):
+    """M6-T11: o FastAPI abre a dependência numa thread do pool e roda o endpoint em outra."""
+    import threading
+
+    from services.orders.app.api.orders import get_connection
+    from services.orders.app.db.connection import init_database
+
+    init_database(settings.database_path)
+    dependency = get_connection(settings)
+    connection = next(dependency)  # thread da dependência
+    errors = []
+
+    def endpoint() -> None:  # outra thread do pool
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute("COMMIT")
+        except sqlite3.Error as error:
+            errors.append(error)
+
+    worker = threading.Thread(target=endpoint)
+    worker.start()
+    worker.join()
+    with pytest.raises(StopIteration):
+        next(dependency)  # fecha a conexão
+    assert errors == []
