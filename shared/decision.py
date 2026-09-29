@@ -87,7 +87,12 @@ class Decision(_Contract):
     @model_validator(mode="after")
     def _target_matches_action(self) -> "Decision":
         # Formato; as regras dependentes do estado ficam no DecisionValidator.
-        needs_target = self.action in {Action.CONTINUE, Action.RETRY, Action.FALLBACK}
+        # CONTINUE: o destino é o do fluxo (inventory.primary); o target pode vir nulo (D-18).
+        if self.action == Action.CONTINUE:
+            if self.target not in (None, "inventory.primary"):
+                raise ValueError("CONTINUE only goes to inventory.primary")
+            return self
+        needs_target = self.action in {Action.RETRY, Action.FALLBACK}
         if needs_target != (self.target is not None):
             raise ValueError(f"{self.action} {'requires' if needs_target else 'forbids'} a target")
         return self

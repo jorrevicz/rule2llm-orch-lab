@@ -38,6 +38,7 @@ def _error(validator, proposal, state):
     [
         (_proposal("CONTINUE", "inventory.primary"), make_state()),
         (_proposal("CONTINUE", "inventory.primary"), make_state(**{"task.phase": "WAITING"})),
+        (_proposal("CONTINUE", None), make_state()),  # D-18
         (_proposal("RETRY", "inventory.primary"), dispatched(**{"service.last_result": "timeout"})),
         (_proposal("FALLBACK", "inventory.fallback"), dispatched()),
         (_proposal("FALLBACK", "inventory.fallback"), make_state()),
@@ -45,7 +46,7 @@ def _error(validator, proposal, state):
         (_proposal("ABORT", None), dispatched()),
         (_proposal("ABORT", None), make_state(**ON_FALLBACK)),
     ],
-    ids=["continue-pending", "continue-waiting", "retry", "fallback", "fallback-before-dispatch", "wait", "abort", "abort-on-fallback"],
+    ids=["continue-pending", "continue-waiting", "continue-null-target", "retry", "fallback", "fallback-before-dispatch", "wait", "abort", "abort-on-fallback"],
 )
 def test_valid_decisions(validator, proposal, state):
     assert validator.validate(proposal, state).valid
@@ -62,7 +63,6 @@ def test_valid_decisions(validator, proposal, state):
         (_proposal("ABORT", None, ""), dispatched(), "MISSING_REASON_CODE"),
         (_proposal("ABORT", None, None), dispatched(), "MISSING_REASON_CODE"),
         (_proposal("CONTINUE", "inventory.fallback"), make_state(), "INVALID_CONTINUE_TARGET"),
-        (_proposal("CONTINUE", None), make_state(), "INVALID_CONTINUE_TARGET"),
         (_proposal("CONTINUE", "inventory.primary"), dispatched(), "CONTINUE_AFTER_DISPATCH"),
         (
             _proposal("RETRY", "inventory.primary"),
@@ -94,7 +94,6 @@ def test_valid_decisions(validator, proposal, state):
         "empty-reason",
         "missing-reason",
         "continue-to-fallback",
-        "continue-without-target",
         "continue-after-dispatch",
         "retry-limit",
         "retry-other-target",

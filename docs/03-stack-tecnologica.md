@@ -109,6 +109,12 @@ Parâmetros acrescentados no M5 (A CONGELAR): `response_format: json` (D-09), `n
 
 **D-09 (2026-09-29) 🔬:** chamada com `format: "json"`: o runtime restringe a saída a JSON **sintaticamente** válido, sem schema. Ação, target e `reason_code` continuam livres, e as decisões inválidas de conteúdo seguem sendo medidas pelo `DecisionValidator`. Um schema restrito (enum de ações/targets) eliminaria na geração parte do comportamento avaliado.
 
+**Observado no piloto (M5):** o Ollama reaproveita em cache o prefixo de prompt já avaliado
+(o template fixo). Isso reduz o tempo de avaliação do prompt quando chamadas consecutivas
+compartilham o prefixo, sem mudar a resposta nem constituir memória de conversa (cada chamada
+continua independente). A latência passa a depender da ordem das chamadas, o que vale igualmente
+para todas as execuções LLM; `prompt_eval_count` continua informando o tamanho total do prompt.
+
 Regras (RNF-013, RNF-026, RNF-027):
 
 - **Stateless:** cada decisão reconstrói o prompt (`PROMPT FIXO + SYSTEM_STATE atual`); sem

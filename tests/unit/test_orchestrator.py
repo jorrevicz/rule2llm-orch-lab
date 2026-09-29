@@ -119,3 +119,14 @@ def test_unreadable_output_is_recorded_as_malformed(harness):
     assert decision["proposed_decision"] is None
     assert decision["validation"] == {"valid": False, "error": "MALFORMED_DECISION"}
     assert decision["executed_decision"]["reason_code"] == "INVALID_DECISION"
+
+
+def test_continue_without_target_dispatches_to_the_primary_route(harness):
+    # D-18: o destino do CONTINUE é o do fluxo; o LLM real responde target null.
+    orchestrator = _with_engine(harness, FixedEngine(ProposedDecision(action="CONTINUE", target=None, reason_code="000")))
+
+    outcome = orchestrator.handle_decision_point(harness.connection, TASK)
+
+    assert outcome.validation.valid
+    assert harness.task()["current_target"] == "inventory.primary"
+    assert harness.publisher.published[-1][1] == "inventory.primary"

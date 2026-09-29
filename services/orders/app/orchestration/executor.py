@@ -88,9 +88,14 @@ class DecisionExecutor:
         decision_id: str,
         effects: list[Effect],
     ) -> ExecutionResult:
-        """Próxima transição normal: o primeiro despacho para `inventory.primary`."""
+        """Próxima transição normal: o primeiro despacho, sempre para `inventory.primary`.
+
+        O destino é definido pelo fluxo, não pelo decisor (D-18): a decisão pode trazer
+        o target nulo.
+        """
         now = utc_now_iso()
-        if not start_first_dispatch(connection, task_id=task_id, target=decision.target, now=now):
+        target = Route.INVENTORY_PRIMARY.value
+        if not start_first_dispatch(connection, task_id=task_id, target=target, now=now):
             raise RuntimeError(f"CONTINUE is not applicable to task {task_id}")
         message_id = self._publish_request(connection, task_id, decision_id, now, effects)
         return ExecutionResult(Action.CONTINUE, True, [message_id])

@@ -4,10 +4,11 @@ Um único validador para as duas abordagens (RNF-009). Não corrige a decisão: 
 se ela é válida e, se não for, qual o erro. As regras seguem o Código 6 da
 metodologia / piloto §18, na mesma ordem, com três acréscimos 🔬 (ver doc 06):
 
-- `CONTINUE` só com target `inventory.primary` (`INVALID_CONTINUE_TARGET`) e só antes
-  do primeiro despacho (`CONTINUE_AFTER_DISPATCH`): depois dele, as ações admissíveis
-  são `RETRY`, `FALLBACK`, `WAIT` e `ABORT` (piloto §15.2, "target incompatível com a
-  ação");
+- `CONTINUE` só antes do primeiro despacho (`CONTINUE_AFTER_DISPATCH`): depois dele, as
+  ações admissíveis são `RETRY`, `FALLBACK`, `WAIT` e `ABORT`. O destino do `CONTINUE`
+  é o do fluxo (`inventory.primary`): o target pode vir nulo ou `inventory.primary`;
+  qualquer outro é `INVALID_CONTINUE_TARGET` (D-18 — o `SYSTEM_STATE` de uma tarefa
+  nova não traz a rota primária, então exigi-la puniria o LLM por falta de informação);
 - `RETRY` em `inventory.fallback` é inválido (`FALLBACK_RETRY_LIMIT`, D-15), pois
   `fallback_max_attempts = 1`.
 """
@@ -56,7 +57,7 @@ class DecisionValidator:
         action = Action(proposal.action)
 
         if action == Action.CONTINUE:
-            if proposal.target != PRIMARY:
+            if proposal.target not in (None, PRIMARY):  # D-18
                 return ValidationErrorCode.INVALID_CONTINUE_TARGET
             if task.current_target is not None:
                 return ValidationErrorCode.CONTINUE_AFTER_DISPATCH

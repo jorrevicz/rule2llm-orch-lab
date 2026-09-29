@@ -339,7 +339,7 @@ def validate(decision, state):
         return invalid("MISSING_REASON_CODE")
 
     if decision.action == "CONTINUE":                       # acréscimo 🔬
-        if decision.target != "inventory.primary":
+        if decision.target not in {None, "inventory.primary"}:   # D-18
             return invalid("INVALID_CONTINUE_TARGET")
         if state.task.current_target is not None:           # já houve despacho
             return invalid("CONTINUE_AFTER_DISPATCH")
@@ -375,8 +375,8 @@ do motor que nem pôde ser lida como decisão resulta em `MALFORMED_DECISION`.
 
 **Acréscimos ao Código 6 (M4-T03) 🔬** — valem igualmente para Rules e LLM:
 
-- `CONTINUE` só com target `inventory.primary` e só antes do primeiro despacho
-  (`current_target` nulo). `CONTINUE` é "a próxima transição normal", que no fluxo
+- `CONTINUE` só antes do primeiro despacho (`current_target` nulo), com target nulo ou
+  `inventory.primary` (D-18). `CONTINUE` é "a próxima transição normal", que no fluxo
   Pedido → Estoque é o primeiro despacho; depois dele as ações admissíveis são `RETRY`,
   `FALLBACK`, `WAIT` e `ABORT`. Sem essa regra, um `CONTINUE` para `inventory.fallback` ou
   um reenvio sem consumir `attempt_number` passariam, e o executor teria de interpretar a
@@ -387,6 +387,8 @@ Validações mínimas exigidas ([`CLAUDE.md`](../CLAUDE.md) §22): ação permit
 permitido; `reason_code` presente; limite de tentativas; target do `RETRY`; disponibilidade
 do fallback; fallback ainda não usado; target correto do fallback; ausência de target em
 `WAIT`; ausência de target em `ABORT`; impossibilidade de agir sobre estado terminal.
+
+**D-18 (2026-09-29) 🔬:** o destino do `CONTINUE` é o do fluxo (`inventory.primary`), não do decisor: o target pode vir nulo ou `inventory.primary`; qualquer outro é inválido (`INVALID_CONTINUE_TARGET`), e o executor sempre despacha a primeira tentativa para `inventory.primary`. Motivo: o `SYSTEM_STATE` de uma tarefa nova não contém a rota primária (`current_target` nulo, `alternative_targets` só com o fallback) e o prompt manda usar só alternativas do estado; o Rules tem a rota no código. No piloto, o `llama3.1:8b` respondeu `CONTINUE` com `target: null` de forma determinística; exigir o target abortaria toda tarefa LLM na 1ª decisão por falta de informação, não por comportamento do modelo.
 
 **Não** criar um validador especial para o LLM (RNF-009).
 

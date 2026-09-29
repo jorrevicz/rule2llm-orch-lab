@@ -65,9 +65,9 @@ def test_malformed_output_is_not_a_proposal(text, error):
         ('{"action": "WAIT", "target": "null", "reason_code": "X"}', dispatched(), "UNKNOWN_TARGET"),
         ('{"target": null, "reason_code": "X"}', dispatched(), "UNKNOWN_ACTION"),
         ('{"action": "ABORT", "target": null}', dispatched(), "MISSING_REASON_CODE"),
-        ('{"action": "CONTINUE", "reason_code": "X"}', make_state(), "INVALID_CONTINUE_TARGET"),
+        ('{"action": "CONTINUE", "target": "inventory.fallback", "reason_code": "X"}', make_state(), "INVALID_CONTINUE_TARGET"),
     ],
-    ids=["lowercase-action", "padded-action", "string-null-target", "missing-action", "missing-reason", "missing-target"],
+    ids=["lowercase-action", "padded-action", "string-null-target", "missing-action", "missing-reason", "continue-to-fallback"],
 )
 def test_content_errors_are_left_to_the_common_validator(text, state, validation_error):
     proposal = parse_decision(text).proposal

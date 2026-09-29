@@ -32,6 +32,7 @@ def test_action_space_is_exactly_the_five_actions():
     "decision",
     [
         {"action": "CONTINUE", "target": "inventory.primary", "reason_code": "NORMAL_FLOW"},
+        {"action": "CONTINUE", "target": None, "reason_code": "NORMAL_FLOW"},  # D-18
         {"action": "RETRY", "target": "inventory.primary", "reason_code": "TRANSIENT_RETRY"},
         {"action": "FALLBACK", "target": "inventory.fallback", "reason_code": "PRIMARY_EXHAUSTED"},
         {"action": "WAIT", "target": None, "reason_code": "QUEUE_PRESSURE"},
@@ -49,11 +50,12 @@ def test_valid_decisions(decision):
         {"action": "PARALLELIZE", "target": None, "reason_code": "X"},
         {"action": "RETRY", "target": "service_c", "reason_code": "RETRY"},
         {"action": "RETRY", "target": None, "reason_code": "TRANSIENT_RETRY"},
+        {"action": "CONTINUE", "target": "inventory.fallback", "reason_code": "NORMAL_FLOW"},
         {"action": "WAIT", "target": "inventory.primary", "reason_code": "QUEUE_PRESSURE"},
         {"action": "ABORT", "target": None, "reason_code": ""},
         {"action": "ABORT", "target": None, "reason_code": "X", "command": "rm -rf /"},
     ],
-    ids=["redirect", "parallelize", "invented-target", "retry-without-target", "wait-with-target", "empty-reason", "extra-field"],
+    ids=["redirect", "parallelize", "invented-target", "retry-without-target", "continue-to-fallback", "wait-with-target", "empty-reason", "extra-field"],
 )
 def test_invalid_decisions_are_rejected(decision):
     with pytest.raises(ValidationError):

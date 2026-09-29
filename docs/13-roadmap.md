@@ -243,6 +243,7 @@ Validator e Executor comuns, sem LLM (piloto §28 Fase 4). Fecha o **1º piloto 
 | M5-T06 | Readiness e warm-up do LLM | `feat(scripts)` | Readiness do Ollama; warm-up (`model_load_ms`, `warmup_inference_ms`); versão/digest/quantização lidos do runtime (nunca inventados) | RF-038, RF-039 | ⬜ |
 | M5-T07 | Testes do LLM e de equivalência | `test` | Cliente falso: JSON inválido, target inventado, timeout → `ABORT`; mesmo `SYSTEM_STATE`, Validator e Executor para Rules e LLM | RNF-009, RNF-010, CLAUDE §35 | ⬜ |
 | M5-T08 | Viabilidade e piloto com LLM | `chore(pilot)` | Bancada de viabilidade do `llama3.1:8b` pelos critérios técnicos abaixo (fixados antes da medição); piloto com `decision_engine: LLM` no fluxo normal e nos cenários de decisão | piloto §20.4 | ⬜ |
+| M5-T09 | **(D) 🔬** Destino do `CONTINUE` (D-18) | `fix(orchestration)` | `CONTINUE` aceita target nulo ou `inventory.primary`; o executor sempre despacha para `inventory.primary`. Corrige a assimetria de informação observada na 1ª chamada real ao LLM | [06 §6.9](06-modelo-de-decisao.md) | ✅ |
 
 **Critérios de viabilidade do `llama3.1:8b` (M5-T08)** — técnicos, fixados antes da medição.
 A troca de modelo só ocorre se algum falhar (metodologia §4.3.7); desempenho nas decisões
@@ -374,6 +375,7 @@ doc 10 §10.6).
 | D-15 🔬 | Semântica de `fallback_max_attempts` | **Decidido (2026-09-28):** `FALLBACK` não incrementa `attempt_number`; com `fallback_max_attempts = 1`, timeout/falha no fallback → `last_result = fallback_failed` e `RETRY` em `inventory.fallback` é inválido (`FALLBACK_RETRY_LIMIT`) | M4-T03 / M4-T08 | ✅ |
 | D-16 🔬 | Quem numera a trajetória (`event_seq`) | **Decidido (2026-09-28): o Orders.** `TASK_CREATED` = 1; cada mensagem publicada, evento novo recebido e evento interno registrado consome o próximo número; no Inventory, `event_seq` repete o da solicitação respondida (correlação). Exemplos dos docs 06, 07 e piloto §10.1 ajustados | M2-T02 | ✅ |
 | D-17 | Prefetch do worker do Orders | **Decidido (2026-09-28, técnico):** prefetch sem limite (`worker_prefetch_multiplier = 0`) só no `orders-worker`. Com limite 1, as tarefas internas com atraso (timeout, nova tentativa, reavaliação), que dividem `orders.events` com os eventos, ocupavam o único slot de entrega e retinham as respostas do Inventory até vencer — observado ao vivo (resposta retida 2 s, timeouts falsos). Mensagens seguem sem ack até o processamento (reentregues se o worker cair). Vale igualmente para Rules e LLM | M4-T06 | ✅ |
+| D-18 🔬 | Destino do `CONTINUE` | **Decidido (2026-09-29):** target nulo ou `inventory.primary` (o destino é o do fluxo); o `SYSTEM_STATE` de tarefa nova não traz a rota primária, e exigi-la abortaria toda tarefa LLM na 1ª decisão | M5-T09 | ✅ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
 `piloto-do-experimento.md`.
@@ -404,7 +406,7 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | D-06 | Código 4 (`RulesDecisionEngine`), regra de fluxo normal | `phase in {"PENDING", "READY", "RECOVERED"}` → `phase in {"PENDING", "WAITING"}`; `phase` passa a ser o estado da tarefa |
 | M3-T05 | Tabela 8 (campos do `SYSTEM_STATE`), coluna de origem | Recomendado detalhar a origem operacional de `service.status`, `service.latency_ms`, `messaging.queue_size`, `alternatives.fallback_available` e da janela `recent_events`, conforme o doc 06 §6.2.4 |
 | M3-T07 | Códigos 7–8 (`decisions.jsonl`), campo `executed_decision` | Acrescentar `reason_code` à decisão executada (necessário para registrar `ABORT / INVALID_DECISION` e `LLM_DECISION_TIMEOUT`, como já aparece no Código 9) |
-| M4-T03 | Código 6 (`DecisionValidator`) | Acrescentar: `CONTINUE` só com target `inventory.primary` e antes do primeiro despacho (`INVALID_CONTINUE_TARGET`, `CONTINUE_AFTER_DISPATCH`); `RETRY` em `inventory.fallback` inválido (`FALLBACK_RETRY_LIMIT`, D-15); saída ilegível → `MALFORMED_DECISION` |
+| M4-T03 | Código 6 (`DecisionValidator`) | Acrescentar: `CONTINUE` só antes do primeiro despacho (`CONTINUE_AFTER_DISPATCH`), com target nulo ou `inventory.primary` (`INVALID_CONTINUE_TARGET`, D-18); `RETRY` em `inventory.fallback` inválido (`FALLBACK_RETRY_LIMIT`, D-15); saída ilegível → `MALFORMED_DECISION`; inferência acima do timeout → `LLM_DECISION_TIMEOUT` |
 | D-15 | Tabela de ações / semântica do `FALLBACK` | `FALLBACK` não incrementa `attempt_number`; falha ou timeout no fallback → `last_result = fallback_failed` |
 | D-07 | Descrição da DLQ ("falhas sucessivas") | Definir: uma falha de processamento, sem retentativa automática, envia a mensagem à `tasks.dlq`; a tarefa passa a `DEAD_LETTERED` |
 | D-08 | §4.3.7 / Tabela de instrumentação | Ollama no host (GPU); custo de CPU/RAM do runtime medido fora do Docker Stats |
@@ -419,3 +421,4 @@ resultados da amostra).
 |---|---|---|
 | Tarefa abortada pode terminar com reserva efetivada | PILOT_0009 (M4-T08): Inventory pausado; após `ABORT FALLBACK_FAILED`, as solicitações retidas foram processadas e geraram 1 reserva; pedido `FAILED` | Não há ação de compensação no espaço de ações (fora do recorte). A análise deve contar esse desfecho (pedido `FAILED` com reserva em `inventory.db`) como inconsistência final, igual para Rules e LLM |
 | Timers com atraso retinham eventos com prefetch 1 | PILOT_0006 (M4-T06) | Corrigido por D-17 antes de qualquer coleta; mostra a importância de medir a latência de resposta no piloto |
+| O `SYSTEM_STATE` de tarefa nova não informa a rota primária | 1ª chamada real ao `llama3.1:8b` (M5-T05): `CONTINUE` com `target: null`, determinístico | Com a regra original do M4, toda tarefa LLM abortaria na 1ª decisão por falta de informação (o Rules tem a rota no código). Corrigido por D-18 antes de qualquer coleta; mostra a importância de testar o prompt contra o estado real |
