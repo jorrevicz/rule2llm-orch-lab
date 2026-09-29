@@ -62,6 +62,7 @@ class LLMSection(_Section):
 
 
 class InventorySection(_Section):
+    service_time_ms: NonNegativeInt  # D-22: tempo de serviço simulado por solicitação
     catalog: str  # D-03: catálogo de SKUs carregado no inventory.db
 
 

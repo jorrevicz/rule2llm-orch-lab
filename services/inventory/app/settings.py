@@ -12,7 +12,7 @@ from shared.artifacts import execution_dir
 
 DEFAULT_BROKER_URL = "amqp://tcc:tcc@localhost:5672//"
 DEFAULT_DATA_ROOT = "data"
-DEFAULT_SERVICE_ROLE = "inventory-worker"
+DEFAULT_SERVICE_ROLE = "inventory-primary"  # run_workers define o papel de cada processo (D-21)
 DEFAULT_DATABASE_PATH = "inventory.db"
 DEFAULT_EXECUTION_ID = "PILOT_0000"
 

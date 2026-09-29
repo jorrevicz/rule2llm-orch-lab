@@ -3,12 +3,17 @@ import sqlite3
 import pytest
 
 from services.inventory.app.db.connection import connect, init_database
+from services.inventory.app.reservation.processing import ProcessingSimulator
 from services.inventory.app.reservation.service import RequestOutcome, process_reservation_request
 from scripts.datasets.generate_dataset import CATALOG_PATH
 from shared.catalog import load_catalog
 from shared.canonical_json import canonical_json
 from shared.envelope import build_envelope, parse_message
 from shared.events import EventType
+
+
+def _process(connection, request, payload, publisher):
+    return process_reservation_request(connection, request, payload, publisher, ProcessingSimulator(0))
 
 
 class RecordingPublisher:
@@ -64,7 +69,7 @@ def _request(
 def test_primary_reservation_is_persisted(connection):
     request, payload = _request()
 
-    process_reservation_request(connection, request, payload, RecordingPublisher())
+    _process(connection, request, payload, RecordingPublisher())
 
     reservation = connection.execute("SELECT * FROM reservations").fetchone()
     assert reservation["task_id"] == "TASK_000001"
@@ -80,7 +85,7 @@ def test_success_event_is_published_after_persisting(connection):
     request, payload = _request()
     publisher = RecordingPublisher()
 
-    process_reservation_request(connection, request, payload, publisher)
+    _process(connection, request, payload, publisher)
 
     [event] = publisher.published
     assert event["event_type"] == "STOCK_RESERVATION_SUCCEEDED"
@@ -97,7 +102,7 @@ def test_nothing_is_published_when_persistence_fails(connection):
     connection.execute("DROP TABLE processed_messages")
 
     with pytest.raises(sqlite3.OperationalError):
-        process_reservation_request(connection, *_request(), publisher)
+        _process(connection, *_request(), publisher)
 
     assert publisher.published == []
     assert connection.execute("SELECT COUNT(*) FROM reservations").fetchone()[0] == 0
@@ -106,7 +111,7 @@ def test_nothing_is_published_when_persistence_fails(connection):
 def test_fallback_route_reserves_through_the_same_service(connection):
     publisher = RecordingPublisher()
 
-    result = process_reservation_request(connection, *_request("inventory.fallback"), publisher)
+    result = _process(connection, *_request("inventory.fallback"), publisher)
 
     assert result.outcome == RequestOutcome.RESERVED
     assert connection.execute("SELECT route FROM reservations").fetchone()[0] == "fallback"
@@ -116,9 +121,9 @@ def test_fallback_route_reserves_through_the_same_service(connection):
 
 def test_fallback_for_an_already_reserved_task_does_not_reserve_again(connection):
     publisher = RecordingPublisher()
-    process_reservation_request(connection, *_request("inventory.primary"), publisher)
+    _process(connection, *_request("inventory.primary"), publisher)
 
-    result = process_reservation_request(connection, *_request("inventory.fallback", event_seq=5), publisher)
+    result = _process(connection, *_request("inventory.fallback", event_seq=5), publisher)
 
     assert result.outcome == RequestOutcome.ALREADY_RESERVED
     assert _count(connection, "reservations") == 1
@@ -130,7 +135,7 @@ def _count(connection: sqlite3.Connection, table: str) -> int:
 
 
 def test_first_delivery_is_reserved(connection):
-    result = process_reservation_request(connection, *_request(), RecordingPublisher())
+    result = _process(connection, *_request(), RecordingPublisher())
 
     assert result.outcome == RequestOutcome.RESERVED
 
@@ -139,8 +144,8 @@ def test_redelivery_does_not_reserve_again(connection):
     request, payload = _request()
     publisher = RecordingPublisher()
 
-    process_reservation_request(connection, request, payload, publisher)
-    result = process_reservation_request(connection, request, payload, publisher)
+    _process(connection, request, payload, publisher)
+    result = _process(connection, request, payload, publisher)
 
     assert result.outcome == RequestOutcome.DUPLICATE_MESSAGE
     assert _count(connection, "reservations") == 1
@@ -151,8 +156,8 @@ def test_redelivery_reemits_the_same_reply(connection):
     request, payload = _request()
     publisher = RecordingPublisher()
 
-    process_reservation_request(connection, request, payload, publisher)
-    process_reservation_request(connection, request, payload, publisher)
+    _process(connection, request, payload, publisher)
+    _process(connection, request, payload, publisher)
 
     first, second = publisher.published
     assert second == first  # mesmo message_id: o Orders deduplica
@@ -163,11 +168,11 @@ def test_reply_lost_after_commit_is_recovered_by_redelivery(connection):
     publisher = FailingOncePublisher()
 
     with pytest.raises(ConnectionError):
-        process_reservation_request(connection, request, payload, publisher)
+        _process(connection, request, payload, publisher)
     assert _count(connection, "reservations") == 1  # reserva já commitada
     assert publisher.published == []
 
-    result = process_reservation_request(connection, request, payload, publisher)
+    result = _process(connection, request, payload, publisher)
 
     assert result.outcome == RequestOutcome.DUPLICATE_MESSAGE
     assert publisher.published == [result.reply]
@@ -176,7 +181,7 @@ def test_reply_lost_after_commit_is_recovered_by_redelivery(connection):
 
 def test_processed_message_stores_result_and_reply(connection):
     request, payload = _request()
-    result = process_reservation_request(connection, request, payload, RecordingPublisher())
+    result = _process(connection, request, payload, RecordingPublisher())
 
     row = connection.execute("SELECT * FROM processed_messages").fetchone()
     assert row["event_type"] == "STOCK_RESERVATION_REQUESTED"
@@ -195,8 +200,8 @@ def test_new_attempt_of_reserved_task_does_not_reserve_again(connection):
     retry, retry_payload = _new_attempt()
     assert retry.message_id != first.message_id and retry.task_id == first.task_id
 
-    process_reservation_request(connection, first, first_payload, publisher)
-    result = process_reservation_request(connection, retry, retry_payload, publisher)
+    _process(connection, first, first_payload, publisher)
+    result = _process(connection, retry, retry_payload, publisher)
 
     assert result.outcome == RequestOutcome.ALREADY_RESERVED
     assert _count(connection, "reservations") == 1
@@ -205,10 +210,10 @@ def test_new_attempt_of_reserved_task_does_not_reserve_again(connection):
 
 def test_new_attempt_gets_its_own_success_reply(connection):
     publisher = RecordingPublisher()
-    process_reservation_request(connection, *_request(), publisher)
+    _process(connection, *_request(), publisher)
     retry, retry_payload = _new_attempt()
 
-    result = process_reservation_request(connection, retry, retry_payload, publisher)
+    result = _process(connection, retry, retry_payload, publisher)
 
     first_reply, retry_reply = publisher.published
     assert retry_reply == result.reply
@@ -221,11 +226,11 @@ def test_new_attempt_gets_its_own_success_reply(connection):
 
 def test_redelivery_of_the_new_attempt_is_still_deduplicated(connection):
     publisher = RecordingPublisher()
-    process_reservation_request(connection, *_request(), publisher)
+    _process(connection, *_request(), publisher)
     retry, retry_payload = _new_attempt()
 
-    process_reservation_request(connection, retry, retry_payload, publisher)
-    result = process_reservation_request(connection, retry, retry_payload, publisher)
+    _process(connection, retry, retry_payload, publisher)
+    result = _process(connection, retry, retry_payload, publisher)
 
     assert result.outcome == RequestOutcome.DUPLICATE_MESSAGE
     assert publisher.published[2] == publisher.published[1]
@@ -264,7 +269,7 @@ def test_catalog_is_loaded_once_and_reloading_is_harmless(tmp_path):
 def test_unknown_sku_is_invalid_data_on_any_route(connection, target):
     publisher = RecordingPublisher()
 
-    result = process_reservation_request(connection, *_request(target, items=UNKNOWN_ITEMS), publisher)
+    result = _process(connection, *_request(target, items=UNKNOWN_ITEMS), publisher)
 
     assert result.outcome == RequestOutcome.INVALID_DATA
     assert _count(connection, "reservations") == 0
@@ -278,11 +283,37 @@ def test_unknown_sku_is_invalid_data_on_any_route(connection, target):
 def test_invalid_data_reply_is_stored_and_reemitted_on_redelivery(connection):
     request, payload = _request(items=UNKNOWN_ITEMS)
     publisher = RecordingPublisher()
-    first = process_reservation_request(connection, request, payload, publisher)
+    first = _process(connection, request, payload, publisher)
 
-    again = process_reservation_request(connection, request, payload, publisher)
+    again = _process(connection, request, payload, publisher)
 
     row = connection.execute("SELECT result, response_json FROM processed_messages").fetchone()
     assert (row["result"], row["response_json"]) == ("failed", canonical_json(first.reply))
     assert again.outcome == RequestOutcome.DUPLICATE_MESSAGE
     assert publisher.published == [first.reply, first.reply]
+
+
+# -- tempo de serviço simulado (D-22) e rotas em processos distintos (D-21) ---------
+
+
+def test_service_time_is_spent_before_and_outside_the_transaction(connection, tmp_path):
+    slept = []
+
+    def sleep_while_another_process_writes(seconds: float) -> None:
+        slept.append(seconds)
+        other = connect(tmp_path / "inventory.db")  # o outro processo (a outra rota)
+        other.execute("BEGIN IMMEDIATE")  # falharia se o lock estivesse preso
+        other.execute("COMMIT")
+        other.close()
+
+    simulator = ProcessingSimulator(100, sleep=sleep_while_another_process_writes)
+    result = process_reservation_request(connection, *_request(), RecordingPublisher(), simulator)
+
+    assert slept == [0.1]
+    assert result.outcome == RequestOutcome.RESERVED
+
+
+def test_zero_service_time_does_not_sleep():
+    slept = []
+    ProcessingSimulator(0, sleep=slept.append).before_reservation(_request()[0])
+    assert slept == []

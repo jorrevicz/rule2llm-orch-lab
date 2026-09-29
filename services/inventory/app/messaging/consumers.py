@@ -1,12 +1,18 @@
-"""Consumidores Celery do inventory-service."""
+"""Consumidores Celery do inventory-service.
+
+Cada processo consome uma rota (D-21, `run_workers`); a tarefa é a mesma.
+"""
+
+from functools import cache
 
 from celery import Task
 from celery.exceptions import Reject
 from celery.utils.log import get_task_logger
 
 from services.inventory.app.db.connection import connect
-from services.inventory.app.messaging.celery_app import app, settings
+from services.inventory.app.messaging.celery_app import app, experiment_config, settings
 from services.inventory.app.messaging.publisher import CeleryEventPublisher
+from services.inventory.app.reservation.processing import ProcessingSimulator
 from services.inventory.app.reservation.service import process_reservation_request
 from shared.envelope import ContractViolation, parse_message
 from shared.events import EventType
@@ -16,6 +22,11 @@ from shared.structured_logging import correlated
 logger = get_task_logger(__name__)
 
 _publisher = CeleryEventPublisher(app)
+
+
+@cache
+def _simulator() -> ProcessingSimulator:
+    return ProcessingSimulator(experiment_config().inventory.service_time_ms)
 
 
 @app.task(name=INVENTORY_RESERVE_TASK, bind=True)
@@ -35,7 +46,7 @@ def reserve_stock(self: Task, raw_envelope: object) -> None:
 
     connection = connect(settings.database_path)
     try:
-        result = process_reservation_request(connection, envelope, payload, _publisher)
+        result = process_reservation_request(connection, envelope, payload, _publisher, _simulator())
     finally:
         connection.close()
     logger.info(

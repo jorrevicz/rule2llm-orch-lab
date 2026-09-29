@@ -1,7 +1,8 @@
 """Processamento de uma solicitação de reserva (RF-006 a RF-010).
 
-Numa única transação: idempotência de transporte (`message_id`) → idempotência de
-negócio (`task_id`) → reservar → gravar reserva, mensagem processada e resposta.
+Antes da transação, o custo de processamento simulado (D-22). Depois, numa única
+transação: idempotência de transporte (`message_id`) → idempotência de negócio
+(`task_id`) → reservar → gravar reserva, mensagem processada e resposta.
 A resposta é publicada só depois do commit, para que o Orders nunca receba
 sucesso de uma reserva não persistida.
 
@@ -33,6 +34,7 @@ from services.inventory.app.db.repositories import (
 from services.inventory.app.messaging.publisher import EventPublisher
 from services.inventory.app.reservation.fallback import reserve_fallback
 from services.inventory.app.reservation.primary import ReservationOutcome, reserve_primary
+from services.inventory.app.reservation.processing import ProcessingSimulator
 from shared.canonical_json import canonical_json
 from shared.envelope import (
     Envelope,
@@ -64,7 +66,9 @@ def process_reservation_request(
     request: MessageEnvelope,
     payload: ReservationRequestPayload,
     publisher: EventPublisher,
+    simulator: ProcessingSimulator,
 ) -> RequestResult:
+    simulator.before_reservation(request)  # fora da transação: não segura o lock
     now = utc_now_iso()
     with transaction(connection):
         previous = find_processed_message(connection, request.message_id)

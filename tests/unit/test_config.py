@@ -40,7 +40,7 @@ EXPECTED_KEYS = {
         "keep_alive",
         "prompt_template",
     },
-    "inventory": {"catalog"},  # D-03
+    "inventory": {"service_time_ms", "catalog"},  # D-22, D-03
     "workload": {"dataset", "requests", "rate_per_second", "seed"},
     "fault": {"type", "seed"},
 }
