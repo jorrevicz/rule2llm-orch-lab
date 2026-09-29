@@ -199,9 +199,11 @@ def open_execution(
     config_path: Path | None = None,
     *,
     engine: str | None = None,
-    llm_readiness: Callable[[ExperimentConfig], LLMReadiness] = check_llm_readiness,
+    llm_readiness: Callable[[ExperimentConfig], LLMReadiness] | None = check_llm_readiness,
     scenarios_dir: Path = SCENARIOS_DIR,
+    repetition_id: int | None = None,
 ) -> Path:
+    """`llm_readiness=None`: a readiness do LLM fica para depois do reset (protocolo, M7-T06)."""
     base_path = resolve_config_path(config_path).resolve()
     if load_experiment_config(base_path).experiment.phase != "pilot":
         raise SystemExit("config phase is not 'pilot': this script only opens pilot executions")
@@ -220,9 +222,10 @@ def open_execution(
     metadata["base_experiment_config_hash"] = sha256_of(base_path)
     metadata["scenario_config"] = _display_path(scenario_path)
     metadata["scenario_config_hash"] = sha256_of(scenario_path)
+    metadata["repetition_id"] = repetition_id
     metadata["fault"] = config.fault.model_dump(mode="json")
     metadata["workload"] = config.workload.model_dump(mode="json")
-    if config.experiment.decision_engine == "LLM":
+    if config.experiment.decision_engine == "LLM" and llm_readiness is not None:
         apply_llm_readiness(metadata, llm_readiness(config))
     (directory / METADATA_FILE).write_text(
         json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

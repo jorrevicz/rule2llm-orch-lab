@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.faults.injectors import injector_for, run_timeline
@@ -41,6 +42,7 @@ from scripts.pilot.environment import (
 from scripts.workload.generate_load import WORKLOAD_FILE, LoadGenerator, build_plan
 from shared.artifacts import Artifact, execution_dir
 from shared.config import load_experiment_config
+from shared.timestamps import utc_now_iso
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = REPO_ROOT / "data"
@@ -99,15 +101,29 @@ def summarize(directory: Path, statuses: dict[str, str], settled: bool) -> dict:
     }
 
 
-def run(execution_id: str, base_url: str, data_root: Path, settle_timeout_s: float) -> dict:
-    directory = execution_dir(data_root, execution_id)
+@dataclass
+class ScenarioRun:
+    """Resultado das etapas 7–10: carga, falha e encerramento."""
+
+    load_started_at: str
+    started_wall: float
+    duration_s: float
+    wall_clock_s: float        # difere de duration_s se o host foi suspenso (relógio monotônico para)
+    order_ids: list[str]
+    statuses: dict[str, str]
+    settled: bool
+    queue_depths_at_end: dict[str, int]
+
+
+def apply_scenario(directory: Path, execution_id: str, base_url: str, settle_timeout_s: float) -> ScenarioRun:
+    """Etapas 7–10: carga em malha aberta + linha do tempo da falha + critério de encerramento."""
     config = load_experiment_config(directory / "experiment_config.yml")
     running = services_execution_ids()
     if set(running.values()) != {execution_id}:
         raise SystemExit(f"services are not on {execution_id}: {running}")
 
     plan = build_plan(config)
-    start = time.monotonic()
+    started_at, started_wall, start = utc_now_iso(), time.time(), time.monotonic()
     generator = LoadGenerator(plan, base_url, directory, execution_id, fault=config.fault)
     injector = injector_for(
         config.fault, directory, execution_id, clock=lambda: time.monotonic() - start, consumers=queue_consumers
@@ -131,23 +147,43 @@ def run(execution_id: str, base_url: str, data_root: Path, settle_timeout_s: flo
 
     settled = wait_until(all_terminal, settle_timeout_s)
     depths = wait_for_drained_queues(timeout_s=30)
-    settled = settled and not any(depths.values())
+    return ScenarioRun(
+        load_started_at=started_at,
+        started_wall=started_wall,
+        duration_s=round(time.monotonic() - start, 1),
+        wall_clock_s=round(time.time() - started_wall, 1),
+        order_ids=order_ids,
+        statuses=statuses,
+        settled=settled and not any(depths.values()),
+        queue_depths_at_end=depths,
+    )
 
+
+def finish(directory: Path, execution_id: str, scenario: ScenarioRun, data_root: Path) -> dict:
+    """Coleta, verificação de rastreabilidade e `scenario_summary.json`."""
+    config = load_experiment_config(directory / "experiment_config.yml")
     counts = collect(execution_id, data_root)
     traceability = check_traceability.check(directory)
     summary = {
         "execution_id": execution_id,
         "scenario_id": json.loads((directory / "execution_metadata.json").read_text())["scenario_id"],
         "decision_engine": config.experiment.decision_engine,
-        "duration_s": round(time.monotonic() - start, 1),
-        **summarize(directory, statuses, settled),
-        "queue_depths_at_end": depths,
+        "duration_s": scenario.duration_s,
+        "wall_clock_s": scenario.wall_clock_s,
+        **summarize(directory, scenario.statuses, scenario.settled),
+        "queue_depths_at_end": scenario.queue_depths_at_end,
         "artifacts": counts,
         "traceability_ok": traceability.ok,
         "traceability_errors": traceability.errors[:20],
     }
     (directory / SUMMARY_FILE).write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return summary
+
+
+def run(execution_id: str, base_url: str, data_root: Path, settle_timeout_s: float) -> dict:
+    directory = execution_dir(data_root, execution_id)
+    scenario = apply_scenario(directory, execution_id, base_url, settle_timeout_s)
+    return finish(directory, execution_id, scenario, data_root)
 
 
 def main() -> int:
