@@ -104,3 +104,15 @@ def test_unreachable_runtime_fails():
 
     assert readiness.status == "FAIL"
     assert readiness.failures[0].startswith("runtime:")
+
+
+def test_slow_probe_inference_fails_the_readiness(ollama, monkeypatch):
+    from scripts.pilot import llm_readiness
+
+    monkeypatch.setattr(llm_readiness, "PROBE_LIMIT_MS", -1.0)  # qualquer inferência é "lenta"
+
+    readiness = check(CONFIG, ollama.url)
+
+    assert readiness.status == "FAIL"
+    assert readiness.probe_inference_ms is not None
+    assert any("probe inference" in failure for failure in readiness.failures)

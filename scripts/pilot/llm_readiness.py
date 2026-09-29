@@ -8,7 +8,10 @@ Verifica, no Ollama do host (D-08):
 - modelo descarregado e 1 inferência de warm-up com o prompt fixo (fora das métricas
   das tarefas): cada execução parte do modelo frio, e `model_load_ms` mede o
   carregamento de fato; também `warmup_inference_ms`;
-- após o warm-up, modelo carregado 100% na GPU e com o contexto configurado.
+- após o warm-up, modelo carregado 100% na GPU e com o contexto configurado;
+- 1 inferência de prova com o modelo quente em até `PROBE_LIMIT_MS` (o limite de p95 da
+  bancada de viabilidade, M5-T08): detecta runtime ocupado ou host degradado (achado do
+  M6-T10: Low Power Mode levou a inferência de ~3 s para até 10,6 s).
 
 Reprovação → `readiness_status = FAIL`: a execução não pode ser válida (não entra na
 amostra) e o motivo é registrado. Nada é inventado: o que o runtime não informa fica null.
@@ -24,6 +27,7 @@ from shared.config import ExperimentConfig, load_experiment_config
 from shared.system_state import SystemState
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+PROBE_LIMIT_MS = 7000.0  # critério 2 de viabilidade do modelo (docs/13-roadmap.md, M5)
 
 # Estado neutro usado só para aquecer o modelo (não é tarefa do experimento).
 WARMUP_STATE = {
@@ -61,6 +65,7 @@ class LLMReadiness:
     context_length: int | None = None
     model_load_ms: float | None = None
     warmup_inference_ms: float | None = None
+    probe_inference_ms: float | None = None
     failures: list[str] = field(default_factory=list)
 
 
@@ -72,8 +77,9 @@ def check(config: ExperimentConfig, base_url: str = DEFAULT_OLLAMA_URL) -> LLMRe
         _read_model(client, config, readiness)
         if readiness.failures:
             return readiness
-        _warm_up(client, config, readiness)
+        prompt = _warm_up(client, config, readiness)
         _read_placement(client, config, readiness)
+        _probe(client, prompt, readiness)
     except (LLMRuntimeError, LLMTimeout) as error:
         readiness.failures.append(f"runtime: {error.__class__.__name__}: {error}")
     readiness.status = "PASS" if not readiness.failures else "FAIL"
@@ -91,12 +97,21 @@ def _read_model(client: OllamaClient, config: ExperimentConfig, readiness: LLMRe
     readiness.parameter_size = details.get("parameter_size")
 
 
-def _warm_up(client: OllamaClient, config: ExperimentConfig, readiness: LLMReadiness) -> None:
+def _warm_up(client: OllamaClient, config: ExperimentConfig, readiness: LLMReadiness) -> str:
     prompt = PromptBuilder.from_file(config.llm.prompt_template).build(SystemState.model_validate(WARMUP_STATE))
     client.unload()
     generation = client.generate(prompt)
     readiness.model_load_ms = generation.load_duration_ms
     readiness.warmup_inference_ms = generation.wall_ms
+    return prompt
+
+
+def _probe(client: OllamaClient, prompt: str, readiness: LLMReadiness) -> None:
+    readiness.probe_inference_ms = client.generate(prompt).wall_ms
+    if readiness.probe_inference_ms > PROBE_LIMIT_MS:
+        readiness.failures.append(
+            f"probe inference {readiness.probe_inference_ms:.0f} ms > {PROBE_LIMIT_MS:.0f} ms (runtime busy or host degraded)"
+        )
 
 
 def _read_placement(client: OllamaClient, config: ExperimentConfig, readiness: LLMReadiness) -> None:

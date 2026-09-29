@@ -28,7 +28,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from scripts.pilot.environment import REPO_ROOT, compose
-from scripts.pilot.llm_readiness import DEFAULT_OLLAMA_URL, WARMUP_STATE
+from scripts.pilot.llm_readiness import DEFAULT_OLLAMA_URL, PROBE_LIMIT_MS, WARMUP_STATE
 from scripts.pilot.llm_readiness import check as check_readiness
 from services.orders.app.llm.decision_parser import parse_decision
 from services.orders.app.llm.ollama_client import OllamaClient
@@ -38,7 +38,7 @@ from shared.config import ExperimentConfig, load_experiment_config
 from shared.system_state import SystemState
 from shared.timestamps import utc_now
 
-P95_LIMIT_MS = 7000.0
+P95_LIMIT_MS = PROBE_LIMIT_MS
 BENCH_DIR = REPO_ROOT / "data" / "pilot" / "llm_bench"
 
 DISPATCHED = {
