@@ -47,7 +47,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M4](#m4--rules--validator--executor) | `RulesDecisionEngine`, Validator, Executor, 5 ações, 1º piloto | ✅ | `m4-rules` | 2026-09-28 |
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ✅ | `m6-falhas-carga` | 2026-09-29 |
-| [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | 🔄 | `m7-instrumentacao` | — |
+| [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ✅ | `m7-instrumentacao` | 2026-09-29 |
 | [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
 | [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
 
@@ -340,8 +340,15 @@ doc 10 §10.6).
 
 **Critério de conclusão**
 
-- [ ] Uma execução completa segue o protocolo de ponta a ponta e gera todos os artefatos.
-- [ ] Instrumentação idêntica para Rules e LLM.
+- [x] Uma execução completa segue o protocolo de ponta a ponta e gera todos os artefatos.
+- [x] Instrumentação idêntica para Rules e LLM.
+
+> Verificado em 2026-09-29: lote PILOT_0054–0065 (6 cenários × Rules e LLM) executado pelo
+> `run_experiment` com as etapas 1–12 da Tabela 14 — 12/12 válidas, cada uma com reset,
+> readiness (8 critérios), metadados completos, métricas do Prometheus e do Ollama e
+> consolidação. Rules e LLM geraram os mesmos 19 artefatos (o `warmup.log` do LLM é a
+> etapa 5). 462 testes unitários/contrato e 9 de integração (inclui o protocolo completo).
+> Decisões do marco: D-10, D-24, D-25, D-26 (🔬, §13.6); achados em §13.7.
 
 ---
 
