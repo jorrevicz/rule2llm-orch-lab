@@ -4,3 +4,4 @@
 -r services/inventory/requirements.txt
 pytest  # execução dos testes unitários, de contrato e de integração
 httpx2  # cliente HTTP exigido pelo TestClient do Starlette nos testes da API
+psutil==7.2.2  # bancada no host: CPU/RAM do processo do Ollama (fora dos containers, D-08/D-10)
