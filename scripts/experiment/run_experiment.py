@@ -5,6 +5,10 @@
     # lote: cada cenário × repetição, Rules e LLM alternados (a ordem final é do M8)
     .venv/bin/python -m scripts.experiment.run_experiment --scenario normal --scenario timeout \\
         --engine RULES --engine LLM --repetitions 2
+    # uma repetição com número escolhido (o menu roda assim cada execução de um ciclo)
+    .venv/bin/python -m scripts.experiment.run_experiment --scenario normal --engine RULES \\
+        --first-repetition 3
+    # menu interativo com estes e os demais procedimentos: .venv/bin/python menu.py
 
 Etapas por execução:
  1. abre a execução (id, cenário, motor, repetição; config efetiva gravada);
@@ -223,11 +227,16 @@ def _consolidator():
     return consolidate_execution
 
 
-def schedule(scenarios: list[str], engines: list[str], repetitions: int) -> list[tuple[str, str, int]]:
-    """Cenário × repetição, alternando a abordagem que abre cada repetição (metodologia §4.4.1)."""
+def schedule(
+    scenarios: list[str], engines: list[str], repetitions: int, first: int = 1
+) -> list[tuple[str, str, int]]:
+    """Cenário × repetição, alternando a abordagem que abre cada repetição (metodologia §4.4.1).
+
+    `first` numera a primeira repetição (o menu roda um ciclo por repetição, `menu.py`).
+    """
     plan = []
     for scenario in scenarios:
-        for repetition in range(1, repetitions + 1):
+        for repetition in range(first, first + repetitions):
             order = engines if repetition % 2 else list(reversed(engines))
             plan += [(scenario, engine, repetition) for engine in order]
     return plan
@@ -244,6 +253,7 @@ def main() -> int:
     parser.add_argument("--scenario", action="append", required=True, choices=available_scenarios())
     parser.add_argument("--engine", action="append", required=True, choices=["RULES", "LLM"])
     parser.add_argument("--repetitions", type=int, default=1)
+    parser.add_argument("--first-repetition", type=int, default=1, help="número da primeira repetição")
     parser.add_argument("--max-attempts", type=int, default=3, help="tentativas por execução inválida")
     parser.add_argument("--settle-timeout", type=float, default=900.0)
     args = parser.parse_args()
@@ -251,7 +261,7 @@ def main() -> int:
     awake = keep_host_awake()
     results = []
     try:
-        for scenario, engine, repetition in schedule(args.scenario, args.engine, args.repetitions):
+        for scenario, engine, repetition in schedule(args.scenario, args.engine, args.repetitions, args.first_repetition):
             for attempt in range(1, args.max_attempts + 1):
                 metadata = run_once(scenario, engine, repetition, settle_timeout_s=args.settle_timeout)
                 results.append({k: metadata.get(k) for k in ("execution_id", "scenario_id", "decision_engine", "repetition_id", "run_status", "invalid_reason")})

@@ -16,6 +16,13 @@ def test_schedule_alternates_the_engine_that_opens_each_repetition():
     ]
 
 
+def test_schedule_can_start_at_a_later_repetition_keeping_the_alternation():
+    assert schedule(["normal"], ["RULES", "LLM"], 2, first=3) == [
+        ("normal", "RULES", 3), ("normal", "LLM", 3),
+        ("normal", "LLM", 4), ("normal", "RULES", 4),
+    ]
+
+
 @pytest.fixture
 def complete_execution(tmp_path):
     for name in REQUIRED_ARTIFACTS:

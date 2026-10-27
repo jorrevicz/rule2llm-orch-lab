@@ -56,6 +56,21 @@ Pré-requisitos: Docker em execução, Python 3.12 com o ambiente de
    Dados de piloto nunca integram a amostra do TCC (`data/experiment/`, após o
    congelamento — ver [`docs/13-roadmap.md`](docs/13-roadmap.md)).
 
+**Menu interativo** (alternativa aos comandos acima):
+
+```bash
+.venv/bin/python menu.py
+```
+
+O menu reúne o `run_experiment`, os scripts que ele não automatiza (dataset, schemas, testes
+de piloto, bancada do LLM, subir/derrubar o ambiente) e o **protocolo completo ponta a
+ponta**: os 6 cenários × Rules e LLM, repetidos N vezes ou continuamente. Cada ciclo é
+uma repetição (ciclo k → `repetition_id` k), e a abordagem que abre a repetição alterna
+entre ciclos. Ao fim de cada ciclo, o menu confere os artefatos e imprime o resumo. Entre
+ciclos há um aviso e uma espera de 10 s, o momento seguro de parar. Ctrl+C durante uma
+execução pede **parada segura**: a execução em andamento termina e o laço para. Um 2º
+Ctrl+C força a interrupção.
+
 ## Stack
 
 Python · FastAPI · Celery · RabbitMQ · SQLite (um banco por serviço) · Docker Compose ·
@@ -74,6 +89,7 @@ scripts/           piloto, carga, falhas, reset, readiness
 data/pilot/        artefatos das execuções de piloto (fora da amostra)
 data/experiment/   artefatos da coleta definitiva
 tests/             unit · integration · contracts
+menu.py            menu interativo dos procedimentos (protocolo completo, scripts manuais)
 docs/              documentação técnica e metodológica
 ```
 

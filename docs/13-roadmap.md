@@ -48,7 +48,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ✅ | `m6-falhas-carga` | 2026-09-29 |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ✅ | `m7-instrumentacao` | 2026-09-29 |
-| [M8](#m8--congelamento) | Congelamento da configuração experimental | ⬜ | `freeze-v1` | — |
+| [M8](#m8--congelamento) | Congelamento da configuração experimental | 🔄 | `freeze-v1` | — |
 | [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
 
 ## 13.3 Dependências entre marcos
@@ -365,6 +365,7 @@ doc 10 §10.6).
 | M8-T04 | Congelamento de prompt e Rules | `chore(freeze)` | Prompt, Rules, `reason_code`s congelados; manifesto de hashes | RNF-027, RNF-028 | ⬜ |
 | M8-T05 | Ensaio geral | `test` | Execução completa (ainda `PILOT`): reset → readiness → warm-up → carga → falha → coleta | piloto §28 Fase 8 | ⬜ |
 | M8-T06 | Ativação da fase experimental | `chore(config)` | `phase: experiment` no config; tag `freeze-v1` | RNF-025 | ⬜ |
+| M8-T07 | Menu interativo dos procedimentos | `feat(experiment)` | `menu.py` na raiz: escolhe entre o `run_experiment` e os scripts manuais (dataset, schemas, testes de piloto M1/M2/M4, bancada do LLM, subir/derrubar ambiente) e oferece o protocolo completo ponta a ponta (todos os cenários × Rules e LLM), repetido N vezes ou continuamente, com ciclo k = `repetition_id` k (alternância preservada), aviso + espera de 10 s entre ciclos e parada segura no Ctrl+C (a execução em andamento termina); ao fim de cada ciclo, confere os artefatos e imprime o resumo. `run_experiment` ganha `--first-repetition` (padrão 1, comportamento igual). Sem impacto metodológico: mesmo `run_once`/`schedule`, só fase `pilot`. Pré-verificação (fase, Docker, Ollama) antes de abrir execuções. Testado: unitários (plano, alternância, parada segura e forçada, janela de 10 s, artefatos) e parada segura/forçada com processo filho real; protocolo completo ao vivo ainda não executado pelo menu | RNF-005, metodologia §4.4.1 | ✅ |
 
 **Critério de conclusão**
 
