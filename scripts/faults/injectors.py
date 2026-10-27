@@ -39,6 +39,13 @@ def _parameters(fault: FaultSection) -> dict:
     return fault.model_dump(mode="json")
 
 
+def _window_offsets(fault: FaultSection) -> tuple[float, float]:
+    """Início e fim previstos da janela; a validação da config garante os dois campos."""
+    if fault.start_after_seconds is None or fault.duration_seconds is None:
+        raise ValueError(f"fault {fault.type}: start_after_seconds and duration_seconds are required")
+    return fault.start_after_seconds, fault.start_after_seconds + fault.duration_seconds
+
+
 class _Window:
     """Registro comum da janela; subclasses aplicam e removem a perturbação."""
 
@@ -50,11 +57,11 @@ class _Window:
 
     def start(self) -> dict:
         self._apply()
-        return self._record("FAULT_STARTED", self.fault.start_after_seconds)
+        return self._record("FAULT_STARTED", _window_offsets(self.fault)[0])
 
     def stop(self) -> dict:
         details = self._remove()
-        return self._record("FAULT_ENDED", self.fault.start_after_seconds + self.fault.duration_seconds, **details)
+        return self._record("FAULT_ENDED", _window_offsets(self.fault)[1], **details)
 
     def _record(self, event_type: str, scheduled: float, **details: object) -> dict:
         return self._recorder.record(
@@ -80,15 +87,24 @@ class PrimaryRouteFault(_Window):
         self._directory = directory
 
     def _apply(self) -> None:
+        fault = self.fault
+        # Garantido pela validação da config (FAULT_FIELDS/FAULT_TARGETS); explicitado para o tipo.
+        if (
+            fault.type not in ("intermittent_error", "timeout")
+            or fault.target != "inventory.primary"
+            or fault.failure_probability is None
+            or fault.seed is None
+        ):
+            raise ValueError(f"fault {fault.type}: not a primary-route fault")
         write_control(
             self._directory,
             FaultControl(
                 fault_id=self.fault_id,
-                type=self.fault.type,
-                target=self.fault.target,
-                failure_probability=self.fault.failure_probability,
-                delay_ms=self.fault.delay_ms,
-                seed=self.fault.seed,
+                type=fault.type,
+                target=fault.target,
+                failure_probability=fault.failure_probability,
+                delay_ms=fault.delay_ms,
+                seed=fault.seed,
                 started_at=utc_now_iso(),
             ),
         )
@@ -148,10 +164,11 @@ def run_timeline(injector: FaultInjector, fault: FaultSection, start_monotonic: 
 
     A falha é sempre removida, mesmo se algo falhar no meio (sem perturbação órfã).
     """
-    _sleep_until(start_monotonic + fault.start_after_seconds)
+    start_offset, end_offset = _window_offsets(fault)
+    _sleep_until(start_monotonic + start_offset)
     try:
         injector.start()
-        _sleep_until(start_monotonic + fault.start_after_seconds + fault.duration_seconds)
+        _sleep_until(start_monotonic + end_offset)
     finally:
         injector.stop()
 
