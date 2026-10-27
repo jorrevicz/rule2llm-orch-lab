@@ -13,30 +13,48 @@ com dois microsserviços:
 Todo o resto é idêntico nas duas condições: arquitetura, `SYSTEM_STATE`, validador,
 executor, instrumentação e cenários.
 
-## Status
+## Como usar
 
-O projeto está no **piloto técnico**, e o progresso é acompanhado em
-[`docs/13-roadmap.md`](docs/13-roadmap.md).
+Pré-requisitos: Docker em execução, Python 3.12 com o ambiente de
+[desenvolvimento](#ambiente-de-desenvolvimento) instalado e, para o LLM, o Ollama.
 
-- Implementado e testado: fluxo normal ponta a ponta (`POST /orders` → RabbitMQ →
-  `inventory-service` → evento de retorno → pedido `COMPLETED`), com RabbitMQ, os dois
-  serviços e um SQLite por serviço; contrato de mensagens versionado (`contracts/`),
-  mensagens fora do contrato na `tasks.dlq`, numeração da trajetória (`event_seq`) e
-  idempotência de transporte (`message_id`) e de negócio (`task_id`); `SYSTEM_STATE`
-  construído pelo `StateBuilder` e artefatos de rastreabilidade por execução;
-  `RulesDecisionEngine`, `DecisionValidator` e `DecisionExecutor` comuns, com as cinco
-  ações (`CONTINUE`, `RETRY`, `WAIT`, `FALLBACK`, `ABORT`), timeout operacional e DLQ.
-  1º piloto técnico concluído (`PILOT_0012`). `LLMDecisionEngine` com Ollama no host
-  (`llama3.1:8b`, JSON), prompt fixo do Quadro 2, readiness/warm-up e motor escolhido por
-  execução; piloto com LLM concluído (`PILOT_0014`). Seis cenários da metodologia (carga em
-  malha aberta, falhas na rota primária, indisponibilidade do Inventory, dados
-  inconsistentes) executados em piloto com Rules e LLM (M6).
-- Protocolo experimental completo (M7): reset, readiness, métricas por Prometheus (fila,
-  containers, host) e do Ollama no host, consolidação e execuções inválidas registradas
-  (`scripts/experiment/run_experiment.py`).
-- Planejado: congelamento (M8) e coleta (M9).
+1. **Inicie o Ollama no host** (só para `--engine LLM`). Ele roda fora do Docker e os
+   serviços o acessam por `host.docker.internal:11434`
+   ([D-08, docs/03 §3.5](docs/03-stack-tecnologica.md#35-configuração-inicial-do-llm)):
 
-Dados de piloto (`data/pilot/`) nunca integram a amostra do TCC (`data/experiment/`).
+   ```bash
+   open -a Ollama                # macOS (no Linux: ollama serve, escutando em 0.0.0.0)
+   ollama pull llama3.1:8b       # uma vez
+   ```
+
+2. **Rode o teste de sanidade** antes de qualquer execução:
+
+   ```bash
+   .venv/bin/python -m pytest
+   ```
+
+3. **Inicie o experimento** com `run_experiment` (não é preciso subir o compose antes; o
+   script derruba e recria o ambiente a cada execução):
+
+   ```bash
+   .venv/bin/python -m scripts.experiment.run_experiment \
+       --scenario normal --scenario timeout --engine RULES --engine LLM --repetitions 1
+   ```
+
+   Para cada execução, o script:
+
+   1. abre a execução (`PILOT_nnnn`) e grava a config efetiva (base + cenário + motor);
+   2. reseta o ambiente (`docker compose down -v`) e o sobe com imagens do commit atual;
+   3. verifica a readiness (containers, filas, bancos, coletores, energia do host);
+   4. com LLM, faz o warm-up e uma inferência de prova no Ollama;
+   5. aplica a carga e a falha do cenário e espera todas as tarefas terminarem;
+   6. exporta as métricas do Prometheus e do Ollama e valida a integridade;
+   7. se válida, consolida as métricas; se inválida, registra e repete com a mesma config.
+
+   **Resultados:** um diretório por execução em `data/pilot/PILOT_nnnn/` (artefatos de
+   rastreabilidade e `metrics_summary.csv`); as inválidas em `data/pilot/invalid_runs.csv`.
+   Dados de piloto nunca integram a amostra do TCC (`data/experiment/`, após o
+   congelamento — ver [`docs/13-roadmap.md`](docs/13-roadmap.md)).
 
 ## Stack
 
