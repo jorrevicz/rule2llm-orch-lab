@@ -20,7 +20,7 @@ def test_template_is_the_methodology_prompt(builder):
     # Quadro 2 da metodologia: seções e ações permitidas, na ordem.
     sections = re.findall(r"^[A-ZÇÃÕÁÉÍÓÚ ]+$", builder.template, flags=re.MULTILINE)
     assert sections == [
-        "PAPEL",
+        "PERSONA",
         "OBJETIVO",
         "AÇÕES PERMITIDAS",
         "RESTRIÇÕES",
