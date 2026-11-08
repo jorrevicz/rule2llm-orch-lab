@@ -10,6 +10,7 @@ dos serviços nem do Prometheus. Arquivos gerados no diretório da execução:
   decisões e desfecho esperado (D-32);
 - `throughput_metrics.csv`, `error_metrics.csv`: uma linha por execução;
 - `recovery_metrics.csv` (D-24) e `blast_radius.csv` (D-25): uma linha por falha;
+- `decision_quality.csv`: uma linha por decisão — validade, oportunidade e resultado (D-33);
 - `metrics_summary.csv`: uma linha com todos os indicadores escalares da execução
   (latência, throughput, erro, recuperação, blast radius, custo decisório e recursos) —
   a unidade da análise entre repetições.
@@ -30,6 +31,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from scripts.analysis.decision_adequacy import QUALITY_FIELDS, evaluate_decisions
 from shared.artifacts import Artifact, execution_dir
 from shared.config import load_experiment_config
 
@@ -326,6 +328,7 @@ def consolidate_execution(directory: Path) -> dict:
     config = load_experiment_config(directory / "experiment_config.yml")
     events = _read_jsonl(directory / f"{Artifact.TASK_EVENTS}.jsonl")
     decisions = _read_jsonl(directory / f"{Artifact.DECISIONS}.jsonl")
+    states = _read_jsonl(directory / f"{Artifact.STATES}.jsonl")
     faults = _read_jsonl(directory / f"{Artifact.FAULT_EVENTS}.jsonl")
     logs = _read_jsonl(directory / f"{Artifact.MICROSERVICES_LOGS}.jsonl")
     workload = _read_jsonl(directory / "workload.jsonl")
@@ -350,6 +353,9 @@ def consolidate_execution(directory: Path) -> dict:
     _write_csv(directory / "recovery_metrics.csv", recoveries, [*IDENTITY_FIELDS, *RECOVERY_FIELDS])
     _write_csv(directory / "blast_radius.csv", radii, [*IDENTITY_FIELDS, *BLAST_RADIUS_FIELDS])
 
+    quality_rows, quality = evaluate_decisions(decisions, states, events, tasks, config)  # D-33
+    _write_csv(directory / "decision_quality.csv", quality_rows, QUALITY_FIELDS)
+
     resources = resource_usage(stats)
     summary = {
         **identity,
@@ -358,6 +364,7 @@ def consolidate_execution(directory: Path) -> dict:
         **rate,
         **{key: value for key, value in error.items() if key != "abort_reasons"},
         **decision_cost(decisions, tasks),
+        **quality,
         **queue_summary(queues),
         "recovery_time_ms": recoveries[0]["recovery_time_ms"] if recoveries else None,
         "recovery_after_fault_end_ms": recoveries[0]["recovery_after_fault_end_ms"] if recoveries else None,

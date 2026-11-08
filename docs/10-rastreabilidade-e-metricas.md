@@ -56,8 +56,9 @@ execution_id  →  task_id  →  state_id  →  decision_id
 
 Consolidação (pós-execução, `scripts/analysis/consolidate.py`, só a partir dos arquivos):
 `latency_metrics.csv` (uma linha por tarefa), `throughput_metrics.csv`, `error_metrics.csv`,
-`recovery_metrics.csv` e `blast_radius.csv` (uma linha por falha) e `metrics_summary.csv` (uma
-linha por execução, unidade da análise entre repetições). Entre execuções (M9): `results.csv`,
+`recovery_metrics.csv` e `blast_radius.csv` (uma linha por falha), `decision_quality.csv` (uma
+linha por decisão, D-33) e `metrics_summary.csv` (uma linha por execução, unidade da análise
+entre repetições). Entre execuções (M9): `results.csv`,
 `analysis_summary.md`. Protocolo (M7): `initial_state.json`, `reset.log`, `warmup.log`,
 `invalid_runs.csv` (por fase, em `data/<pilot|experiment>/`).
 
@@ -230,7 +231,9 @@ latência); comparação de médias/medianas; teste *t* quando aplicável; Mann-
 distribuições não normais; intervalo de confiança; tamanho de efeito; análise estratificada
 por cenário; correlação exploratória opcional (tokens/chamadas × tempo de inferência).
 
-A análise quantitativa é complementada por **interpretação qualitativa dos logs de decisão**:
+A adequação da decisão segue a rubrica pré-definida de
+[15 §15.5](15-protocolo-de-validacao.md) (`decision_quality.csv`). A análise quantitativa é
+complementada por **interpretação qualitativa dos logs de decisão**:
 uma resposta LLM pode ser tecnicamente válida mas operacionalmente inadequada. As decisões
 são analisadas pelo resultado **e** pelo caminho decisório registrado.
 

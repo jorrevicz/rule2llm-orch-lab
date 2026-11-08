@@ -372,7 +372,7 @@ doc 10 §10.6).
 | M8-T11 | **🔬** Seed de falha por repetição | `feat(experiment)` | D-27: seed efetiva derivada de `repetition_id`, igual dentro do par Rules/LLM | D-27, metodologia §4.4.1 | ✅ |
 | M8-T12 | **🔬** Calibração da carga e novo cenário | `feat(config)` | D-30 e D-31: 0,05 pedidos/s, janelas recalculadas; `persistent_degradation` | D-30, D-31 | ✅ |
 | M8-T13 | **🔬** Desfecho por tarefa | `feat(analysis)` | D-32: `completion_rate`, desfecho esperado, `undue_failure_rate`, `failed_with_reservation` | D-32 | ✅ |
-| M8-T14 | **🔬** Rubrica de adequação | `feat(analysis)` | D-33: `decision_adequacy.py` e `decision_quality.csv` | D-33, metodologia Tabela 17 | ⬜ |
+| M8-T14 | **🔬** Rubrica de adequação | `feat(analysis)` | D-33: `decision_adequacy.py` e `decision_quality.csv` | D-33, metodologia Tabela 17 | ✅ |
 | M8-T15 | **🔬** Reavaliação offline | `feat(analysis)` | D-34: `replay_decisions.py` sobre os mesmos estados, sem filas nem timers | D-34, metodologia Tabela 17 | ⬜ |
 | M8-T16 | **🔬** Análise estatística pré-especificada | `feat(analysis)` | D-35: `config/analysis_plan.yml`, `compare_engines.py`, `results.csv`, `analysis_summary.md`; `scipy` só na bancada | D-35, metodologia Tabela 18 | ⬜ |
 | M8-T17 | Verificação ao vivo | `chore(pilot)` | Teste do prompt alinhado a `58f557a`; piloto de `persistent_degradation` e `intermittent_failure` × Rules e LLM em duas repetições; análise ponta a ponta | [15](15-protocolo-de-validacao.md) | ⬜ |
