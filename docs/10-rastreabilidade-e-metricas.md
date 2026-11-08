@@ -212,6 +212,8 @@ throughput, `Δ > 0` favorece LLM.
 - **Blast radius (D-25):** tarefa afetada = teve algum ponto de decisão além do inicial ou não
   terminou `COMPLETED`. Registrados à parte: tarefas atingidas diretamente (`FAULT_APPLIED`),
   serviços afetados, mensagens reentregues e mortas (DLQ).
+- **Seed de falha (D-27):** `seeds.fault` da execução = seed do cenário + (`repetition_id` −
+  1); o par Rules/LLM da mesma repetição recebe a mesma seed.
 - **Amostragem (D-26):** 1 s para filas, containers e Ollama, igual para Rules e LLM.
 
 ### 10.4.4 Análise (metodologia Tabelas 17–18)

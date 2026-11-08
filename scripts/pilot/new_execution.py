@@ -161,15 +161,23 @@ def build_metadata(
     }
 
 
+def effective_fault_seed(seed: int | None, repetition_id: int | None) -> int | None:
+    """D-27: seed do cenário + (repetição − 1); igual para Rules e LLM na mesma repetição."""
+    if seed is None or repetition_id is None:
+        return seed
+    return seed + repetition_id - 1
+
+
 def write_effective_config(
-    base_path: Path, directory: Path, engine: str | None, scenario: ScenarioFile
+    base_path: Path, directory: Path, engine: str | None, scenario: ScenarioFile, repetition_id: int | None = None
 ) -> Path:
-    """Config base + motor da execução + `workload`/`fault` do cenário."""
+    """Config base + motor da execução + `workload`/`fault` do cenário (seed por repetição)."""
     raw = yaml.safe_load(base_path.read_text(encoding="utf-8"))
     if engine is not None:
         raw["experiment"]["decision_engine"] = engine
     raw["workload"] = scenario.workload.model_dump(mode="json")
     raw["fault"] = scenario.fault.model_dump(mode="json")
+    raw["fault"]["seed"] = effective_fault_seed(scenario.fault.seed, repetition_id)
     header = (
         f"# Config efetiva de {directory.name}: {_display_path(base_path)}"
         f" + cenário {scenario.scenario_id} (gerada por new_execution; não editar).\n"
@@ -214,7 +222,7 @@ def open_execution(
     execution_id = next_pilot_id(data_root)
     directory = execution_dir(data_root, execution_id)
     directory.mkdir(parents=True)
-    effective_path = write_effective_config(base_path, directory, engine, scenario)
+    effective_path = write_effective_config(base_path, directory, engine, scenario, repetition_id)
     config = load_experiment_config(effective_path)
 
     metadata = build_metadata(execution_id, scenario.scenario_id, config, effective_path)

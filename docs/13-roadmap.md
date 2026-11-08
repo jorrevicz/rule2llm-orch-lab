@@ -369,7 +369,7 @@ doc 10 §10.6).
 | M8-T08 | **(D) 🔬** Protocolo de validação | `docs(decisoes)` | Auditoria de fundamentação: decisões D-27 a D-36; [`15-protocolo-de-validacao.md`](15-protocolo-de-validacao.md) (fichas de métricas, cenários, hipóteses, rubrica, plano de análise, matriz de conclusões); tasks M8-T09 a M8-T17 | orientação acadêmica, metodologia §4.5 | ✅ |
 | M8-T09 | **🔬** Correção do tempo de recuperação | `fix(analysis)` | D-28: referência só com tarefas concluídas antes do início da falha; `recovery_after_fault_end_ms` e `recovery_horizon_ms` no resumo | D-24, D-28 | ✅ |
 | M8-T10 | **🔬** Tempos do runtime | `feat(llm)` | D-29: `llm_compute_ms` e `llm_queue_wait_ms` em `decisions.jsonl` (nulos no Rules) e na consolidação | D-29, RNF-009 | ✅ |
-| M8-T11 | **🔬** Seed de falha por repetição | `feat(experiment)` | D-27: seed efetiva derivada de `repetition_id`, igual dentro do par Rules/LLM | D-27, metodologia §4.4.1 | ⬜ |
+| M8-T11 | **🔬** Seed de falha por repetição | `feat(experiment)` | D-27: seed efetiva derivada de `repetition_id`, igual dentro do par Rules/LLM | D-27, metodologia §4.4.1 | ✅ |
 | M8-T12 | **🔬** Calibração da carga e novo cenário | `feat(config)` | D-30 e D-31: 0,05 pedidos/s, janelas recalculadas; `persistent_degradation` | D-30, D-31 | ⬜ |
 | M8-T13 | **🔬** Desfecho por tarefa | `feat(analysis)` | D-32: `completion_rate`, desfecho esperado, `undue_failure_rate`, `failed_with_reservation` | D-32 | ⬜ |
 | M8-T14 | **🔬** Rubrica de adequação | `feat(analysis)` | D-33: `decision_adequacy.py` e `decision_quality.csv` | D-33, metodologia Tabela 17 | ⬜ |

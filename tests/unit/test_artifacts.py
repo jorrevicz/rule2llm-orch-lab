@@ -169,6 +169,29 @@ def test_scenario_replaces_workload_and_fault_in_the_effective_config(tmp_path):
     assert metadata["fault"]["delay_ms"] == scenario.fault.delay_ms
 
 
+def test_fault_seed_varies_by_repetition_and_is_the_same_for_both_engines(tmp_path):
+    # D-27: a seed do par Rules/LLM é a mesma; repetições diferentes sorteiam falhas diferentes.
+    scenario = load_scenario(SCENARIOS_DIR / "timeout.yml")
+    seeds = {}
+    for engine, repetition in (("RULES", 1), ("LLM", 1), ("RULES", 3), ("LLM", 3)):
+        directory = open_execution(
+            tmp_path, "timeout", REPO_CONFIG, engine=engine, llm_readiness=None, repetition_id=repetition
+        )
+        metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+        effective = load_experiment_config(directory / "experiment_config.yml")
+        assert effective.fault.seed == metadata["seeds"]["fault"] == metadata["fault"]["seed"]
+        seeds[(engine, repetition)] = effective.fault.seed
+
+    assert seeds[("RULES", 1)] == seeds[("LLM", 1)] == scenario.fault.seed
+    assert seeds[("RULES", 3)] == seeds[("LLM", 3)] == scenario.fault.seed + 2
+
+
+def test_scenario_without_fault_seed_stays_without_seed(tmp_path):
+    directory = open_execution(tmp_path, "normal", REPO_CONFIG, engine="RULES", llm_readiness=None, repetition_id=2)
+
+    assert load_experiment_config(directory / "experiment_config.yml").fault.seed is None
+
+
 def test_unknown_scenario_is_refused_before_allocating_an_execution(tmp_path):
     with pytest.raises(SystemExit):
         open_execution(tmp_path, "not_a_scenario", REPO_CONFIG)

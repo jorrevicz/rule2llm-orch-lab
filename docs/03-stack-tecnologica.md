@@ -175,7 +175,9 @@ fault:                             # metodologia Código 11; D-20
 
 Cada cenário é um arquivo `config/scenarios/<cenário>.yml` com as seções `workload` e
 `fault`; `new_execution --scenario` grava a config efetiva (base + cenário) no diretório
-da execução (M6-T06). Mesmo arquivo para Rules e LLM no mesmo cenário.
+da execução (M6-T06). Mesmo arquivo para Rules e LLM no mesmo cenário. A seed de falha
+efetiva é a do cenário somada a `repetition_id − 1` (D-27): o par Rules/LLM usa a mesma, e
+repetições diferentes sorteiam falhas diferentes.
 
 Parâmetros que **não** devem permanecer indefinidos antes da coleta definitiva:
 `inventory_timeout_ms`, `max_attempts`, `retry_delay_ms`, `wait_delay_ms`, `max_waits`,
