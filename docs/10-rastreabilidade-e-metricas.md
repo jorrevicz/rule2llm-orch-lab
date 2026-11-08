@@ -189,7 +189,7 @@ throughput, `Δ > 0` favorece LLM.
 | Tempo de inferência do LLM | Parcela da chamada ao modelo | `decisions.jsonl` |
 | Nº de decisões / chamadas ao LLM | Pontos de decisão e inferências por execução | `decisions.jsonl` |
 | Tokens de entrada/saída | Volume de contexto e resposta (quando confiável) | `decisions.jsonl` |
-| Overhead decisório absoluto | LLM − Rules no tempo decisório acumulado | `results_summary.csv` |
+| Overhead decisório absoluto | LLM − Rules no tempo decisório acumulado | `results.csv` |
 | Tipo de decisão | `CONTINUE`/`RETRY`/`WAIT`/`FALLBACK`/`ABORT` escolhida | `decisions.jsonl` |
 | *Blast radius* | Serviços/tarefas/mensagens afetadas por uma falha | `blast_radius.csv` |
 
@@ -215,6 +215,8 @@ por cenário; correlação exploratória opcional (tokens/chamadas × tempo de i
 A análise quantitativa é complementada por **interpretação qualitativa dos logs de decisão**:
 uma resposta LLM pode ser tecnicamente válida mas operacionalmente inadequada. As decisões
 são analisadas pelo resultado **e** pelo caminho decisório registrado.
+
+> Definições, referências e plano de análise pré-especificado: [15-protocolo-de-validacao.md](15-protocolo-de-validacao.md).
 
 ## 10.5 Integridade acadêmica
 

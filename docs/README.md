@@ -30,6 +30,7 @@ a documentação deve permanecer coerente com a metodologia e com o código.
 | 12 | [Glossário](12-glossario.md) | Termos, identificadores, `reason_code`, ações, targets |
 | 13 | [Roadmap](13-roadmap.md) | Marcos M0–M9, tasks, painel de progresso, decisões pendentes e inconsistências |
 | 14 | [Configuração do LLM](14-llm-config.md) | Como trocar o modelo; passo a passo para trocar o runtime |
+| 15 | [Protocolo de validação](15-protocolo-de-validacao.md) | Fichas de métricas, cenários, hipóteses, rubrica de decisão, plano de análise, matriz de conclusões |
 
 ## Relação com `docs/ref/`
 

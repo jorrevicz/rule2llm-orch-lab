@@ -2735,6 +2735,8 @@ A repetição experimental continua necessária.
 
 > **Decisões D-10, D-24, D-25 e D-26 (2026-09-29) 🔬:** coleta por Prometheus (cAdvisor, node-exporter, `rabbitmq_prometheus`) a cada 1 s, com CSVs extraídos ao fim de cada execução, e amostrador próprio para o processo do Ollama no host; tempo de recuperação pela janela de `k` sucessos com latência ≤ P95 pré-falha; *blast radius* pela trajetória das tarefas. O ambiente final da coleta será um servidor Fedora Linux. Registro: `docs/13-roadmap.md` §13.4; definições: `docs/10-rastreabilidade-e-metricas.md` §10.4.3.1.
 
+> **Decisões D-27 a D-36 (2026-11-08) 🔬:** a seed de falha varia por repetição e é igual dentro do par Rules/LLM (D-27); o tempo de recuperação usa referência só de tarefas concluídas antes da falha, medida após o fim da falha e tratamento de não recuperados como censura (D-28); os tempos do runtime separam processamento e fila (D-29); a carga é calibrada para não saturar o runtime fora da sobrecarga (D-30); há um sétimo cenário, de degradação persistente da rota primária (D-31); o desfecho por tarefa inclui taxa de conclusão, falha indevida e pedido `FAILED` com reserva (D-32); a adequação da decisão segue rubrica própria (D-33); os mesmos estados são reavaliados offline (D-34); a análise é pareada e pré-especificada (D-35); a GPU não medida é limitação declarada (D-36). Registro: `docs/13-roadmap.md` §13.4; protocolo: `docs/15-protocolo-de-validacao.md`.
+
 ## 35.7 Fallback deve ter significado operacional real
 
 Não basta criar uma fila com outro nome que executa exatamente a mesma rota sujeita à mesma falha.
