@@ -110,7 +110,7 @@ abaixo cobrem todos os pontos de acoplamento encontrados no código.
 | Componente | Arquivo | Dependência do Ollama |
 |---|---|---|
 | Contrato da config | `shared/config.py` (`LLMSection`) | `runtime: Literal["ollama"]`, `response_format: Literal["json"]`, `keep_alive` |
-| Cliente de inferência | `services/orders/app/llm/ollama_client.py` | `/api/generate`, `options.num_predict`, `num_ctx`, `format`, `keep_alive`; resposta com `response`, `done_reason`, `prompt_eval_count`, `eval_count`, `total_duration`, `load_duration` (ns) |
+| Cliente de inferência | `services/orders/app/llm/ollama_client.py` | `/api/generate`, `options.num_predict`, `num_ctx`, `format`, `keep_alive`; resposta com `response`, `done_reason`, `prompt_eval_count`, `eval_count`, `prompt_eval_duration`, `eval_duration`, `total_duration`, `load_duration` (ns). `prompt_eval_duration` + `eval_duration` formam `llm_compute_ms`; `total_duration` inclui a espera na fila do runtime e não serve para separá-la (D-29) |
 | Motor | `services/orders/app/llm/llm_engine.py` | Recebe o tipo concreto `OllamaClient`; usa `Generation` e `LLMTimeout` |
 | Montagem | `services/orders/app/orchestration/coordination.py` (`build_engine`) | Sempre instancia `OllamaClient` |
 | URL do runtime | `services/orders/app/settings.py`, `docker-compose.yml` | `OLLAMA_BASE_URL` (padrão `host.docker.internal:11434`) |

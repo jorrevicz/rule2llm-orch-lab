@@ -110,6 +110,11 @@ Critério de não saturação, verificado no ensaio geral: nos cenários fora de
 `llm_queue_wait_p95_ms ≤ llm_compute_median_ms`. Reprovar leva a recalibrar **antes** do congelamento.
 Durante a coleta, lentidão do LLM **nunca** invalida execução (CLAUDE §24, §31).
 
+No piloto M8-T17, a inferência ficou acima dos 3,2 s da calibração (mediana de cômputo de 4,7–5,3 s,
+p95 de até 7,0 s) e a utilização na janela de falha chegou a 0,95 em `persistent_degradation`, embora o
+critério acima tenha passado. A taxa de 0,05/s precisa ser recalibrada em M8-T02, com medição no
+servidor final ([13 §13.7](13-roadmap.md)).
+
 ## 15.5 Rubrica de adequação da decisão (D-33)
 
 Implementada em `scripts/analysis/decision_adequacy.py`; aplicada igualmente aos dois motores e
