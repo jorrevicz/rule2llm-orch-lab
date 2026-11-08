@@ -291,7 +291,9 @@ Cada ponto de decisão produz um `decision_id`.
 - Faz **uma chamada independente** ao Ollama (sem memória conversacional — RNF-013).
 - Exige **resposta estruturada** (JSON com `action`, `target`, `reason_code`).
 - Retorna **o mesmo contrato de decisão** do `RulesDecisionEngine`.
-- Registra `llm_inference_ms` e, quando disponíveis de forma confiável, `token_usage`.
+- Registra `llm_inference_ms` (tempo da chamada ao runtime, inclui a fila), `llm_compute_ms`
+  (`prompt_eval_duration + eval_duration`, nulo em timeout), `llm_queue_wait_ms` (diferença,
+  D-29) e, quando disponíveis de forma confiável, `token_usage`.
 
 ### Prompt fixo (a congelar antes da coleta — RNF-027)
 

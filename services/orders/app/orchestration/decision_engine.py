@@ -19,13 +19,16 @@ class EngineOutput:
     """O que o motor devolveu num ponto de decisão.
 
     `proposal` é `None` quando a saída não pôde ser lida como decisão (ex.: JSON
-    malformado de um LLM); `failure` descreve o motivo. `llm_inference_ms` e
-    `token_usage` só se aplicam ao LLM.
+    malformado de um LLM); `failure` descreve o motivo. `llm_inference_ms` (tempo da
+    chamada), `llm_compute_ms` (processamento informado pelo runtime), `llm_queue_wait_ms`
+    (diferença: fila do runtime, D-29) e `token_usage` só se aplicam ao LLM.
     """
 
     proposal: ProposedDecision | None
     failure: str | None = None
     llm_inference_ms: float | None = None
+    llm_compute_ms: float | None = None
+    llm_queue_wait_ms: float | None = None
     token_usage: dict[str, int | None] | None = field(default=None)
     raw_response: str | None = None   # texto devolvido pelo LLM (vai para o log estruturado)
     done_reason: str | None = None

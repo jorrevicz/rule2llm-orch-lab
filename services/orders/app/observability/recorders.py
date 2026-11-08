@@ -61,7 +61,9 @@ class DecisionRecord(_Record):
 
     - `decision_time_ms`: do `SYSTEM_STATE` disponível ao motor até a ação válida e
       executável após a validação comum (sem a construção do estado).
-    - `llm_inference_ms` e `token_usage`: somente para `LLM`; nulos para `RULES`.
+    - `llm_inference_ms` (tempo da chamada ao runtime, inclui a fila), `llm_compute_ms`
+      (processamento informado pelo runtime; nulo em timeout), `llm_queue_wait_ms` (diferença,
+      D-29) e `token_usage`: somente para `LLM`; nulos para `RULES`.
     - `proposed_decision`: nulo quando a saída do motor nem pôde ser lida como decisão.
     - `executed_decision.reason_code`: presente sempre, para distinguir, por exemplo,
       `ABORT / INVALID_DECISION` de um `ABORT` proposto pelo próprio motor.
@@ -77,15 +79,20 @@ class DecisionRecord(_Record):
     executed_decision: Decision  # sempre completa e executável
     decision_time_ms: Annotated[float, Field(ge=0)]
     llm_inference_ms: Annotated[float, Field(ge=0)] | None
+    llm_compute_ms: Annotated[float, Field(ge=0)] | None = None
+    llm_queue_wait_ms: Annotated[float, Field(ge=0)] | None = None
     token_usage: TokenUsage | None
     timestamp: Annotated[str, Field(pattern=ISO_UTC_MS_PATTERN)]
 
     @model_validator(mode="after")
     def _llm_fields_only_for_llm(self) -> Self:
         if self.decision_engine == "RULES" and (
-            self.llm_inference_ms is not None or self.token_usage is not None
+            self.llm_inference_ms is not None
+            or self.llm_compute_ms is not None
+            or self.llm_queue_wait_ms is not None
+            or self.token_usage is not None
         ):
-            raise ValueError("llm_inference_ms and token_usage must be null for RULES")
+            raise ValueError("llm timings and token_usage must be null for RULES")
         return self
 
 

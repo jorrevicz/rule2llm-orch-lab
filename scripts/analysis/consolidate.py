@@ -238,6 +238,8 @@ def blast_radius(tasks: list[dict], faults: list[dict], window: dict, events: li
 def decision_cost(decisions: list[dict], tasks: list[dict]) -> dict:
     times = [d["decision_time_ms"] for d in decisions]
     inference = [d["llm_inference_ms"] for d in decisions if d["llm_inference_ms"] is not None]
+    compute = [d["llm_compute_ms"] for d in decisions if d.get("llm_compute_ms") is not None]  # D-29
+    queue_wait = [d["llm_queue_wait_ms"] for d in decisions if d.get("llm_queue_wait_ms") is not None]
     usage = [d["token_usage"] for d in decisions if d.get("token_usage")]
     completed = sum(1 for t in tasks if t["status"] == "COMPLETED")
     total_tokens = sum(u["total_tokens"] for u in usage) if usage else None
@@ -248,6 +250,10 @@ def decision_cost(decisions: list[dict], tasks: list[dict]) -> dict:
         "decision_time_mean_ms": _round(statistics.fmean(times), 3) if times else None,
         "decision_time_p95_ms": _round(percentile(times, 0.95), 3),
         "llm_inference_total_ms": _round(sum(inference), 1) if inference else None,
+        "llm_compute_total_ms": _round(sum(compute), 1) if compute else None,
+        "llm_compute_median_ms": _round(statistics.median(compute), 1) if compute else None,
+        "llm_queue_wait_total_ms": _round(sum(queue_wait), 1) if queue_wait else None,
+        "llm_queue_wait_p95_ms": _round(percentile(queue_wait, 0.95), 1),
         "llm_calls_per_task": _round(len(inference) / len(tasks), 3) if tasks and inference else None,
         "input_tokens_total": sum(u["input_tokens"] for u in usage) if usage else None,
         "output_tokens_total": sum(u["output_tokens"] for u in usage) if usage else None,

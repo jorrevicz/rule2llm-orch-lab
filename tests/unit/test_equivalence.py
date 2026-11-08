@@ -87,7 +87,7 @@ def test_same_proposal_gets_the_same_validation_and_execution(runs):
 
 def test_records_differ_only_in_engine_specific_fields(runs):
     (_, _, rules_rec, _), (_, _, llm_rec, _) = runs
-    engine_specific = {"decision_engine", "llm_inference_ms", "token_usage"}
+    engine_specific = {"decision_engine", "llm_inference_ms", "llm_compute_ms", "llm_queue_wait_ms", "token_usage"}
     volatile = {"state_id", "decision_id", "timestamp", "decision_time_ms"}
 
     assert set(rules_rec) == set(llm_rec)

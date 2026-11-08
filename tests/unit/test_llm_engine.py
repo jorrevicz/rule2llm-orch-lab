@@ -35,6 +35,8 @@ class FakeClient:
             wall_ms=420.0,
             total_duration_ms=410.0,
             load_duration_ms=5.0,
+            prompt_eval_duration_ms=100.0,
+            eval_duration_ms=250.0,
         )
 
 
@@ -88,6 +90,15 @@ def test_runtime_failure_is_not_hidden():
     # Falha da bancada: não vira decisão; sobe para a DLQ e invalida a execução.
     with pytest.raises(LLMRuntimeError):
         _engine(FakeClient(error=LLMRuntimeError("connection refused"))).decide(make_state())
+
+
+def test_compute_and_queue_wait_are_separated():
+    # D-29: 420 ms de chamada = 350 ms de processamento (100 + 250) + 70 ms de fila.
+    output = _engine(FakeClient(text='{"action": "CONTINUE", "target": null, "reason_code": "X"}')).decide(make_state())
+
+    assert output.llm_inference_ms == 420.0
+    assert output.llm_compute_ms == 350.0
+    assert output.llm_queue_wait_ms == 70.0
 
 
 # -- ciclo completo pelo Orchestrator, com o mesmo Validator e Executor ---------------

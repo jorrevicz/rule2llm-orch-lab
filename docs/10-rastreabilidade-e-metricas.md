@@ -80,8 +80,8 @@ service · target · timestamp · redelivered · attempt_number
 
 ### `decisions.jsonl`
 
-> Metodologia Códigos 7–9. `decision_engine` = `RULES` ou `LLM`. `llm_inference_ms` e
-> `token_usage` só para `LLM` (nulos para `RULES`).
+> Metodologia Códigos 7–9. `decision_engine` = `RULES` ou `LLM`. `llm_inference_ms`,
+> `llm_compute_ms`, `llm_queue_wait_ms` e `token_usage` só para `LLM` (nulos para `RULES`).
 
 ```json
 {
@@ -95,6 +95,8 @@ service · target · timestamp · redelivered · attempt_number
   "executed_decision": { "action": "RETRY", "target": "inventory.primary", "reason_code": "TRANSIENT_RETRY" },
   "decision_time_ms": 684,
   "llm_inference_ms": 642,
+  "llm_compute_ms": 610,
+  "llm_queue_wait_ms": 32,
   "token_usage": { "input_tokens": 428, "output_tokens": 21, "total_tokens": 449 },
   "timestamp": "2026-08-27T12:00:02.196Z"
 }
@@ -105,6 +107,11 @@ valida cada linha antes de gravar. Diferenças em relação aos Códigos 7–8 d
 `executed_decision` sempre traz `reason_code` (para distinguir `ABORT / INVALID_DECISION`
 ou `LLM_DECISION_TIMEOUT` de um `ABORT` proposto pelo motor); `proposed_decision` é `null`
 quando a saída do motor não pôde ser lida como decisão.
+
+**D-29:** `llm_inference_ms` é o tempo da chamada medido pelo cliente e inclui a espera na
+fila do runtime serial. `llm_compute_ms` = `prompt_eval_duration + eval_duration` informados
+pelo Ollama (o `total_duration` também inclui a fila, verificado ao vivo); `llm_queue_wait_ms`
+é a diferença. Sem resposta do runtime (timeout), os dois ficam nulos.
 
 Indicadores derivados de `decisions.jsonl` (não precisam ser gravados por linha):
 `decision_count`, `llm_call_count`, `total_llm_inference_ms`, `total_input_tokens`,
@@ -186,7 +193,7 @@ throughput, `Δ > 0` favorece LLM.
 | Uso de CPU / memória | Consumo por container (média e pico por execução) | `container_stats.csv` |
 | Tamanho da fila | Mensagens pendentes no broker ao longo do tempo | `queue_metrics.csv` |
 | Tempo de decisão do orquestrador | Estado pronto → ação válida | `decisions.jsonl` |
-| Tempo de inferência do LLM | Parcela da chamada ao modelo | `decisions.jsonl` |
+| Tempo de inferência do LLM | Chamada (`llm_inference_ms`), processamento (`llm_compute_ms`) e fila (`llm_queue_wait_ms`) | `decisions.jsonl` |
 | Nº de decisões / chamadas ao LLM | Pontos de decisão e inferências por execução | `decisions.jsonl` |
 | Tokens de entrada/saída | Volume de contexto e resposta (quando confiável) | `decisions.jsonl` |
 | Overhead decisório absoluto | LLM − Rules no tempo decisório acumulado | `results.csv` |

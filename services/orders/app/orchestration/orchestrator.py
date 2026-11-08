@@ -106,6 +106,8 @@ class Orchestrator:
                 executed_decision=executed,
                 decision_time_ms=round(decision_time_ms, 3),
                 llm_inference_ms=output.llm_inference_ms,
+                llm_compute_ms=output.llm_compute_ms,
+                llm_queue_wait_ms=output.llm_queue_wait_ms,
                 token_usage=output.token_usage,
                 timestamp=utc_now_iso(),
             )

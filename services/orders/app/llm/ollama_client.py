@@ -38,6 +38,15 @@ class Generation:
     wall_ms: float                    # tempo da chamada medido pelo cliente
     total_duration_ms: float | None   # tempos informados pelo Ollama
     load_duration_ms: float | None
+    # D-29: processamento efetivo. `total_duration` inclui a espera na fila do runtime.
+    prompt_eval_duration_ms: float | None = None
+    eval_duration_ms: float | None = None
+
+    @property
+    def compute_ms(self) -> float | None:
+        if self.prompt_eval_duration_ms is None or self.eval_duration_ms is None:
+            return None
+        return self.prompt_eval_duration_ms + self.eval_duration_ms
 
 
 class OllamaClient:
@@ -81,6 +90,8 @@ class OllamaClient:
             wall_ms=wall_ms,
             total_duration_ms=_ms(body.get("total_duration")),
             load_duration_ms=_ms(body.get("load_duration")),
+            prompt_eval_duration_ms=_ms(body.get("prompt_eval_duration")),
+            eval_duration_ms=_ms(body.get("eval_duration")),
         )
 
     def unload(self) -> None:

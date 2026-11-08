@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from scripts.analysis.consolidate import consolidate_execution, percentile, recovery, task_outcomes
+from scripts.analysis.consolidate import consolidate_execution, decision_cost, percentile, recovery, task_outcomes
 from tests.unit.test_config import REPO_CONFIG
 
 T0 = datetime(2026, 9, 29, 12, 0, 0, tzinfo=UTC)
@@ -189,3 +189,21 @@ def test_duplicate_terminal_events_do_not_move_the_finish_time():
     ]
     [row] = task_outcomes(events, [])
     assert row["e2e_ms"] == 1000.0
+
+
+def test_runtime_compute_and_queue_wait_are_summarised_when_present():
+    # D-29: execuções do Rules (ou antigas) não têm os campos e ficam vazias.
+    base = {"decision_time_ms": 1.0, "llm_inference_ms": None, "token_usage": None,
+            "executed_decision": {"action": "CONTINUE"}}
+    llm = [
+        {**base, "llm_inference_ms": 500.0, "llm_compute_ms": 300.0, "llm_queue_wait_ms": 200.0},
+        {**base, "llm_inference_ms": 900.0, "llm_compute_ms": 500.0, "llm_queue_wait_ms": 400.0},
+        {**base, "llm_inference_ms": 30000.0, "llm_compute_ms": None, "llm_queue_wait_ms": None},
+    ]
+
+    summary = decision_cost(llm, [])
+
+    assert summary["llm_compute_total_ms"] == 800.0
+    assert summary["llm_compute_median_ms"] == 400.0
+    assert summary["llm_queue_wait_total_ms"] == 600.0
+    assert decision_cost([base], [])["llm_compute_total_ms"] is None

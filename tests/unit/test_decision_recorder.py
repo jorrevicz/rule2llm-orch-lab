@@ -58,9 +58,11 @@ def test_unreadable_llm_output_is_recorded_without_proposal():
     "overrides",
     [
         {"llm_inference_ms": 10},
+        {"llm_compute_ms": 10},
+        {"llm_queue_wait_ms": 10},
         {"token_usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}},
     ],
-    ids=["inference-time", "tokens"],
+    ids=["inference-time", "compute-time", "queue-wait", "tokens"],
 )
 def test_llm_only_fields_must_be_null_for_rules(overrides):
     with pytest.raises(ValidationError, match="must be null for RULES"):
@@ -92,5 +94,5 @@ def test_recorder_writes_one_line_per_decision(tmp_path):
     recorder.record(DecisionRecord.model_validate(INVALID_LLM_RECORD))
 
     first, second = (json.loads(line) for line in path.read_text(encoding="utf-8").splitlines())
-    assert first == RULES_RECORD
+    assert first == {**RULES_RECORD, "llm_compute_ms": None, "llm_queue_wait_ms": None}
     assert second["executed_decision"]["action"] == "ABORT"

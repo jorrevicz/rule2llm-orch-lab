@@ -41,10 +41,13 @@ class LLMDecisionEngine:
                 llm_inference_ms=(time.perf_counter() - started) * 1000,
             )
         parsed = parse_decision(generation.text)
+        compute_ms = generation.compute_ms
         return EngineOutput(
             proposal=parsed.proposal,
             failure=None if parsed.error is None else f"MALFORMED_OUTPUT:{parsed.error}",
             llm_inference_ms=generation.wall_ms,
+            llm_compute_ms=compute_ms,
+            llm_queue_wait_ms=None if compute_ms is None else max(0.0, generation.wall_ms - compute_ms),
             token_usage={
                 "input_tokens": generation.prompt_eval_count,
                 "output_tokens": generation.eval_count,
