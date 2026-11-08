@@ -40,6 +40,7 @@ IDENTITY_FIELDS = ["execution_id", "phase", "scenario_id", "decision_engine", "r
 RECOVERY_FIELDS = [
     "fault_id", "fault_type", "fault_started_at", "fault_ended_at", "window_tasks_k", "baseline_tasks",
     "baseline_p95_ms", "recovered", "recovered_at", "recovery_time_ms", "recovery_after_fault_end_ms",
+    "recovery_horizon_ms",
 ]
 BLAST_RADIUS_FIELDS = [
     "fault_id", "fault_type", "tasks_total", "tasks_affected", "tasks_affected_ratio", "tasks_directly_hit",
@@ -174,8 +175,10 @@ def fault_windows(faults: list[dict]) -> list[dict]:
 
 def recovery(tasks: list[dict], window: dict, k: int) -> dict:
     fault_start, fault_end = parse_ts(window["started_at"]), parse_ts(window["ended_at"])
-    baseline = [t["e2e_ms"] for t in tasks if t["status"] == "COMPLETED" and parse_ts(t["created_at"]) < fault_start]
+    # D-28: só tarefas concluídas antes da falha; a que cruza a janela já está sob o efeito dela.
+    baseline = [t["e2e_ms"] for t in tasks if t["status"] == "COMPLETED" and parse_ts(t["finished_at"]) < fault_start]
     reference = percentile(baseline, 0.95)
+    finished = [parse_ts(t["finished_at"]) for t in tasks if t["finished_at"]]  # fim da observação (censura)
     row = {
         "fault_id": window["fault_id"],
         "fault_type": window["fault_type"],
@@ -188,6 +191,7 @@ def recovery(tasks: list[dict], window: dict, k: int) -> dict:
         "recovered_at": None,
         "recovery_time_ms": None,
         "recovery_after_fault_end_ms": None,
+        "recovery_horizon_ms": _round((max(finished) - fault_end).total_seconds() * 1000, 1) if finished else None,
     }
     if reference is None:
         row["recovered"] = None  # sem referência pré-falha: não calculável
@@ -323,6 +327,8 @@ def consolidate_execution(directory: Path) -> dict:
         **decision_cost(decisions, tasks),
         **queue_summary(queues),
         "recovery_time_ms": recoveries[0]["recovery_time_ms"] if recoveries else None,
+        "recovery_after_fault_end_ms": recoveries[0]["recovery_after_fault_end_ms"] if recoveries else None,
+        "recovery_horizon_ms": recoveries[0]["recovery_horizon_ms"] if recoveries else None,
         "recovered": recoveries[0]["recovered"] if recoveries else None,
         "tasks_affected": radii[0]["tasks_affected"] if radii else None,
         **{f"{component}_{key}": value for component, values in resources.items() for key, value in values.items()},

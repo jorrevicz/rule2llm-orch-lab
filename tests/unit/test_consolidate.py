@@ -53,6 +53,27 @@ def test_recovery_is_measured_from_the_fault_start_to_the_first_normal_window():
     assert row["recovery_after_fault_end_ms"] == 3_000.0
 
 
+def test_baseline_ignores_tasks_that_finished_during_the_fault():
+    # D-28 (PILOT_0065): a tarefa criada antes da falha e concluída durante ela não entra na referência.
+    tasks = [task(1, 0, 1.0), task(2, 2, 3.0), task(3, 9, 15.0)]
+    tasks += [task(n, 20 + n, 20 + n + 0.5) for n in range(4, 9)]
+
+    row = recovery(tasks, WINDOW, k=5)
+
+    assert row["baseline_tasks"] == 2
+    assert row["baseline_p95_ms"] == 1000.0
+
+
+def test_horizon_is_the_end_of_observation_after_the_fault():
+    tasks = [task(1, 0, 1.0), task(2, 21, 50.0, status="ABORTED")]
+
+    row = recovery(tasks, WINDOW, k=5)
+
+    assert row["recovered"] is False
+    assert row["recovery_time_ms"] is None
+    assert row["recovery_horizon_ms"] == 30_000.0         # 50 s − fim da falha (20 s)
+
+
 def test_without_k_consecutive_normal_tasks_the_system_is_not_recovered():
     tasks = [task(1, 0, 1.0)] + [task(n, 20 + n, 20 + n + 0.5) for n in range(2, 5)]
     tasks.append(task(5, 26, 27.0, status="ABORTED"))
