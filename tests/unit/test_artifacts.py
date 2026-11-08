@@ -198,9 +198,11 @@ def test_unknown_scenario_is_refused_before_allocating_an_execution(tmp_path):
     assert not (tmp_path / "pilot").exists()
 
 
-def test_the_six_methodology_scenarios_exist_and_load():
+def test_the_experimental_scenarios_exist_and_load():
     names = available_scenarios()
 
-    assert names == sorted(["normal", "overload", "intermittent_failure", "timeout", "inconsistent_data", "recovery"])
+    assert names == sorted(
+        ["normal", "overload", "intermittent_failure", "persistent_degradation", "timeout", "inconsistent_data", "recovery"]
+    )
     for name in names:
         assert load_scenario(SCENARIOS_DIR / f"{name}.yml").scenario_id == name

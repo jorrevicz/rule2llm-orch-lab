@@ -64,7 +64,7 @@ Pré-requisitos: Docker em execução, Python 3.12 com o ambiente de
 
 O menu reúne o `run_experiment`, os scripts que ele não automatiza (dataset, schemas, testes
 de piloto, bancada do LLM, subir/derrubar o ambiente) e o **protocolo completo ponta a
-ponta**: os 6 cenários × Rules e LLM, repetidos N vezes ou continuamente. Cada ciclo é
+ponta**: os 7 cenários × Rules e LLM, repetidos N vezes ou continuamente. Cada ciclo é
 uma repetição (ciclo k → `repetition_id` k), e a abordagem que abre a repetição alterna
 entre ciclos. Ao fim de cada ciclo, o menu confere os artefatos e imprime o resumo. Entre
 ciclos há um aviso e uma espera de 10 s, o momento seguro de parar. Ctrl+C durante uma
@@ -149,8 +149,9 @@ repetidas com a mesma configuração.
 
 ### Cenários (carga e falha)
 
-Os seis cenários da metodologia (Tabela 12) estão em `config/scenarios/`: `normal`,
-`overload`, `intermittent_failure`, `timeout`, `inconsistent_data` e `recovery`.
+Os cenários estão em `config/scenarios/`: os seis da metodologia (Tabela 12), `normal`,
+`overload`, `intermittent_failure`, `timeout`, `inconsistent_data` e `recovery`, e
+`persistent_degradation` (D-31).
 
 ```bash
 eval "$(.venv/bin/python -m scripts.pilot.new_execution --engine RULES --scenario timeout)"

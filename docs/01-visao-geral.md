@@ -43,7 +43,7 @@ microsserviços.
 | OE1 | Implementar uma arquitetura simulada de microsserviços com comunicação assíncrona e containerização |
 | OE2 | Desenvolver e integrar um agente LLM que apoie decisões de orquestração em cenários pré-definidos |
 | OE3 | Definir métricas de desempenho, resiliência e custo decisório para comparar as duas abordagens |
-| OE4 | Executar experimentos controlados em diferentes cenários (normal, sobrecarga, falha intermitente, timeout, dados inconsistentes, recuperação pós-falha) |
+| OE4 | Executar experimentos controlados em diferentes cenários (normal, sobrecarga, falha intermitente, degradação persistente, timeout, dados inconsistentes, recuperação pós-falha) |
 | OE5 | Analisar e discutir os resultados, destacando vantagens, limitações e aplicações futuras |
 
 ## 1.4 A variável experimental
@@ -85,8 +85,8 @@ Ver [02-arquitetura.md §2.4](02-arquitetura.md) (princípio de equivalência) e
 - Política de decisão inválida → registrar → `ABORT`.
 - `LLMDecisionEngine` stateless via Ollama, com prompt fixo.
 - Rastreabilidade em arquivos JSONL/CSV.
-- Seis cenários experimentais (normal, sobrecarga, falha intermitente, timeout, dados
-  inconsistentes, recuperação pós-falha).
+- Sete cenários experimentais (normal, sobrecarga, falha intermitente, degradação persistente
+  da rota primária, timeout, dados inconsistentes, recuperação pós-falha).
 - Métricas de desempenho, resiliência e custo decisório.
 
 ## 1.6 Não-escopo — o que **não** está no recorte

@@ -47,7 +47,7 @@
 | RF-037 | Suportar reset experimental | Procedimento que restaura RabbitMQ/DLQ e os dois SQLite ao estado inicial | [10 §10.6](10-rastreabilidade-e-metricas.md) |
 | RF-038 | Suportar readiness | Verificar prontidão dos componentes antes de iniciar execução válida | [10 §10.6](10-rastreabilidade-e-metricas.md) |
 | RF-039 | Suportar warm-up do LLM | Warm-up antes da janela principal de medição | [03 §3.5](03-stack-tecnologica.md) |
-| RF-040 | Suportar cenários controlados | Normal, sobrecarga, falha intermitente, timeout, dados inconsistentes, recuperação pós-falha | [01 §1.5](01-visao-geral.md) |
+| RF-040 | Suportar cenários controlados | Normal, sobrecarga, falha intermitente, degradação persistente (D-31), timeout, dados inconsistentes, recuperação pós-falha | [01 §1.5](01-visao-geral.md) |
 | RF-041 | Suportar injeção de falhas | Cenários acionados por scripts Python e/ou controle do Docker Compose | [10 §10.2](10-rastreabilidade-e-metricas.md) |
 | RF-042 | Coletar métricas | Implementação definitiva permite coletar as métricas da metodologia | [10 §10.4](10-rastreabilidade-e-metricas.md) |
 

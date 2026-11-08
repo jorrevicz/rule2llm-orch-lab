@@ -878,6 +878,7 @@ O ambiente deverá suportar, em fase posterior:
 - normal;
 - sobrecarga;
 - falha intermitente;
+- degradação persistente da rota primária;
 - timeout;
 - dados inconsistentes;
 - recuperação pós-falha.

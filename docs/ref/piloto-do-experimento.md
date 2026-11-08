@@ -2293,7 +2293,7 @@ A abordagem LLM deve realizar warm-up antes da janela principal de medição.
 
 ## RF-040 — Suportar cenários controlados
 
-O ambiente deve permitir posteriormente a execução dos cenários definidos pela metodologia: normal, sobrecarga, falha intermitente, timeout, dados inconsistentes e recuperação pós-falha.
+O ambiente deve permitir posteriormente a execução dos cenários definidos pela metodologia: normal, sobrecarga, falha intermitente, timeout, dados inconsistentes e recuperação pós-falha, além da degradação persistente da rota primária (D-31).
 
 ## RF-041 — Suportar injeção de falhas
 
