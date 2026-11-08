@@ -6,15 +6,15 @@ Calculado **somente** a partir dos arquivos da execução (CLAUDE §42, §44): n
 dos serviços nem do Prometheus. Arquivos gerados no diretório da execução:
 
 - `latency_metrics.csv`: uma linha por tarefa — criação, término, estado, latência ponta a
-  ponta (`TASK_CREATED` → `TASK_COMPLETED`/`TASK_ABORTED`/`MESSAGE_DEAD_LETTERED`) e nº de
-  decisões;
+  ponta (`TASK_CREATED` → `TASK_COMPLETED`/`TASK_ABORTED`/`MESSAGE_DEAD_LETTERED`), nº de
+  decisões e desfecho esperado (D-32);
 - `throughput_metrics.csv`, `error_metrics.csv`: uma linha por execução;
 - `recovery_metrics.csv` (D-24) e `blast_radius.csv` (D-25): uma linha por falha;
 - `metrics_summary.csv`: uma linha com todos os indicadores escalares da execução
   (latência, throughput, erro, recuperação, blast radius, custo decisório e recursos) —
   a unidade da análise entre repetições.
 
-Latência média/P95 são das tarefas `COMPLETED` (a taxa de erro cobre as demais). Tempo
+Latência média/P95 são das tarefas `COMPLETED`: leia junto com `completion_rate` (D-32). Tempo
 de decisão exclui a construção do estado (D-06 / doc 10 §10.4.2). CPU em % de um núcleo;
 `cpu_core_seconds` ≈ Σ CPU·Δt (área sob a curva). Campo sem dado → vazio, nunca inventado.
 """
@@ -113,6 +113,30 @@ def task_outcomes(events: list[dict], decisions: list[dict]) -> list[dict]:
             }
         )
     return rows
+
+
+def annotate_expected_outcome(tasks: list[dict], faults: list[dict]) -> None:
+    """D-32: pedido com SKU trocado (`FAULT_APPLIED`) deve falhar; os demais devem concluir."""
+    invalid = {e.get("task_id") for e in faults if e["event_type"] == "FAULT_APPLIED" and e.get("fault_type") == "inconsistent_data"}
+    for task in tasks:
+        task["order_valid"] = task["task_id"] not in invalid
+        task["expected_status"] = "COMPLETED" if task["order_valid"] else "FAILED"
+        task["outcome_correct"] = (task["status"] == "COMPLETED") == task["order_valid"] if task["status"] else False
+
+
+def outcome_summary(tasks: list[dict], logs: list[dict]) -> dict:
+    """D-32: conclusão, falha indevida e pedido que falhou com reserva efetivada."""
+    valid = [t for t in tasks if t["order_valid"]]
+    undue = sum(1 for t in valid if t["status"] != "COMPLETED")
+    reserved = {l.get("task_id") for l in logs if l.get("outcome") == "reserved"}
+    return {
+        "completion_rate": _round(sum(1 for t in tasks if t["status"] == "COMPLETED") / len(tasks), 4) if tasks else None,
+        "valid_orders": len(valid),
+        "undue_failures": undue,
+        "undue_failure_rate": _round(undue / len(valid), 4) if valid else None,
+        "correct_outcome_rate": _round(sum(1 for t in tasks if t["outcome_correct"]) / len(tasks), 4) if tasks else None,
+        "failed_with_reservation": sum(1 for t in tasks if t["status"] in {"ABORTED", "DEAD_LETTERED"} and t["task_id"] in reserved),
+    }
 
 
 def latency_summary(tasks: list[dict]) -> dict:
@@ -310,8 +334,10 @@ def consolidate_execution(directory: Path) -> dict:
 
     identity = {key: metadata.get(key) for key in IDENTITY_FIELDS}
     tasks = task_outcomes(events, decisions)
+    annotate_expected_outcome(tasks, faults)
     _write_csv(directory / "latency_metrics.csv", [{"execution_id": identity["execution_id"], **t} for t in tasks],
-               ["execution_id", "task_id", "created_at", "finished_at", "status", "e2e_ms", "decisions"])
+               ["execution_id", "task_id", "created_at", "finished_at", "status", "e2e_ms", "decisions",
+                "order_valid", "expected_status", "outcome_correct"])
     rate = throughput(tasks)
     _write_csv(directory / "throughput_metrics.csv", [{**identity, **rate}], [*identity, *rate])
     error = errors(tasks, decisions, workload)
@@ -328,6 +354,7 @@ def consolidate_execution(directory: Path) -> dict:
     summary = {
         **identity,
         **latency_summary(tasks),
+        **outcome_summary(tasks, logs),
         **rate,
         **{key: value for key, value in error.items() if key != "abort_reasons"},
         **decision_cost(decisions, tasks),

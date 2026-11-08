@@ -189,6 +189,7 @@ throughput, `Δ > 0` favorece LLM.
 | Latência P95 | Tempo abaixo do qual 95% das execuções concluíram | `latency_metrics.csv` |
 | Throughput | Tarefas concluídas por unidade de tempo | `throughput_metrics.csv` |
 | Taxa de erro | Proporção de tarefas com erro/timeout/resposta inválida | `error_metrics.csv` |
+| Taxa de conclusão e falha indevida | Tarefas concluídas; pedidos válidos que não concluíram (D-32) | `metrics_summary.csv` |
 | Tempo de recuperação | Da falha induzida até o retorno ao estado estável | `recovery_metrics.csv` |
 | Uso de CPU / memória | Consumo por container (média e pico por execução) | `container_stats.csv` |
 | Tamanho da fila | Mensagens pendentes no broker ao longo do tempo | `queue_metrics.csv` |
@@ -212,6 +213,12 @@ throughput, `Δ > 0` favorece LLM.
 - **Blast radius (D-25):** tarefa afetada = teve algum ponto de decisão além do inicial ou não
   terminou `COMPLETED`. Registrados à parte: tarefas atingidas diretamente (`FAULT_APPLIED`),
   serviços afetados, mensagens reentregues e mortas (DLQ).
+- **Desfecho por tarefa (D-32):** pedido com SKU trocado (`FAULT_APPLIED`) deve falhar; os
+  demais devem concluir. `latency_metrics.csv` traz `order_valid`, `expected_status` e
+  `outcome_correct`; o resumo traz `completion_rate`, `undue_failure_rate`,
+  `correct_outcome_rate` e `failed_with_reservation` (tarefa `ABORTED`/`DEAD_LETTERED` com
+  `outcome = reserved` nos logs do Inventory). Latência só de tarefas concluídas é sempre
+  lida com a taxa de conclusão.
 - **Seed de falha (D-27):** `seeds.fault` da execução = seed do cenário + (`repetition_id` −
   1); o par Rules/LLM da mesma repetição recebe a mesma seed.
 - **Amostragem (D-26):** 1 s para filas, containers e Ollama, igual para Rules e LLM.

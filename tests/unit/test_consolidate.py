@@ -7,7 +7,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from scripts.analysis.consolidate import consolidate_execution, decision_cost, percentile, recovery, task_outcomes
+from scripts.analysis.consolidate import (
+    annotate_expected_outcome,
+    consolidate_execution,
+    decision_cost,
+    outcome_summary,
+    percentile,
+    recovery,
+    task_outcomes,
+)
 from tests.unit.test_config import REPO_CONFIG
 
 T0 = datetime(2026, 9, 29, 12, 0, 0, tzinfo=UTC)
@@ -207,3 +215,30 @@ def test_runtime_compute_and_queue_wait_are_summarised_when_present():
     assert summary["llm_compute_median_ms"] == 400.0
     assert summary["llm_queue_wait_total_ms"] == 600.0
     assert decision_cost([base], [])["llm_compute_total_ms"] is None
+
+
+def test_expected_outcome_separates_correct_rejection_from_undue_failure():
+    tasks = [
+        task(1, 0, 1.0),                                  # válido, concluído
+        task(2, 1, 2.0, status="ABORTED"),                # dado inválido, rejeitado: correto
+        task(3, 2, 3.0, status="ABORTED"),                # válido, abortado: falha indevida
+    ]
+    faults = [{"event_type": "FAULT_APPLIED", "fault_type": "inconsistent_data", "task_id": tasks[1]["task_id"]}]
+
+    annotate_expected_outcome(tasks, faults)
+    summary = outcome_summary(tasks, [])
+
+    assert [t["outcome_correct"] for t in tasks] == [True, True, False]
+    assert summary["completion_rate"] == 0.3333
+    assert summary["valid_orders"] == 2
+    assert summary["undue_failures"] == 1
+    assert summary["undue_failure_rate"] == 0.5
+    assert summary["correct_outcome_rate"] == 0.6667
+
+
+def test_failed_with_reservation_counts_only_failed_tasks_that_reserved():
+    tasks = [task(1, 0, 1.0), task(2, 1, 2.0, status="ABORTED"), task(3, 2, 3.0, status="ABORTED")]
+    annotate_expected_outcome(tasks, [])
+    logs = [{"task_id": tasks[0]["task_id"], "outcome": "reserved"}, {"task_id": tasks[1]["task_id"], "outcome": "reserved"}]
+
+    assert outcome_summary(tasks, logs)["failed_with_reservation"] == 1
