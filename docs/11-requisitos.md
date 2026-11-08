@@ -50,6 +50,9 @@
 | RF-040 | Suportar cenários controlados | Normal, sobrecarga, falha intermitente, degradação persistente (D-31), timeout, dados inconsistentes, recuperação pós-falha | [01 §1.5](01-visao-geral.md) |
 | RF-041 | Suportar injeção de falhas | Cenários acionados por scripts Python e/ou controle do Docker Compose | [10 §10.2](10-rastreabilidade-e-metricas.md) |
 | RF-042 | Coletar métricas | Implementação definitiva permite coletar as métricas da metodologia | [10 §10.4](10-rastreabilidade-e-metricas.md) |
+| RF-043 | Classificar a adequação das decisões | Validade, oportunidade e resultado por decisão, com rubrica definida antes da coleta (D-33) | [15 §15.5](15-protocolo-de-validacao.md) |
+| RF-044 | Reavaliar decisões offline | Mesmos estados submetidos aos dois motores, sem filas nem timers (D-34) | [15 §15.6](15-protocolo-de-validacao.md) |
+| RF-045 | Comparar as abordagens por plano pré-especificado | Análise pareada e rastreável a `execution_id` (D-35) | [15 §15.7](15-protocolo-de-validacao.md) |
 
 ## 11.2 Requisitos não funcionais
 

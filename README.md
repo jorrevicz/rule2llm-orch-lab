@@ -147,6 +147,18 @@ aplica carga e falha, exporta as métricas do Prometheus e do Ollama, valida a i
 consolida (`metrics_summary.csv` e demais). Inválidas vão para `invalid_runs.csv` e são
 repetidas com a mesma configuração.
 
+### Análise dos resultados
+
+A consolidação por execução roda sozinha ao fim de cada execução válida. A comparação e a
+reavaliação offline são etapas posteriores ([protocolo](docs/15-protocolo-de-validacao.md)):
+
+```bash
+.venv/bin/python -m scripts.analysis.compare_engines --phase experiment    # results.csv e analysis_summary.md
+.venv/bin/python -m scripts.analysis.replay_decisions --phase experiment   # mesmos estados, Ollama ativo
+```
+
+`--phase pilot` serve só para verificar o procedimento; o relatório sai marcado como piloto.
+
 ### Cenários (carga e falha)
 
 Os cenários estão em `config/scenarios/`: os seis da metodologia (Tabela 12), `normal`,

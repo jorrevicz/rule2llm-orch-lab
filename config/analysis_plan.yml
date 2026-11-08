@@ -1,0 +1,52 @@
+# Plano de análise pré-especificado — D-35 (docs/15 §15.7).
+# Fonte de verdade da comparação Rules × LLM. Provisório até freeze-v1; depois, não muda.
+# Arquivo próprio: os serviços não o usam e seu hash vai para os resultados.
+
+alpha: 0.05
+bootstrap:
+  resamples: 10000
+  confidence: 0.95
+  seed: 1042
+relevance:                       # diferença mínima que importa, fixada antes da coleta
+  relative: 0.10                 # kind time/count: fração da mediana do Rules
+  absolute_rate: 0.05            # kind rate: diferença absoluta
+survivorship:                    # latência só das concluídas: avisa quando a conclusão difere
+  completion_rate_floor: 0.80
+  completion_rate_gap: 0.05
+
+# family primary: teste confirmatório com Holm por cenário.
+# family secondary: descritiva, sem rótulo de conclusão.
+metrics:
+  - {name: undue_failure_rate, family: primary, kind: rate, better: lower}
+  - {name: latency_median_ms, family: primary, kind: time, better: lower, conditional_on_completion: true}
+  - {name: recovery_restricted_ms, family: primary, kind: time, better: lower}
+  - {name: decision_time_total_ms, family: primary, kind: time, better: lower}
+
+  - {name: completion_rate, family: secondary, kind: rate, better: higher}
+  - {name: correct_outcome_rate, family: secondary, kind: rate, better: higher}
+  - {name: error_rate, family: secondary, kind: rate, better: lower}
+  - {name: latency_mean_ms, family: secondary, kind: time, better: lower, conditional_on_completion: true}
+  - {name: latency_p95_ms, family: secondary, kind: time, better: lower, conditional_on_completion: true}
+  - {name: throughput_per_s, family: secondary, kind: time, better: higher}
+  - {name: recovery_after_fault_end_ms, family: secondary, kind: time, better: lower}
+  - {name: recovery_time_ms, family: secondary, kind: time, better: lower}
+  - {name: tasks_affected, family: secondary, kind: count, better: lower}
+  - {name: failed_with_reservation, family: secondary, kind: count, better: lower}
+  - {name: decision_count, family: secondary, kind: count, better: lower}
+  - {name: decision_time_mean_ms, family: secondary, kind: time, better: lower}
+  - {name: invalid_decisions, family: secondary, kind: count, better: lower}
+  - {name: decision_valid_rate, family: secondary, kind: rate, better: higher}
+  - {name: decision_opportunity_rate, family: secondary, kind: rate, better: higher}
+  - {name: dispatch_success_rate, family: secondary, kind: rate, better: higher}
+  - {name: llm_inference_total_ms, family: secondary, kind: time, better: lower}
+  - {name: llm_compute_total_ms, family: secondary, kind: time, better: lower}
+  - {name: llm_compute_median_ms, family: secondary, kind: time, better: lower}
+  - {name: llm_queue_wait_total_ms, family: secondary, kind: time, better: lower}
+  - {name: llm_queue_wait_p95_ms, family: secondary, kind: time, better: lower}
+  - {name: tokens_total, family: secondary, kind: count, better: lower}
+  - {name: queue_peak_inventory_primary, family: secondary, kind: count, better: lower}
+  - {name: orders-api_cpu_core_seconds, family: secondary, kind: time, better: lower}
+  - {name: orders-worker_cpu_core_seconds, family: secondary, kind: time, better: lower}
+  - {name: orders-worker_memory_peak_bytes, family: secondary, kind: count, better: lower}
+  - {name: ollama-host_cpu_core_seconds, family: secondary, kind: time, better: lower}
+  - {name: ollama-host_memory_peak_bytes, family: secondary, kind: count, better: lower}

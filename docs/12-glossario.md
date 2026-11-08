@@ -56,7 +56,11 @@
 | Readiness | Verificação de prontidão dos componentes antes de iniciar uma execução válida |
 | Piloto técnico | Fase de validação de arquitetura/contratos/fluxo; `phase: PILOT`, `eligible_for_sample: false`; **não** integra a amostra |
 | Coleta definitiva | Execuções da amostra; `phase: EXPERIMENT`, `eligible_for_sample: true`; configuração congelada |
-| `N_rep` | Número de repetições por combinação cenário × abordagem; definido **antes** da coleta |
+| `N_rep` | Número de repetições por combinação cenário × abordagem; definido **antes** da coleta (piso em [15 §15.7](15-protocolo-de-validacao.md)) |
+| Falha indevida | Pedido válido que não terminou `COMPLETED` (D-32) |
+| Oportunidade da decisão | A ação proposta responde à condição visível no estado; eixo ex-ante da rubrica (D-33) |
+| Censura (recuperação) | Execução sem retorno ao estado estável até o fim da observação; entra no horizonte comum `τ` (D-28) |
+| Reavaliação offline | Mesmos `SYSTEM_STATE` submetidos aos dois motores, sem filas nem timers (D-34) |
 
 ## 12.4 Ações e `reason_code`
 

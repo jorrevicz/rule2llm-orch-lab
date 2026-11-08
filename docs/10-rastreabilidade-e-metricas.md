@@ -58,8 +58,9 @@ Consolidação (pós-execução, `scripts/analysis/consolidate.py`, só a partir
 `latency_metrics.csv` (uma linha por tarefa), `throughput_metrics.csv`, `error_metrics.csv`,
 `recovery_metrics.csv` e `blast_radius.csv` (uma linha por falha), `decision_quality.csv` (uma
 linha por decisão, D-33) e `metrics_summary.csv` (uma linha por execução, unidade da análise
-entre repetições). Entre execuções (M9): `results.csv`,
-`analysis_summary.md`. Protocolo (M7): `initial_state.json`, `reset.log`, `warmup.log`,
+entre repetições). Entre execuções (`compare_engines`, D-35): `results.csv`,
+`analysis_summary.md` e `analysis_metadata.json` em `data/<fase>/analysis/`; reavaliação
+offline (`replay_decisions`, D-34) em `data/<fase>/replay/`. Protocolo (M7): `initial_state.json`, `reset.log`, `warmup.log`,
 `invalid_runs.csv` (por fase, em `data/<pilot|experiment>/`).
 
 ## 10.3 Campos dos artefatos JSONL principais
@@ -227,9 +228,13 @@ throughput, `Δ > 0` favorece LLM.
 ### 10.4.4 Análise (metodologia Tabelas 17–18)
 
 Estatística descritiva (média, mediana, desvio padrão, mín., máx., percentis — P95 para
-latência); comparação de médias/medianas; teste *t* quando aplicável; Mann-Whitney para
-distribuições não normais; intervalo de confiança; tamanho de efeito; análise estratificada
-por cenário; correlação exploratória opcional (tokens/chamadas × tempo de inferência).
+latência); análise estratificada por cenário; correlação exploratória opcional
+(tokens/chamadas × tempo de inferência). A comparação inferencial é **pareada e
+pré-especificada** (D-35): Wilcoxon signed-rank, IC 95% por bootstrap pareado, correlação
+rank-biserial e Holm nas métricas primárias de cada cenário, conforme
+`config/analysis_plan.yml` e [15 §15.7](15-protocolo-de-validacao.md). Implementação:
+`scripts/analysis/compare_engines.py` (`data/<fase>/analysis/`). A Tabela 18 da metodologia
+previa teste *t* e Mann-Whitney; os ajustes do TCC estão em [13 §13.6](13-roadmap.md).
 
 A adequação da decisão segue a rubrica pré-definida de
 [15 §15.5](15-protocolo-de-validacao.md) (`decision_quality.csv`). A análise quantitativa é

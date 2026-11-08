@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.analysis.decision_adequacy import ADEQUATE, INADEQUATE, NO_DECISION, adequate_actions, classify_opportunity
+from scripts.analysis.executions import PHASES, valid_executions
 from scripts.pilot.environment import REPO_ROOT
 from scripts.pilot.llm_readiness import DEFAULT_OLLAMA_URL
 from scripts.pilot.llm_readiness import check as check_llm_readiness
@@ -37,7 +38,6 @@ from shared.system_state import SystemState
 from shared.timestamps import utc_now, utc_now_iso
 
 DEFAULT_DATA_ROOT = REPO_ROOT / "data"
-PHASES = {"pilot": "PILOT", "experiment": "EXPERIMENT"}
 SUMMARY_FIELDS = [
     "stratum", "states", "agreement_rate", "rules_valid_rate", "llm_valid_rate", "rules_opportunity_rate",
     "llm_opportunity_rate", "llm_without_proposal", "llm_actions",
@@ -64,22 +64,6 @@ def stratum(state: dict, config: ExperimentConfig) -> str:
             f"waits={task['wait_count']}", f"fallback_used={state['alternatives']['fallback_used']}", f"pressure={pressure}",
         )
     )
-
-
-def valid_executions(data_root: Path, phase: str, only: list[str] | None = None) -> list[Path]:
-    """Execuções válidas da fase. Na amostra, exige `eligible_for_sample` (CLAUDE §28)."""
-    selected = []
-    for directory in sorted((data_root / phase).iterdir()):
-        path = directory / "execution_metadata.json"
-        if not path.is_file() or (only and directory.name not in only):
-            continue
-        metadata = json.loads(path.read_text(encoding="utf-8"))
-        if metadata.get("run_status") != "VALID" or metadata.get("phase") != PHASES[phase]:
-            continue
-        if phase == "experiment" and metadata.get("eligible_for_sample") is not True:
-            continue
-        selected.append(directory)
-    return selected
 
 
 def load_states(directories: list[Path]) -> list[SourceState]:

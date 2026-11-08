@@ -26,7 +26,7 @@ a documentação deve permanecer coerente com a metodologia e com o código.
 | 08 | [Modelo de dados (MER)](08-modelo-de-dados-mer.md) | MER de `orders.db` e de `inventory.db` |
 | 09 | [Dicionário de dados](09-dicionario-de-dados.md) | Tabelas e colunas de `orders.db` e `inventory.db` |
 | 10 | [Rastreabilidade e métricas](10-rastreabilidade-e-metricas.md) | Artefatos de coleta, correlação de identificadores, métricas |
-| 11 | [Requisitos](11-requisitos.md) | RF-001..RF-042 e RNF-001..RNF-030 |
+| 11 | [Requisitos](11-requisitos.md) | RF-001..RF-045 e RNF-001..RNF-030 |
 | 12 | [Glossário](12-glossario.md) | Termos, identificadores, `reason_code`, ações, targets |
 | 13 | [Roadmap](13-roadmap.md) | Marcos M0–M9, tasks, painel de progresso, decisões pendentes e inconsistências |
 | 14 | [Configuração do LLM](14-llm-config.md) | Como trocar o modelo; passo a passo para trocar o runtime |

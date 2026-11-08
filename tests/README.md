@@ -42,6 +42,11 @@ reset e hash lógico (`unit/test_reset_environment.py`), readiness e cada reprov
 vivo, o protocolo completo com todos os artefatos (`integration/test_protocol.py` — reseta o
 ambiente).
 
+Protocolo de validação (M8): referência e censura da recuperação e desfecho por tarefa
+(`unit/test_consolidate.py`), seed por repetição (`unit/test_artifacts.py`), tempos do runtime
+(`unit/test_llm_engine.py`), rubrica de decisão (`unit/test_decision_adequacy.py`), reavaliação
+offline (`unit/test_replay_decisions.py`) e análise pareada (`unit/test_compare_engines.py`).
+
 Também cobertos: LLM stateless e parâmetros do runtime (`unit/test_ollama_client.py`), prompt fixo (`unit/test_prompt_builder.py`), readiness/warm-up (`unit/test_llm_readiness.py`); timeout operacional (`unit/test_timeouts.py`), DLQ e `DEAD_LETTERED`
 (`unit/test_dead_letters.py`), numeração e trajetória (`unit/test_orders_event_handler.py`),
 `StateBuilder` (`unit/test_state_builder.py`), rastreabilidade

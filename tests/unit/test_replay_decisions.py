@@ -8,9 +8,9 @@ from scripts.analysis.replay_decisions import (
     select_states,
     stratum,
     summarise,
-    valid_executions,
     write_outputs,
 )
+from scripts.analysis.executions import valid_executions
 from services.orders.app.orchestration.decision_engine import LLM_DECISION_TIMEOUT, EngineOutput
 from shared.decision import ProposedDecision
 from tests.factories import make_state, repo_config

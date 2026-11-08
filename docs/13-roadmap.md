@@ -374,7 +374,7 @@ doc 10 §10.6).
 | M8-T13 | **🔬** Desfecho por tarefa | `feat(analysis)` | D-32: `completion_rate`, desfecho esperado, `undue_failure_rate`, `failed_with_reservation` | D-32 | ✅ |
 | M8-T14 | **🔬** Rubrica de adequação | `feat(analysis)` | D-33: `decision_adequacy.py` e `decision_quality.csv` | D-33, metodologia Tabela 17 | ✅ |
 | M8-T15 | **🔬** Reavaliação offline | `feat(analysis)` | D-34: `replay_decisions.py` sobre os mesmos estados, sem filas nem timers | D-34, metodologia Tabela 17 | ✅ |
-| M8-T16 | **🔬** Análise estatística pré-especificada | `feat(analysis)` | D-35: `config/analysis_plan.yml`, `compare_engines.py`, `results.csv`, `analysis_summary.md`; `scipy` só na bancada | D-35, metodologia Tabela 18 | ⬜ |
+| M8-T16 | **🔬** Análise estatística pré-especificada | `feat(analysis)` | D-35: `config/analysis_plan.yml`, `compare_engines.py`, `results.csv`, `analysis_summary.md`; `scipy` só na bancada | D-35, metodologia Tabela 18 | ✅ |
 | M8-T17 | Verificação ao vivo | `chore(pilot)` | Teste do prompt alinhado a `58f557a`; piloto de `persistent_degradation` e `intermittent_failure` × Rules e LLM em duas repetições; análise ponta a ponta | [15](15-protocolo-de-validacao.md) | ⬜ |
 
 **Critério de conclusão**
@@ -393,7 +393,7 @@ doc 10 §10.6).
 |---|---|---|---|---|:---:|
 | M9-T01 | Execuções da amostra | `chore(experiment)` | `N_rep` × 6 cenários × 2 abordagens na ordem definida → `data/experiment/` | [10 §10.6](10-rastreabilidade-e-metricas.md) | ⬜ |
 | M9-T02 | Execuções inválidas | `chore(experiment)` | `invalid_runs.csv`; repetição até completar `N_rep` válidas por combinação | [06 §6.12](06-modelo-de-decisao.md) | ⬜ |
-| M9-T03 | Consolidação dos resultados | `feat(analysis)` | `results.csv`, `analysis_summary.md` — apenas com dados reais | CLAUDE §42, §44 | ⬜ |
+| M9-T03 | Consolidação dos resultados | `chore(experiment)` | `compare_engines --phase experiment` e `replay_decisions --phase experiment` → `results.csv`, `analysis_summary.md`, matriz de conclusões do [doc 15](15-protocolo-de-validacao.md) — apenas com dados reais | CLAUDE §42, §44 | ⬜ |
 | M9-T04 | **(D)** Versionamento dos dados | `docs(decisoes)` | D-12: como versionar/publicar os dados experimentais | RNF-006 | ⬜ |
 
 **Critério de conclusão**
@@ -497,6 +497,7 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | D-34 | §4.5.4 | Reavaliação offline dos mesmos estados |
 | D-35 | Tabela 18 / §4.5.4 | Testes pareados, correção de Holm e critério de relevância; referências estatísticas específicas |
 | D-36 | §4.6 (limitações) | GPU não medida: custo computacional do LLM subestimado |
+| `58f557a` | Quadro 2 (prompt) | Seção `PAPEL` passou a `PERSONA` e o objetivo usa "Decidir" no lugar de "Selecionar"; o prompt versionado já reflete isso |
 | Hipóteses | Introdução / §4.5 | Conciliar a "hipótese principal" com as hipóteses operacionais de [15 §15.2](15-protocolo-de-validacao.md) |
 
 ## 13.7 Achados do piloto
