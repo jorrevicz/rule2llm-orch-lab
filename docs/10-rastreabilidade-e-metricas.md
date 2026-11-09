@@ -197,6 +197,7 @@ throughput, `Δ > 0` favorece LLM.
 | Tamanho da fila | Mensagens pendentes no broker ao longo do tempo | `queue_metrics.csv` |
 | Tempo de decisão do orquestrador | Estado pronto → ação válida | `decisions.jsonl` |
 | Tempo de inferência do LLM | Chamada (`llm_inference_ms`), processamento (`llm_compute_ms`) e fila (`llm_queue_wait_ms`) | `decisions.jsonl` |
+| Utilização do runtime na janela de falha (D-37) | `llm_fault_window_utilization`: cômputo do LLM dentro da janela / duração da janela; critério de calibração ≤ 0,70, fora de `overload` | `metrics_summary.csv`, a partir de `decisions.jsonl` e `fault_events.jsonl` |
 | Nº de decisões / chamadas ao LLM | Pontos de decisão e inferências por execução | `decisions.jsonl` |
 | Tokens de entrada/saída | Volume de contexto e resposta (quando confiável) | `decisions.jsonl` |
 | Overhead decisório absoluto | LLM − Rules no tempo decisório acumulado | `results.csv` |

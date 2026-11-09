@@ -11,6 +11,7 @@ from scripts.analysis.compare_engines import (
     analyse,
     bootstrap_ci,
     build_pairs,
+    calibration_warnings,
     holm,
     load_plan,
     recovery_restricted,
@@ -36,6 +37,21 @@ def paired(n: int, rules, llm, scenario: str = "timeout") -> list[Run]:
 
 def rows_of(runs: list[Run]) -> dict:
     return {r["metric"]: r for r in analyse(build_pairs(runs, strict=True), PLAN, PLAN_HASH, "experiment")}
+
+
+def test_calibration_warns_only_above_the_limit_and_outside_overload():
+    utilization = {1: 0.70, 2: 0.71}
+    make = lambda r: {"llm_fault_window_utilization": utilization[r]}
+    runs = [
+        *paired(2, lambda r: {}, make, "persistent_degradation"),
+        *paired(2, lambda r: {}, lambda r: {"llm_fault_window_utilization": 0.99}, "overload"),
+    ]
+
+    warnings = calibration_warnings(build_pairs(runs, strict=True), PLAN)
+
+    assert len(warnings) == 1
+    assert "persistent_degradation, repetição 2" in warnings[0]
+    assert "0.71" in warnings[0]
 
 
 def test_wilcoxon_matches_the_exact_two_sided_value():

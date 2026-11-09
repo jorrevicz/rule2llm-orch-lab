@@ -28,7 +28,7 @@ import os
 import statistics
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from scripts.analysis.decision_adequacy import QUALITY_FIELDS, evaluate_decisions
@@ -289,6 +289,21 @@ def decision_cost(decisions: list[dict], tasks: list[dict]) -> dict:
     }
 
 
+def llm_fault_window_utilization(decisions: list[dict], windows: list[dict]) -> float | None:
+    """Fração da janela de falha com o runtime computando (D-37); nula sem LLM ou sem janela."""
+    computed = [(parse_ts(d["timestamp"]), d["llm_compute_ms"]) for d in decisions if d.get("llm_compute_ms") is not None]
+    if not computed or not windows:
+        return None
+    busy_ms = window_ms = 0.0
+    for window in windows:
+        start, end = parse_ts(window["started_at"]), parse_ts(window["ended_at"])
+        window_ms += (end - start).total_seconds() * 1000
+        for finished, compute_ms in computed:
+            began = finished - timedelta(milliseconds=compute_ms)
+            busy_ms += max(0.0, (min(finished, end) - max(began, start)).total_seconds() * 1000)
+    return _round(busy_ms / window_ms, 4) if window_ms > 0 else None
+
+
 def resource_usage(stats: list[dict]) -> dict:
     by_component: dict[str, list[dict]] = defaultdict(list)
     for row in stats:
@@ -364,6 +379,7 @@ def consolidate_execution(directory: Path) -> dict:
         **rate,
         **{key: value for key, value in error.items() if key != "abort_reasons"},
         **decision_cost(decisions, tasks),
+        "llm_fault_window_utilization": llm_fault_window_utilization(decisions, windows),
         **quality,
         **queue_summary(queues),
         "recovery_time_ms": recoveries[0]["recovery_time_ms"] if recoveries else None,

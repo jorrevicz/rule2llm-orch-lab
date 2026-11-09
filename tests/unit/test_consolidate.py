@@ -11,6 +11,7 @@ from scripts.analysis.consolidate import (
     annotate_expected_outcome,
     consolidate_execution,
     decision_cost,
+    llm_fault_window_utilization,
     outcome_summary,
     percentile,
     recovery,
@@ -34,6 +35,25 @@ def task(n: int, created: float, finished: float | None, status: str = "COMPLETE
         "e2e_ms": None if finished is None else (finished - created) * 1000,
         "decisions": decisions,
     }
+
+
+def test_fault_window_utilization_counts_only_compute_inside_the_window():
+    window = {"started_at": ts(100), "ended_at": ts(200)}
+    decisions = [
+        {"timestamp": ts(110), "llm_compute_ms": 20000.0},  # começa antes da janela: conta 10 s
+        {"timestamp": ts(150), "llm_compute_ms": 5000.0},
+        {"timestamp": ts(205), "llm_compute_ms": 10000.0},  # termina depois da janela: conta 5 s
+        {"timestamp": ts(300), "llm_compute_ms": 5000.0},  # fora da janela
+    ]
+
+    assert llm_fault_window_utilization(decisions, [window]) == pytest.approx(0.2)
+
+
+def test_fault_window_utilization_is_null_without_llm_or_window():
+    window = {"started_at": ts(100), "ended_at": ts(200)}
+
+    assert llm_fault_window_utilization([{"timestamp": ts(150), "llm_compute_ms": None}], [window]) is None
+    assert llm_fault_window_utilization([{"timestamp": ts(150), "llm_compute_ms": 5000.0}], []) is None
 
 
 def test_percentile_interpolates_linearly():

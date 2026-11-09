@@ -13,6 +13,9 @@ relevance:                       # diferença mínima que importa, fixada antes 
 survivorship:                    # latência só das concluídas: avisa quando a conclusão difere
   completion_rate_floor: 0.80
   completion_rate_gap: 0.05
+calibration:                     # D-37: avisa no resumo; nunca invalida execução
+  max_fault_window_utilization: 0.70
+  excluded_scenarios: [overload] # único teste de saturação (D-30)
 
 # family primary: teste confirmatório com Holm por cenário.
 # family secondary: descritiva, sem rótulo de conclusão.
@@ -43,6 +46,7 @@ metrics:
   - {name: llm_compute_median_ms, family: secondary, kind: time, better: lower}
   - {name: llm_queue_wait_total_ms, family: secondary, kind: time, better: lower}
   - {name: llm_queue_wait_p95_ms, family: secondary, kind: time, better: lower}
+  - {name: llm_fault_window_utilization, family: secondary, kind: rate, better: lower}
   - {name: tokens_total, family: secondary, kind: count, better: lower}
   - {name: queue_peak_inventory_primary, family: secondary, kind: count, better: lower}
   - {name: orders-api_cpu_core_seconds, family: secondary, kind: time, better: lower}

@@ -61,6 +61,11 @@ class Survivorship(_Plan):
     completion_rate_gap: float
 
 
+class Calibration(_Plan):
+    max_fault_window_utilization: float
+    excluded_scenarios: list[str]
+
+
 class MetricPlan(_Plan):
     name: str
     family: Literal["primary", "secondary"]
@@ -74,6 +79,7 @@ class AnalysisPlan(_Plan):
     bootstrap: Bootstrap
     relevance: Relevance
     survivorship: Survivorship
+    calibration: Calibration
     metrics: list[MetricPlan]
 
 
@@ -246,6 +252,23 @@ def label_of(row: dict, metric: MetricPlan, plan: AnalysisPlan) -> str:
     return "inconclusivo" if row["relevant"] else "sem_evidencia"
 
 
+def calibration_warnings(dataset: Dataset, plan: AnalysisPlan) -> list[str]:
+    """Execuções acima do limite de utilização (D-37): só avisa, nunca invalida (CLAUDE §24, §31)."""
+    limit = plan.calibration.max_fault_window_utilization
+    warnings = []
+    for scenario, pairs in sorted(dataset.pairs.items()):
+        if scenario in plan.calibration.excluded_scenarios:
+            continue
+        for repetition, pair in sorted(pairs.items()):
+            utilization = pair["LLM"].number("llm_fault_window_utilization")
+            if utilization is not None and utilization > limit:
+                warnings.append(
+                    f"calibração: {pair['LLM'].execution_id} ({scenario}, repetição {repetition}) "
+                    f"com utilização {utilization:.2f} na janela de falha, acima do limite de {limit:.2f}"
+                )
+    return warnings
+
+
 def survivorship_warning(pairs: dict[int, dict[str, Run]], plan: AnalysisPlan) -> str | None:
     rates = {
         engine: [r for r in (pair[engine].number("completion_rate") for pair in pairs.values()) if r is not None]
@@ -353,7 +376,7 @@ def summary_markdown(rows: list[dict], dataset: Dataset, plan: AnalysisPlan, pla
         warnings = sorted({row["warning"] for row in rows if row["scenario_id"] == scenario and row["warning"]})
         lines += ["", *[f"> Aviso: {warning}" for warning in warnings], ""] if warnings else [""]
     if dataset.warnings:
-        lines += ["## Avisos da seleção", "", *[f"- {warning}" for warning in dataset.warnings], ""]
+        lines += ["## Avisos da seleção e da calibração", "", *[f"- {warning}" for warning in dataset.warnings], ""]
     lines += ["Métricas secundárias são descritivas e estão em `results.csv`.", ""]
     return "\n".join(lines)
 
@@ -374,6 +397,7 @@ def run(data_root: Path, phase: str, plan_path: Path, only: list[str] | None = N
     if not runs:
         raise SystemExit(f"no valid executions with metrics in {data_root / phase}")
     dataset = build_pairs(runs, strict=phase == "experiment")
+    dataset.warnings.extend(calibration_warnings(dataset, plan))
     commits = sorted({run.git_commit or "unknown" for run in runs})
     if phase == "experiment" and len(commits) > 1:
         dataset.warnings.append(f"a amostra mistura commits: {commits}")

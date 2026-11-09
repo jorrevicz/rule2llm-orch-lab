@@ -377,7 +377,7 @@ doc 10 §10.6).
 | M8-T16 | **🔬** Análise estatística pré-especificada | `feat(analysis)` | D-35: `config/analysis_plan.yml`, `compare_engines.py`, `results.csv`, `analysis_summary.md`; `scipy` só na bancada | D-35, metodologia Tabela 18 | ✅ |
 | M8-T17 | Verificação ao vivo | `chore(pilot)` | Teste do prompt alinhado a `58f557a`; piloto de `persistent_degradation` e `intermittent_failure` × Rules e LLM em duas repetições (PILOT_0069–0076, 8/8 válidas); análise ponta a ponta e reavaliação offline; achados em §13.7 | [15](15-protocolo-de-validacao.md) | ✅ |
 | M8-T18 | **(D) 🔬** Limite de utilização | `docs(decisoes)` | D-37: critério de não saturação por utilização medida na janela de falha; correção dos achados de M8-T17 | [15 §15.4](15-protocolo-de-validacao.md) | ✅ |
-| M8-T19 | **🔬** Utilização na janela de falha | `feat(analysis)` | D-37: `llm_fault_window_utilization` em `metrics_summary.csv`; limite em `config/analysis_plan.yml`; aviso no resumo da comparação | D-37 | ⬜ |
+| M8-T19 | **🔬** Utilização na janela de falha | `feat(analysis)` | D-37: `llm_fault_window_utilization` em `metrics_summary.csv`; limite em `config/analysis_plan.yml`; aviso no resumo da comparação | D-37 | ✅ |
 | M8-T20 | **🔬** Recalibração da carga | `feat(config)` | D-37: 0,035 pedidos/s e início da falha aos 280 s; janelas de 280 s (`recovery`: 140 s) | D-37 | ⬜ |
 | M8-T21 | Verificação da carga recalibrada | `chore(pilot)` | Piloto de `persistent_degradation` × Rules e LLM em duas repetições; achados em §13.7 | [15 §15.4](15-protocolo-de-validacao.md) | ⬜ |
 
