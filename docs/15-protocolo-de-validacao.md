@@ -131,6 +131,15 @@ a rajada de 10 s começa aos 285,7 s, junto do 11º envio; se começasse antes d
 parte da janela e enviaria 65 pedidos em vez de 150. A taxa final sai de M8-T02, medida no servidor: o que se transfere entre
 máquinas é o limite, não a taxa.
 
+**Verificação (M8-T21, dado de piloto).** A 0,035/s, em `persistent_degradation`, a utilização foi de 0,48
+e 0,60 e os atrasos no Orders ficaram iguais aos do Rules. A inferência estava mais rápida que no piloto
+anterior (mediana de 3,7–3,9 s, contra 4,9–5,3 s); naquela velocidade, a utilização seria de cerca de 0,8.
+Por isso o critério precisa ser reavaliado no servidor final.
+
+**Alinhamento a fixar em M8-T02.** O início e o fim da janela devem coincidir com envios da carga. Com
+fim aos 560 s e envio aos 571,4 s, o tempo de recuperação ganha um piso de 11,4 s, igual nos dois motores,
+que infla o valor absoluto sem deslocar a diferença pareada.
+
 ## 15.5 Rubrica de adequação da decisão (D-33)
 
 Implementada em `scripts/analysis/decision_adequacy.py`; aplicada igualmente aos dois motores e
