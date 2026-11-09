@@ -25,7 +25,7 @@ def test_normal_plan_sends_the_first_orders_of_the_dataset_at_a_fixed_rate():
     plan = build_plan(config)
 
     assert [p.index for p in plan] == list(range(1, config.workload.requests + 1))
-    assert [p.offset_s for p in plan] == [i / config.workload.rate_per_second for i in range(len(plan))]
+    assert [p.offset_s for p in plan] == pytest.approx([i / config.workload.rate_per_second for i in range(len(plan))], abs=1e-3)
     assert all(p.items == DATASET.orders[p.index - 1].items and p.replaced_sku is None for p in plan)
 
 

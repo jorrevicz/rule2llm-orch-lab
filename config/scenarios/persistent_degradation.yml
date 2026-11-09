@@ -1,6 +1,6 @@
 # Cenário degradação persistente — D-31 (docs/15 §15.4); amplia a Tabela 12 da metodologia.
 # Substitui as seções workload e fault da config base (new_execution --scenario).
-# Mesmo arquivo para Rules e LLM. Valores do PILOTO: provisórios, A CONGELAR (M8-T02); carga calibrada em D-30.
+# Mesmo arquivo para Rules e LLM. Valores do PILOTO: provisórios, A CONGELAR (M8-T02); carga calibrada em D-30 e D-37.
 
 scenario_id: persistent_degradation
 description: >-
@@ -9,14 +9,14 @@ description: >-
 workload:
   dataset: datasets/orders_v1.json
   requests: 30
-  rate_per_second: 0.05
+  rate_per_second: 0.035
   seed: 1042                    # seed que gerou o dataset
 
 fault:
   type: intermittent_error
   target: inventory.primary
-  start_after_seconds: 200
-  duration_seconds: 200
+  start_after_seconds: 280
+  duration_seconds: 280
   failure_probability: 0.9
   delay_ms: null
   overload_rate_per_second: null

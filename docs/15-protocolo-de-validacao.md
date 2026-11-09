@@ -126,8 +126,9 @@ uma inferência, e a fila real se forma em `orders.events`.
 
 **Carga provisória.** A pior utilização observada a 0,05/s foi 0,98, o que dá
 `0,05 × 0,70 / 0,98 ≈ 0,036/s`; adotado **0,035/s**. Para manter 10 tarefas antes, 10 durante e 10 depois
-da falha, a falha começa aos 280 s e dura 280 s (`recovery`: 140 s, cerca de 5 tarefas; `overload`
-mantém a rajada de 10 s). A taxa final sai de M8-T02, medida no servidor: o que se transfere entre
+da falha, a falha começa aos 280 s e dura 280 s (`recovery`: 140 s, cerca de 5 tarefas). Em `overload`,
+a rajada de 10 s começa aos 285,7 s, junto do 11º envio; se começasse antes dele, o gerador perderia
+parte da janela e enviaria 65 pedidos em vez de 150. A taxa final sai de M8-T02, medida no servidor: o que se transfere entre
 máquinas é o limite, não a taxa.
 
 ## 15.5 Rubrica de adequação da decisão (D-33)

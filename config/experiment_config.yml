@@ -57,7 +57,7 @@ metrics:
 workload:
   dataset: datasets/orders_v1.json
   requests: 30                  # provisório — A CONGELAR
-  rate_per_second: 0.05         # malha aberta — D-30, provisório, A CONGELAR
+  rate_per_second: 0.035        # malha aberta — D-30 e D-37, provisório, A CONGELAR
   seed: 1042                    # seed que gerou o dataset (seed_workload)
 
 fault:                          # metodologia Código 11; campos exigidos por tipo em shared/config.py
