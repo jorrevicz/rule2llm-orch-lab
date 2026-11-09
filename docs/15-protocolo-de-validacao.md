@@ -53,7 +53,8 @@ em `metrics_summary.csv`.
 | `decision_time_total_ms` | Soma de `decision_time_ms` (estado pronto → ação válida) | ms | `decisions.jsonl` | Metodologia eq. 4.1–4.2 | M | Inclui a fila do runtime no LLM |
 | `llm_inference_total_ms` | Soma do tempo da chamada ao runtime | ms | `decisions.jsonl` | Metodologia Tabela 15 | M | **Inclui fila** (D-29) |
 | `llm_compute_total_ms` | Soma de `prompt_eval_duration + eval_duration` | ms | `decisions.jsonl` | D-29 | D | Nulo em timeout: não há resposta do runtime |
-| `llm_queue_wait_*` | Chamada − processamento; total, mediana e P95 | ms | `decisions.jsonl` | D-29 | D | Também contém o transporte HTTP (poucos ms) |
+| `llm_queue_wait_*` | Chamada − processamento; total, mediana e P95 | ms | `decisions.jsonl` | D-29 | D | Também contém o transporte HTTP (poucos ms). Só vê a espera dentro do Ollama; com `orders-worker` de concorrência 1, fica limitada a cerca de uma inferência e não mede a fila em `orders.events` |
+| `llm_fault_window_utilization` | Cômputo do LLM dentro da janela de falha / duração da janela, com recorte nas bordas | razão | `decisions.jsonl`, `fault_events.jsonl` | D-37 | D | Nula no Rules e sem janela de falha. Critério de calibração, não desfecho |
 | Tokens e chamadas | Soma e razão por tarefa | contagem | `decisions.jsonl` | Cornacchia et al. (2025), como indicador de custo | C | Não equivale a acurácia diagnóstica |
 | `latency_*_ms` | `TASK_CREATED` → `TASK_COMPLETED`, só tarefas concluídas | ms | `task_events.jsonl` | Metodologia eq. e Tabela 17 | M | **Condicionada a sobreviventes**: ler com `completion_rate` |
 | `completion_rate` | Tarefas `COMPLETED` / tarefas criadas | razão | `task_events.jsonl` | D-32 | D | — |
@@ -100,20 +101,34 @@ falha varia por repetição e é igual dentro do par Rules/LLM (D-27).
 | `inconsistent_data` | Dado que nenhuma ação corrige | `last_result = invalid_data` | Sim, quanto a gastar ações inúteis | Desfecho correto, decisões por tarefa |
 | `recovery` | Indisponibilidade total do serviço | `service.status = unavailable` | Sim, entre `WAIT` e `ABORT` | Recuperação, conclusão |
 
-**Calibração da carga (D-30).** Com um runtime serial, uma taxa que satura o decisor mede a capacidade
-do runtime, não a decisão. Fora de `overload`, a carga visa utilização ≤ 0,7, sendo
-`utilização = taxa × decisões por tarefa × p95 da inferência`. Com 4 decisões por tarefa
-(`CONTINUE`, `RETRY`, `RETRY`, `FALLBACK`) e 3,2 s (bancada M5-T08, macOS): `taxa ≤ 0,055/s`; adotado
-**0,05/s**. Rules e LLM recebem a mesma carga; a conclusão vale para esse ponto de operação.
+**Calibração da carga (D-30, revista por D-37).** Com um runtime serial, uma taxa que satura o decisor
+mede a capacidade do runtime, não a decisão. Rules e LLM recebem a mesma carga; a conclusão vale para
+esse ponto de operação.
 
-Critério de não saturação, verificado no ensaio geral: nos cenários fora de `overload`,
-`llm_queue_wait_p95_ms ≤ llm_compute_median_ms`. Reprovar leva a recalibrar **antes** do congelamento.
-Durante a coleta, lentidão do LLM **nunca** invalida execução (CLAUDE §24, §31).
+**Critério de não saturação (D-37).** Nas execuções com LLM fora de `overload`,
+`llm_fault_window_utilization ≤ 0,70`: o tempo de cômputo do LLM dentro da janela de falha, dividido
+pela duração da janela. O limite está em `config/analysis_plan.yml`, e `compare_engines` avisa no
+resumo quando uma execução o ultrapassa. Reprovar leva a recalibrar **antes** do congelamento. Durante
+a coleta, lentidão do LLM **nunca** invalida execução (CLAUDE §24, §31).
 
-No piloto M8-T17, a inferência ficou acima dos 3,2 s da calibração (mediana de cômputo de 4,7–5,3 s,
-p95 de até 7,0 s) e a utilização na janela de falha chegou a 0,95 em `persistent_degradation`, embora o
-critério acima tenha passado. A taxa de 0,05/s precisa ser recalibrada em M8-T02, com medição no
-servidor final ([13 §13.7](13-roadmap.md)).
+O limite de 0,70 tem duas bases, ambas provisórias:
+
+- **Piloto M8-T17 (4 execuções com LLM):** com 0,32 e 0,46 não houve atraso além do observado no
+  Rules; com 0,83, atraso de uma inferência; com 0,98, fila acumulada (p95 de 18,22 s no despacho do
+  `RETRY`) e 4 tarefas abortadas por prazo, por efeito de capacidade.
+- **Orçamento do prazo da tarefa:** 4 decisões a 7 s gastam 28 s dos 60 s de `task_deadline_ms`,
+  sobrando cerca de 8 s de espera por decisão. Na aproximação M/D/1, `espera média = ρ / (2(1 − ρ)) × S`,
+  8 s de espera com `S` = 7 s corresponde a ρ ≈ 0,70. A aproximação usa a média, não a cauda.
+
+O critério anterior (`llm_queue_wait_p95_ms ≤ llm_compute_median_ms`) foi abandonado porque só vê a
+espera dentro do Ollama. Com `orders-worker` de concorrência 1, essa espera fica limitada a cerca de
+uma inferência, e a fila real se forma em `orders.events`.
+
+**Carga provisória.** A pior utilização observada a 0,05/s foi 0,98, o que dá
+`0,05 × 0,70 / 0,98 ≈ 0,036/s`; adotado **0,035/s**. Para manter 10 tarefas antes, 10 durante e 10 depois
+da falha, a falha começa aos 280 s e dura 280 s (`recovery`: 140 s, cerca de 5 tarefas; `overload`
+mantém a rajada de 10 s). A taxa final sai de M8-T02, medida no servidor: o que se transfere entre
+máquinas é o limite, não a taxa.
 
 ## 15.5 Rubrica de adequação da decisão (D-33)
 
@@ -208,7 +223,7 @@ Nenhuma conclusão entra no TCC sem uma linha completa.
 |---|---|---|---|---|---|---|
 | | | | | | | |
 
-Explicações alternativas a examinar sempre: fila do runtime (`llm_queue_wait_*`), ordem de execução,
+Explicações alternativas a examinar sempre: fila do runtime (`llm_queue_wait_*`), fila em `orders.events` (`llm_fault_window_utilization`), ordem de execução,
 efeito de sobreviventes, calibração da carga, e se a informação necessária estava no `SYSTEM_STATE`.
 
 Comparação com a literatura exige demonstrar métrica, tarefa e condições equivalentes. Sem isso, a
