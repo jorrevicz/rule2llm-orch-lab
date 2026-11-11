@@ -116,3 +116,48 @@ def test_slow_probe_inference_fails_the_readiness(ollama, monkeypatch):
     assert readiness.status == "FAIL"
     assert readiness.probe_inference_ms is not None
     assert any("probe inference" in failure for failure in readiness.failures)
+
+
+# M8-T23: o caminho das decisões (container → Ollama), não só o host
+
+
+def test_runtime_reachable_from_every_decision_service_keeps_the_readiness():
+    from scripts.pilot.llm_readiness import LLMReadiness, check_from_services
+
+    asked = []
+    readiness = check_from_services(LLMReadiness(status="PASS"), probe=lambda s: asked.append(s) or "0.33.2")
+
+    assert readiness.status == "PASS"
+    assert asked == ["orders-api", "orders-worker"]
+    assert readiness.reachable_from_services == {"orders-api": "0.33.2", "orders-worker": "0.33.2"}
+
+
+def test_runtime_unreachable_from_a_container_fails_even_if_the_host_passed():
+    from scripts.pilot.llm_readiness import LLMReadiness, check_from_services
+    from scripts.pilot.environment import InspectionError
+
+    def probe(service: str) -> str:
+        if service == "orders-worker":
+            raise InspectionError("exec -T orders-worker: TimeoutError: timed out")
+        return "0.33.2"
+
+    readiness = check_from_services(LLMReadiness(status="PASS"), probe=probe)
+
+    assert readiness.status == "FAIL"
+    assert readiness.reachable_from_services == {"orders-api": "0.33.2", "orders-worker": None}
+    assert readiness.failures == ["runtime unreachable from orders-worker: InspectionError: exec -T orders-worker: TimeoutError: timed out"]
+
+
+def test_failures_already_found_on_the_host_are_kept():
+    from scripts.pilot.llm_readiness import LLMReadiness, check_from_services
+
+    readiness = check_from_services(LLMReadiness(status="FAIL", failures=["model x not available"]), probe=lambda s: "0.33.2")
+
+    assert readiness.status == "FAIL" and readiness.failures == ["model x not available"]
+
+
+def test_service_probe_uses_the_url_of_the_decisions():
+    from scripts.pilot.llm_readiness import _SERVICE_PROBE
+
+    assert "os.environ['OLLAMA_BASE_URL']" in _SERVICE_PROBE and "/api/version" in _SERVICE_PROBE
+    compile(_SERVICE_PROBE, "<probe>", "exec")

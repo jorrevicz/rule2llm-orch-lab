@@ -14,7 +14,8 @@ Etapas por execução:
  1. abre a execução (id, cenário, motor, repetição; config efetiva gravada);
  2–3. reset e subida limpa do ambiente apontado para a execução (`reset_environment`);
  4. readiness (`readiness`) — reprovação → execução inválida, sem carga;
- 5. LLM: readiness do runtime, warm-up e inferência de prova (`llm_readiness`), `warmup.log`;
+ 5. LLM: readiness do runtime, warm-up e inferência de prova (`llm_readiness`) e o runtime
+    respondendo de dentro dos serviços que decidem (M8-T23), `warmup.log`;
  6. metadados: versões, imagens, hardware, host, readiness, estado inicial;
  7–10. amostrador do Ollama + carga + falha + encerramento (`run_scenario.apply_scenario`);
  9. métricas do Prometheus exportadas (`queue_metrics.csv`, `container_stats.csv`);
@@ -44,6 +45,7 @@ from scripts.metrics.host_sampler import HostProcessSampler
 from scripts.metrics.prometheus_export import export_container_stats, export_queue_metrics
 from scripts.pilot.environment import DEFAULT_BASE_URL, REPO_ROOT, InspectionError
 from scripts.pilot.llm_readiness import check as check_llm_readiness
+from scripts.pilot.llm_readiness import check_from_services as check_llm_from_services
 from scripts.pilot.new_execution import METADATA_FILE, apply_llm_readiness, available_scenarios, open_execution
 from scripts.scenarios.run_scenario import apply_scenario, finish
 from shared.artifacts import Artifact
@@ -177,7 +179,7 @@ def run_once(
     )
     # 5. LLM: runtime, warm-up e inferência de prova
     if ready.status == "PASS" and engine == "LLM":
-        llm = check_llm_readiness(config)
+        llm = check_llm_from_services(check_llm_readiness(config))
         apply_llm_readiness(metadata, llm)
         (directory / WARMUP_LOG_FILE).write_text(json.dumps(asdict(llm), indent=2) + "\n", encoding="utf-8")
     # 6. versões, imagens, hardware

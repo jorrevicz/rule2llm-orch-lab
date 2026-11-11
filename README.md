@@ -46,7 +46,8 @@ Pré-requisitos: Docker em execução, Python 3.12 com o ambiente de
    1. abre a execução (`PILOT_nnnn`) e grava a config efetiva (base + cenário + motor);
    2. reseta o ambiente (`docker compose down -v`) e o sobe com imagens do commit atual;
    3. verifica a readiness (containers, filas, bancos, coletores, energia do host);
-   4. com LLM, faz o warm-up e uma inferência de prova no Ollama;
+   4. com LLM, faz o warm-up e uma inferência de prova no Ollama e confere que os containers
+      do Orders alcançam o runtime;
    5. aplica a carga e a falha do cenário e espera todas as tarefas terminarem;
    6. exporta as métricas do Prometheus e do Ollama e valida a integridade;
    7. se válida, consolida as métricas; se inválida, registra e repete com a mesma config.

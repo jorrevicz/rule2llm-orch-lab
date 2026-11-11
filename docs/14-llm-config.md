@@ -79,7 +79,12 @@ docker compose down
 ```
 
 A readiness verifica runtime, modelo presente, digest, quantização, warm-up, 100% na GPU,
-contexto e uma inferência de prova ≤ `PROBE_LIMIT_MS`. A bancada (`data/pilot/llm_bench/`)
+contexto e uma inferência de prova ≤ `PROBE_LIMIT_MS`. No protocolo (`run_experiment`), exige
+também que o runtime responda de dentro de `orders-api` e `orders-worker`, pelo
+`OLLAMA_BASE_URL` que as decisões usam (`reachable_from_services`, M8-T23). Sem isso, um
+firewall no host pode deixar a readiness pelo host passar e transformar toda decisão em
+`LLM_DECISION_TIMEOUT`. No Linux, libere a porta 11434 para as bridges do Docker (`docker0`
+e `br-*`), não para a rede externa. A bancada (`data/pilot/llm_bench/`)
 avalia os quatro critérios de viabilidade do M5: GPU, p95 ≤ 7 s, contexto, `done_reason`.
 Ela também relata a validade das decisões, mas isso não é critério.
 
@@ -176,7 +181,8 @@ O que **não** depende do runtime e não deve mudar: `PromptBuilder`, `decision_
    - condição inicial igual em toda execução (descarregar e recarregar o modelo, ou
      equivalente), warm-up fora das métricas e `model_load_ms`;
    - modelo inteiro na GPU e contexto carregado ≥ `num_ctx`;
-   - inferência de prova ≤ `PROBE_LIMIT_MS`.
+   - inferência de prova ≤ `PROBE_LIMIT_MS`;
+   - runtime respondendo de dentro dos containers que decidem (`check_from_services`).
    Se algum item não puder ser verificado no novo runtime, registre isso como limitação da
    bancada. Não remova o critério em silêncio.
 

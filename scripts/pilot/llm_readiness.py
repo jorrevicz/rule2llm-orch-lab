@@ -11,7 +11,9 @@ Verifica, no Ollama do host (D-08):
 - após o warm-up, modelo carregado 100% na GPU e com o contexto configurado;
 - 1 inferência de prova com o modelo quente em até `PROBE_LIMIT_MS` (o limite de p95 da
   bancada de viabilidade, M5-T08): detecta runtime ocupado ou host degradado (achado do
-  M6-T10: Low Power Mode levou a inferência de ~3 s para até 10,6 s).
+  M6-T10: Low Power Mode levou a inferência de ~3 s para até 10,6 s);
+- no protocolo (`run_experiment`), o runtime respondendo também de dentro de `orders-api`
+  e `orders-worker`, pelo `OLLAMA_BASE_URL` das decisões (`check_from_services`, M8-T23).
 
 Reprovação → `readiness_status = FAIL`: a execução não pode ser válida (não entra na
 amostra) e o motivo é registrado. Nada é inventado: o que o runtime não informa fica null.
@@ -19,6 +21,7 @@ amostra) e o motivo é registrado. Nada é inventado: o que o runtime não infor
 
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 
 from services.orders.app.llm.ollama_client import LLMRuntimeError, LLMTimeout, OllamaClient
@@ -28,6 +31,17 @@ from shared.system_state import SystemState
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 PROBE_LIMIT_MS = 7000.0  # critério 2 de viabilidade do modelo (docs/13-roadmap.md, M5)
+DECISION_SERVICES = ("orders-api", "orders-worker")  # chamam o LLMDecisionEngine
+SERVICE_PROBE_TIMEOUT_S = 5
+_SERVICE_PROBE = f"""
+import json, os, sys, urllib.error, urllib.request
+url = os.environ['OLLAMA_BASE_URL'] + '/api/version'
+try:
+    print(json.load(urllib.request.urlopen(url, timeout={SERVICE_PROBE_TIMEOUT_S}))['version'])
+except Exception as error:
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    sys.exit(f'{{url}}: {{type(reason).__name__}}: {{reason}}')
+"""
 
 # Estado neutro usado só para aquecer o modelo (não é tarefa do experimento).
 WARMUP_STATE = {
@@ -66,6 +80,8 @@ class LLMReadiness:
     model_load_ms: float | None = None
     warmup_inference_ms: float | None = None
     probe_inference_ms: float | None = None
+    # serviço → versão do runtime vista de dentro do container (None: sem resposta)
+    reachable_from_services: dict[str, str | None] = field(default_factory=dict)
     failures: list[str] = field(default_factory=list)
 
 
@@ -82,6 +98,34 @@ def check(config: ExperimentConfig, base_url: str = DEFAULT_OLLAMA_URL) -> LLMRe
         _probe(client, prompt, readiness)
     except (LLMRuntimeError, LLMTimeout) as error:
         readiness.failures.append(f"runtime: {error.__class__.__name__}: {error}")
+    readiness.status = "PASS" if not readiness.failures else "FAIL"
+    return readiness
+
+
+def _version_from_service(service: str) -> str:
+    """Versão do runtime pedida de dentro do container, pelo mesmo `OLLAMA_BASE_URL` das decisões."""
+    from scripts.pilot.environment import compose  # só a bancada usa Docker
+
+    return compose("exec", "-T", service, "python", "-c", _SERVICE_PROBE).strip()
+
+
+def check_from_services(
+    readiness: LLMReadiness,
+    probe: Callable[[str], str] = _version_from_service,
+    services: tuple[str, ...] = DECISION_SERVICES,
+) -> LLMReadiness:
+    """O runtime precisa responder no caminho que as decisões usam, não só no host.
+
+    No servidor, a readiness pelo host passava e o firewall descartava os pacotes dos
+    containers: toda decisão virava `LLM_DECISION_TIMEOUT` (M8-T23). Sem resposta aqui
+    é falha da bancada, e a execução não é válida (CLAUDE §24, §25).
+    """
+    for service in services:
+        try:
+            readiness.reachable_from_services[service] = probe(service)
+        except Exception as error:  # noqa: BLE001 — qualquer falha da sonda reprova, com o motivo
+            readiness.reachable_from_services[service] = None
+            readiness.failures.append(f"runtime unreachable from {service}: {error.__class__.__name__}: {str(error)[:200]}")
     readiness.status = "PASS" if not readiness.failures else "FAIL"
     return readiness
 
