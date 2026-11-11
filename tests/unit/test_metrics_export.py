@@ -2,6 +2,8 @@
 
 import csv
 import json
+import subprocess
+import sys
 import threading
 import time
 import urllib.parse
@@ -88,17 +90,27 @@ def test_container_stats_merge_containers_host_and_ollama(tmp_path, prometheus):
 
 
 def test_sampler_measures_cpu_time_of_the_process_tree():
-    me = psutil.Process()
-    sampler = HostProcessSampler(0.2, find_root=lambda: me, component="self")
-    sampler.start()
-    deadline = time.monotonic() + 0.8
-    while time.monotonic() < deadline:  # ocupa a CPU para haver consumo
-        sum(range(10_000))
-    samples = sampler.stop()
+    # O consumo vem de um processo filho (como o runner do Ollama sob `ollama serve`) e esta
+    # thread só dorme. Ocupar a CPU aqui mesmo disputava o GIL com a varredura do /proc e,
+    # no servidor (270 processos), cada amostra levava ~5 s (M8-T24).
+    busy = subprocess.Popen([sys.executable, "-c", "while True: pass"])
+    try:
+        me = psutil.Process()
+        deadline = time.monotonic() + 5
+        while len(me.children()) < 1 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        sampler = HostProcessSampler(0.2, find_root=lambda: me, component="self")
+        sampler.start()
+        time.sleep(1.0)
+        samples = sampler.stop()
+    finally:
+        busy.kill()
+        busy.wait()
 
     assert len(samples) >= 3
     assert samples[0].cpu_percent is None  # a primeira amostra não tem intervalo anterior
-    assert any(s.cpu_percent and s.cpu_percent > 10 for s in samples[1:])
+    assert any(s.cpu_percent and s.cpu_percent > 10 for s in samples[1:])  # CPU do filho somada
+    assert all(s.processes >= 2 for s in samples)
     assert all(s.memory_bytes > 0 and s.component == "self" for s in samples)
 
 
