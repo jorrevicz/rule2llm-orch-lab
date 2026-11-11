@@ -206,7 +206,45 @@ Mann-Whitney e teste *t*, previstos na Tabela 18, deixam de ser os testes princi
 são pareadas, e `N_rep` será pequeno demais para verificar normalidade com poder razoável.
 
 **Piso de `N_rep`.** Em Wilcoxon exato, o menor p bicaudal é `2 / 2^n`. São necessários ao menos 6 pares
-sem correção e **8 pares** com Holm sobre 4 métricas primárias. O valor final é decidido em M8-T02.
+sem correção e **8 pares** com Holm sobre 4 métricas primárias.
+
+**Valor adotado: 30 pares por cenário (D-38).** O piso só garante que a significância seja
+*possível*. Com 8 pares, a métrica mais forte da 1ª etapa do Holm precisa de p < 0,0125, e o único
+resultado que passa é ter os 8 pares na mesma direção: um único par contrário basta para não rejeitar.
+Para escolher `N_rep`, o poder do teste foi estimado por simulação
+(`scripts/analysis/power_simulation.py`: Wilcoxon exato bicaudal, limiar `alpha / 4` da 1ª etapa do
+Holm, 3000 replicações, seed 1042). `dz` = média das diferenças pareadas / desvio-padrão delas; as
+diferenças seguem a normal ou a t com 3 graus de liberdade (caudas pesadas).
+
+| Probabilidade de detectar o efeito | 8 pares | 15 | 20 | **30** | 40 |
+|---|---|---|---|---|---|
+| normal, `dz` = 0,5 | 0,06 | 0,23 | 0,31 | **0,52** | 0,66 |
+| normal, `dz` = 0,8 | 0,16 | 0,60 | 0,76 | **0,94** | 0,98 |
+| normal, `dz` = 1,0 | 0,26 | 0,82 | 0,93 | **1,00** | 1,00 |
+| t(3), `dz` = 0,5 | 0,13 | 0,41 | 0,58 | **0,81** | 0,92 |
+
+Justificativa:
+
+1. Com 30 pares, efeitos grandes (`dz ≥ 0,8`) são detectados com probabilidade ≥ 0,94, e efeitos
+   moderados (`dz = 0,5`) com 0,52 a 0,81, conforme a cauda das diferenças.
+2. Acima de 30, o ganho cai: o poder cresce com √n, e 40 pares custam 33% a mais para melhorar só os
+   efeitos moderados. Diferenças menores tendem a ficar abaixo do limiar de relevância, que já impede
+   o rótulo de favorecimento mesmo com significância.
+3. Custo: 30 × 7 cenários × 2 abordagens = **420 execuções válidas**, sem contar as inválidas
+   repetidas. As execuções de `persistent_degradation` levaram 14,7 min em média (PILOT_0089–0092);
+   os demais cenários têm a mesma carga base, o que dá cerca de 103 h de bancada. Estimativa de
+   piloto, a confirmar no servidor final.
+
+Condições:
+
+- `N_rep` é fixado antes da coleta e não muda conforme o resultado: não se interrompe a coleta
+  antes nem se acrescentam repetições depois de olhar os dados (parada opcional infla o erro tipo I).
+- O mesmo `N_rep` vale para todos os cenários, inclusive os sem seed de falha.
+- O `dz` real é desconhecido: 2 pares por cenário no piloto não permitem estimá-lo, e a tabela é
+  cenário de planejamento, não previsão nem resultado.
+- Uma coleta de vários dias aumenta o risco de deriva da bancada. Recomenda-se acompanhar as
+  métricas de tempo do Rules, que é determinístico, ao longo de `repetition_id`; a alternância da
+  abordagem que abre cada repetição protege o pareamento.
 
 **Repetições sem sorteio.** `normal`, `overload` e `recovery` não têm seed de falha: nas repetições
 variam apenas o ruído da bancada e as respostas do LLM. Para eles, o intervalo descreve a repetibilidade
@@ -265,5 +303,5 @@ Bibliografia conferida em 2026-11-08; **ler antes de citar** e incluir no TCC so
 - [ ] Hipóteses conciliadas com a Introdução do TCC.
 - [ ] Artigos primários e fontes do Consensus lidos; status C de §15.3 confirmado ou corrigido.
 - [ ] Critério de não saturação aprovado no servidor final.
-- [ ] `N_rep` definido com o piso de §15.7.
+- [x] `N_rep` definido com o piso de §15.7: 30 pares por cenário (D-38).
 - [ ] `config/analysis_plan.yml` e a rubrica incluídos no manifesto de hashes (M8-T04).

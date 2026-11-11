@@ -360,7 +360,7 @@ doc 10 §10.6).
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
 | M8-T01 | **(D) 🔬** Divergências e inconsistências | `docs(decisoes)` | Decisões pendentes (§13.4) e inconsistências (§13.5) resolvidas; `piloto-do-experimento.md` e docs atualizados | [08 §8.5](08-modelo-de-dados-mer.md) | ⬜ |
-| M8-T02 | **(D) 🔬** Valores finais | `feat(config)` | D-11: `queue_high_watermark` (a partir do steady state), K, timeouts/retry/wait, dataset, carga, seeds, `N_rep`, ordem Rules/LLM | [11 §11.5](11-requisitos.md) | ⬜ |
+| M8-T02 | **(D) 🔬** Valores finais | `feat(config)` | D-11: `queue_high_watermark` (a partir do steady state), K, timeouts/retry/wait, dataset, carga, seeds, ordem Rules/LLM (`N_rep` fixado por D-38, M8-T22) | [11 §11.5](11-requisitos.md) | ⬜ |
 | M8-T03 | Pin de versões | `chore(build)` | Bibliotecas, digests de imagem, Python, versão do Ollama, digest/quantização do modelo, hardware | RNF-006, RNF-026 | ⬜ |
 | M8-T04 | Congelamento de prompt e Rules | `chore(freeze)` | Prompt, Rules, `reason_code`s congelados; manifesto de hashes | RNF-027, RNF-028 | ⬜ |
 | M8-T05 | Ensaio geral | `test` | Execução completa (ainda `PILOT`): reset → readiness → warm-up → carga → falha → coleta | piloto §28 Fase 8 | ⬜ |
@@ -380,6 +380,7 @@ doc 10 §10.6).
 | M8-T19 | **🔬** Utilização na janela de falha | `feat(analysis)` | D-37: `llm_fault_window_utilization` em `metrics_summary.csv`; limite em `config/analysis_plan.yml`; aviso no resumo da comparação | D-37 | ✅ |
 | M8-T20 | **🔬** Recalibração da carga | `feat(config)` | D-37: 0,035 pedidos/s e início da falha aos 280 s; janelas de 280 s (`recovery`: 140 s); `overload` aos 285,7 s, junto do 11º envio | D-37 | ✅ |
 | M8-T21 | Verificação da carga recalibrada | `chore(pilot)` | Piloto de `persistent_degradation` × Rules e LLM em duas repetições; PILOT_0089–0092, 4/4 válidas, após liberar a porta 9090 (bloqueada por outro projeto em PILOT_0077–0088); achados em §13.7 | [15 §15.4](15-protocolo-de-validacao.md) | ✅ |
+| M8-T22 | **(D) 🔬** Tamanho da amostra | `docs(decisoes)` | D-38: `N_rep` = 30 pares por cenário em `experiment_config.yml`; justificativa por simulação de poder (`scripts/analysis/power_simulation.py`, seed 1042) em [15 §15.7](15-protocolo-de-validacao.md); 420 execuções válidas previstas | [15 §15.7](15-protocolo-de-validacao.md) | ✅ |
 
 **Critério de conclusão**
 
@@ -395,7 +396,7 @@ doc 10 §10.6).
 
 | ID | Task | Commit | Entregáveis | Refs | Status |
 |---|---|---|---|---|:---:|
-| M9-T01 | Execuções da amostra | `chore(experiment)` | `N_rep` × 6 cenários × 2 abordagens na ordem definida → `data/experiment/` | [10 §10.6](10-rastreabilidade-e-metricas.md) | ⬜ |
+| M9-T01 | Execuções da amostra | `chore(experiment)` | `N_rep` (30, D-38) × 7 cenários (D-31) × 2 abordagens = 420 execuções válidas, na ordem definida → `data/experiment/` | [10 §10.6](10-rastreabilidade-e-metricas.md) | ⬜ |
 | M9-T02 | Execuções inválidas | `chore(experiment)` | `invalid_runs.csv`; repetição até completar `N_rep` válidas por combinação | [06 §6.12](06-modelo-de-decisao.md) | ⬜ |
 | M9-T03 | Consolidação dos resultados | `chore(experiment)` | `compare_engines --phase experiment` e `replay_decisions --phase experiment` → `results.csv`, `analysis_summary.md`, matriz de conclusões do [doc 15](15-protocolo-de-validacao.md) — apenas com dados reais | CLAUDE §42, §44 | ⬜ |
 | M9-T04 | **(D)** Versionamento dos dados | `docs(decisoes)` | D-12: como versionar/publicar os dados experimentais | RNF-006 | ⬜ |
@@ -448,6 +449,7 @@ doc 10 §10.6).
 | D-35 🔬 | Plano de análise pareado | **Decidido (2026-11-08):** pares por cenário e repetição; Wilcoxon signed-rank bicaudal, IC 95% por bootstrap pareado, rank-biserial, Holm sobre as métricas primárias de cada cenário, limiares de relevância. Fixado em `config/analysis_plan.yml`. Substitui Mann-Whitney e teste *t* como testes principais (Tabela 18). Piso: 8 pares com Holm sobre 4 métricas | M8-T16 | ✅ |
 | D-36 | GPU não medida | **Decidido (2026-11-08):** permanece fora da coleta e é limitação declarada; o custo computacional do LLM está subestimado. Revisável no servidor Fedora, sem alterar a instrumentação de uma só abordagem | M8-T08 | ✅ |
 | D-37 🔬 | Limite de utilização e recalibração da carga | **Decidido (2026-11-09, provisório):** o critério de não saturação passa a ser `llm_fault_window_utilization ≤ 0,70` nas execuções com LLM fora de `overload`, em substituição a `llm_queue_wait_p95_ms ≤ llm_compute_median_ms`, que não detecta a fila em `orders.events`. Carga provisória de 0,035 pedidos/s; falha aos 280 s, por 280 s (`recovery`: 140 s; rajada de `overload` aos 285,7 s, por 10 s). O limite só calibra antes do congelamento e nunca invalida execução. Taxa final em M8-T02, medida no servidor | M8-T18 a M8-T21 | ✅ |
+| D-38 🔬 | Tamanho da amostra (`N_rep`) | **Decidido (2026-11-11): 30 pares válidos por cenário**, iguais em todos os cenários (420 execuções). O piso de D-35 (8 pares) só torna a significância possível, com os 8 pares na mesma direção. Por simulação (Wilcoxon exato, `alpha / 4` do Holm), 30 pares detectam `dz ≥ 0,8` com probabilidade ≥ 0,94 e `dz = 0,5` com 0,52–0,81; acima disso o ganho é pequeno. Fixado antes da coleta, sem parada opcional nem repetições extras após ver os dados. Cerca de 103 h de bancada (estimativa de piloto) | M8-T22 | ✅ |
 
 Cada decisão tomada é registrada aqui (status ✅ + resumo) e, quando 🔬, também em
 `piloto-do-experimento.md`.
@@ -502,6 +504,7 @@ Decisões tomadas na implementação que alteram trechos do capítulo de metodol
 | D-34 | §4.5.4 | Reavaliação offline dos mesmos estados |
 | D-35 | Tabela 18 / §4.5.4 | Testes pareados, correção de Holm e critério de relevância; referências estatísticas específicas |
 | D-36 | §4.6 (limitações) | GPU não medida: custo computacional do LLM subestimado |
+| D-38 | §4.4.1 / §4.5.4 (repetições e análise) | `N_rep` = 30 pares por cenário, com a justificativa de poder de [15 §15.7](15-protocolo-de-validacao.md); fixado antes da coleta |
 | `58f557a` | Quadro 2 (prompt) | Seção `PAPEL` passou a `PERSONA` e o objetivo usa "Decidir" no lugar de "Selecionar"; o prompt versionado já reflete isso |
 | Hipóteses | Introdução / §4.5 | Conciliar a "hipótese principal" com as hipóteses operacionais de [15 §15.2](15-protocolo-de-validacao.md) |
 

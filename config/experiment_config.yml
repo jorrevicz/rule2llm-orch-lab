@@ -9,7 +9,7 @@
 experiment:
   phase: pilot                  # pilot | experiment
   decision_engine: RULES        # RULES | LLM — única diferença entre as condições (D-06)
-  repetitions: null             # N_rep — A CONGELAR
+  repetitions: 30               # N_rep: pares válidos por cenário — D-38; congela em freeze-v1
   execution_order: null         # ordem de execução Rules/LLM — A CONGELAR
 
 messaging:

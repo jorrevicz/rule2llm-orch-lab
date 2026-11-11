@@ -143,6 +143,6 @@
 Versão exata do Python; versões das bibliotecas; versões/imagens Docker; versão do RabbitMQ;
 versão do Celery; versão do Ollama; digest/identificador do modelo; quantização efetiva;
 hardware; `QUEUE_HIGH_WATERMARK` final; `recent_events_limit = K` final; dataset final;
-volume de carga; taxa de requisições; seeds; duração/intensidade de cada falha; `N_rep`;
+volume de carga; taxa de requisições; seeds; duração/intensidade de cada falha; `N_rep` (definido: 30 pares, D-38);
 ordem de execução Rules/LLM; política completa de reset; critérios automáticos de readiness;
 hashes/commit da configuração congelada.

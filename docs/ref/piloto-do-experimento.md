@@ -2739,6 +2739,8 @@ A repetição experimental continua necessária.
 
 > **Decisão D-37 (2026-11-09) 🔬:** o critério de não saturação passa a ser a utilização do runtime na janela de falha, com limite de 0,70 nas execuções com LLM fora da sobrecarga. A carga provisória passa a 0,035 pedidos/s, com falha aos 280 s e janelas de 280 s (recuperação: 140 s). O limite só calibra antes do congelamento e nunca invalida execução. Registro: `docs/13-roadmap.md` §13.4; protocolo: `docs/15-protocolo-de-validacao.md` §15.4.
 
+> **Decisão D-38 (2026-11-11) 🔬:** `N_rep` = 30 pares válidos por cenário, iguais em todos os sete cenários (420 execuções). O piso de 8 pares (D-35) só torna a significância possível; por simulação do poder do Wilcoxon exato com o limiar da 1ª etapa do Holm, 30 pares detectam efeitos grandes (`dz ≥ 0,8`) com probabilidade ≥ 0,94 e moderados (`dz = 0,5`) com 0,52 a 0,81. O valor é fixado antes da coleta, sem parada opcional nem repetições extras após ver os dados. Registro: `docs/13-roadmap.md` §13.4; protocolo: `docs/15-protocolo-de-validacao.md` §15.7; simulação: `scripts/analysis/power_simulation.py`.
+
 ## 35.7 Fallback deve ter significado operacional real
 
 Não basta criar uma fila com outro nome que executa exatamente a mesma rota sujeita à mesma falha.
