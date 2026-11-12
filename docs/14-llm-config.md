@@ -36,10 +36,10 @@ com `/api/tags` e `/api/ps` (`llama3.1:8b` ≠ `llama3.1`).
 ```yaml
 llm:
   runtime: ollama
-  runtime_version: null         # preenchido a partir do runtime
-  model: qwen2.5:3b             # ← único campo obrigatório na troca
-  model_digest: null            # lido do runtime pela readiness
-  quantization: null            # lida do runtime pela readiness
+  runtime_version: null         # null: não verificado; com valor, a readiness exige igual
+  model: qwen2.5:3b             # ← campo obrigatório na troca
+  model_digest: null            # idem; o valor observado vai para os metadados
+  quantization: null            # idem
   temperature: 0.0
   top_p: 1.0
   max_tokens: 64
@@ -79,7 +79,11 @@ docker compose down
 ```
 
 A readiness verifica runtime, modelo presente, digest, quantização, warm-up, 100% na GPU,
-contexto e uma inferência de prova ≤ `PROBE_LIMIT_MS`. No protocolo (`run_experiment`), exige
+contexto e uma inferência de prova ≤ `PROBE_LIMIT_MS`. Quando `runtime_version`,
+`model_digest` ou `quantization` têm valor na config, como no congelamento (M8-T03: Ollama
+0.33.2, digest `46e0c10c…`, Q4_K_M), o observado precisa ser igual; senão a readiness reprova
+e a execução é `INVALID`. Trocar o modelo depois do congelamento exige, portanto, editar esses
+campos, o que muda o hash da config. No protocolo (`run_experiment`), exige
 também que o runtime responda de dentro de `orders-api` e `orders-worker`, pelo
 `OLLAMA_BASE_URL` que as decisões usam (`reachable_from_services`, M8-T23). Sem isso, um
 firewall no host pode deixar a readiness pelo host passar e transformar toda decisão em

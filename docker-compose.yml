@@ -1,10 +1,11 @@
 # Ambiente experimental — mesma infraestrutura para Rules e LLM (RNF-001).
-# Imagens e versões são provisórias; o pin reproduzível é feito em M8-T03.
+# Imagens fixadas por digest (índices multiarquitetura, M8-T03), congeladas em freeze-v1: a tag é
+# só legível. A tag flutuante rabbitmq:4-management já apontava para outra imagem no registro.
 name: rule2llm-orch-lab
 
 services:
   rabbitmq:
-    image: rabbitmq:4-management
+    image: rabbitmq:4.4.0-management@sha256:af6f50d38098d8bd52fef7f3fa85015dd8b2bf6def58e995bf584ae9ba0f6407
     hostname: rabbitmq
     ports:
       - "5672:5672"     # AMQP
@@ -119,7 +120,7 @@ services:
 
   # --- Coleta experimental (D-10): comum a Rules e LLM, nunca lida pelo decisor. ---
   prometheus:
-    image: prom/prometheus:v3.15.0
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus   # sem volume: zerado a cada reset (down -v)
@@ -137,7 +138,7 @@ services:
       retries: 20
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    image: gcr.io/cadvisor/cadvisor:v0.55.1@sha256:3de2bd5203120b866d74a9b283b2ffb8ec382fbf9dc321814700c6ea6f44ec57
     command:
       - --housekeeping_interval=1s        # D-26
       - --docker_only=true
@@ -155,7 +156,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
 
   node-exporter:
-    image: prom/node-exporter:v1.12.1
+    image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
     command:
       - --path.rootfs=/host
     pid: host

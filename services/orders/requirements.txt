@@ -1,8 +1,33 @@
-# Dependências do orders-service.
-# Imagem base prevista: Python 3.12 (provisória).
-# Versões ainda NÃO pinadas: o pin reproduzível é feito no congelamento (M8-T03).
-fastapi   # API HTTP: POST /orders, GET /orders/{id}, health check
-uvicorn   # servidor ASGI da API
-celery    # execução assíncrona sobre RabbitMQ (não é o mecanismo de decisão)
-pydantic  # validação de payloads e dos contratos (envelope, SYSTEM_STATE, decisão)
-pyyaml    # leitura de config/experiment_config.yml
+# Dependências do orders-service — pin reproduzível (M8-T03), congelado em freeze-v1.
+# Fechamento completo (`pip freeze` da imagem usada no servidor da coleta, 2026-11-11), sobre
+# python:3.12-slim fixada por digest no Dockerfile (Python 3.12.16, pip 25.0.1).
+# Diretas:
+fastapi==0.162.4      # API HTTP: POST /orders, GET /orders/{id}, health check
+uvicorn==0.54.0       # servidor ASGI da API
+celery==5.7.0         # execução assíncrona sobre RabbitMQ (não é o mecanismo de decisão)
+pydantic==2.14.3      # validação de payloads e dos contratos (envelope, SYSTEM_STATE, decisão)
+PyYAML==6.0.3         # leitura de config/experiment_config.yml
+# Transitivas:
+amqp==5.4.2
+annotated-doc==0.0.6
+annotated-types==0.8.0
+anyio==4.16.0
+billiard==4.3.2
+click==8.5.1
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.4.1
+h11==0.16.0
+idna==3.20
+kombu==5.7.0
+opentelemetry-api==1.45.2
+prompt_toolkit==3.0.53
+pydantic_core==2.50.4
+python-dateutil==2.9.0.post0
+six==1.17.0
+starlette==1.10.0
+typing-inspection==0.4.5
+typing_extensions==4.16.0
+tzlocal==5.4.5
+vine==5.1.0
+wcwidth==0.9.4

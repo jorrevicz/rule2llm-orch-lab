@@ -94,10 +94,10 @@
 ```yaml
 llm:
   runtime: ollama
-  runtime_version: null            # A CONGELAR
-  model: llama3.1:8b               # DECISÃO DE IMPLEMENTAÇÃO (pode mudar durante o piloto)
-  model_digest: null               # A CONGELAR (digest/identificador real do modelo)
-  quantization: null               # A CONGELAR (quantização efetivamente carregada)
+  runtime_version: "0.33.2"        # M8-T03: lido do servidor da coleta; a readiness exige igual
+  model: llama3.1:8b
+  model_digest: 46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e
+  quantization: Q4_K_M
   temperature: 0.0
   top_p: 1.0
   max_tokens: 64
@@ -134,7 +134,7 @@ Regras (RNF-013, RNF-026, RNF-027):
 ## 3.6 Parâmetros operacionais (fonte de verdade: `config/experiment_config.yml`)
 
 > Fonte: `piloto-do-experimento.md` §14.1, §31, §40; metodologia Código 11.
-> Valores do **piloto** — provisórios, **A CONGELAR** antes da coleta definitiva.
+> Valores **finais** de M8-T02 (D-11), congelados em `freeze-v1`.
 
 ```yaml
 messaging:
@@ -144,23 +144,23 @@ messaging:
   wait_delay_ms: 1000
   max_waits: 2
   fallback_max_attempts: 1
-  queue_high_watermark: 20         # provisório; valor final após observar o steady state
+  queue_high_watermark: 20         # entre o steady state (fila ≤ 1) e o pico da rajada de overload
 
 context:
-  recent_events_limit: 5           # janela K de recent_events; A CONGELAR
+  recent_events_limit: 5           # janela K de recent_events
 
 llm:
   # ver §3.5
 
 inventory:                         # D-22, D-03
-  service_time_ms: 100             # tempo de serviço simulado por solicitação (duas rotas); A CONGELAR
+  service_time_ms: 100             # tempo de serviço simulado por solicitação (duas rotas)
   catalog: datasets/inventory_catalog_v1.json
 
-workload:
+workload:                          # cenário normal; os demais em config/scenarios/
   dataset: datasets/orders_v1.json
-  requests: null                   # A CONGELAR
-  rate_per_second: null            # A CONGELAR (malha aberta: taxa fixa de envio)
-  seed: null                       # seed que gerou o dataset (seed_workload); A CONGELAR
+  requests: 60
+  rate_per_second: 0.25            # malha aberta: taxa fixa de envio (D-11)
+  seed: 1042                       # seed que gerou o dataset (seed_workload)
 
 fault:                             # metodologia Código 11; D-20
   type: none                       # none | overload | intermittent_error | timeout | inconsistent_data | recovery
@@ -194,12 +194,26 @@ max_attempts = 3   →   1 tentativa inicial  +  no máximo 2 novas tentativas
 A tentativa inicial conta dentro do limite. Evita interpretar "3 retries" como 4 tentativas
 totais. Usar sempre `max_attempts`; nunca `max_retries`.
 
-## 3.8 Versões a congelar
+## 3.8 Versões congeladas (M8-T03)
 
-> Nunca inventar versões não verificadas ([`CLAUDE.md`](../CLAUDE.md) §44). Campos
-> desconhecidos ficam `null` até serem obtidos de forma confiável.
+> Nunca inventar versões não verificadas ([`CLAUDE.md`](../CLAUDE.md) §44). Todos os valores
+> abaixo foram lidos do servidor da coleta em 2026-11-11.
 
-Antes da coleta definitiva, registrar em `execution_metadata.json`: versão exata do Python;
-versões das bibliotecas; versões/imagens Docker; versão do RabbitMQ; versão do Celery;
-versão do Ollama; digest/identificador do modelo; quantização efetiva; hardware (CPU, RAM,
-GPU); hashes de `experiment_config.yml` e do dataset; `git_commit`.
+| Componente | Versão | Onde está fixada |
+|---|---|---|
+| Imagem base dos serviços | `python:3.12-slim@sha256:5e2bdb1b…` (Python 3.12.16, Debian 13.7, pip 25.0.1) | `services/*/Dockerfile` |
+| Bibliotecas dos serviços | Fechamento completo do `pip freeze` (FastAPI 0.162.4, Uvicorn 0.54.0, Celery 5.7.0, kombu 5.7.0, Pydantic 2.14.3, PyYAML 6.0.3) | `services/*/requirements.txt` |
+| RabbitMQ | `rabbitmq:4.4.0-management@sha256:af6f50d3…` (4.4.0) | `docker-compose.yml` |
+| Prometheus, cAdvisor, node-exporter | v3.15.0, v0.55.1, v1.12.1, cada um por digest | `docker-compose.yml` |
+| Bancada no host | Python 3.12.15; pytest 9.2.0, httpx2 2.16.0, scipy 1.18.1, numpy 2.5.4, psutil 7.2.2 | `requirements-dev.txt` |
+| Runtime e modelo | Ollama 0.33.2; `llama3.1:8b`, digest `46e0c10c…`, Q4_K_M; `OLLAMA_NUM_PARALLEL=1` | `config/experiment_config.yml` (verificado pela readiness); unit do systemd (README) |
+| Host | Fedora 44, Xeon W-2223, 15,3 GB, RTX 3080 10 GB (driver 620.70.06), Docker 29.8.2 | `execution_metadata.json` de cada execução |
+
+Os digests são índices multiarquitetura: a mesma referência serve no servidor (amd64) e no Mac
+(arm64). A tag flutuante `rabbitmq:4-management` já apontava para outra imagem no registro quando
+o pin foi feito. O `OLLAMA_NUM_PARALLEL` não é exposto pela API do Ollama, por isso fica no
+procedimento de instalação do servidor e não na readiness.
+
+Cada execução continua registrando em `execution_metadata.json` o que encontrou: Python,
+Celery, RabbitMQ, imagens, Ollama, digest, quantização, hardware, hashes da config e do
+dataset e `git_commit`.

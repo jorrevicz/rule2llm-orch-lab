@@ -9,13 +9,22 @@ from tests.factories import repo_config
 
 CONFIG = repo_config()
 MODEL = CONFIG.llm.model
+# O runtime falso se apresenta com os valores congelados na config (M8-T03).
+VERSION, DIGEST, QUANTIZATION = CONFIG.llm.runtime_version, CONFIG.llm.model_digest, CONFIG.llm.quantization
 
 
-def _routes(size_vram: int = 5_000, context_length: int = CONFIG.llm.num_ctx, models: list | None = None) -> dict:
+def _routes(
+    size_vram: int = 5_000,
+    context_length: int = CONFIG.llm.num_ctx,
+    models: list | None = None,
+    version: str = VERSION,
+    digest: str = DIGEST,
+    quantization: str = QUANTIZATION,
+) -> dict:
     return {
-        "/api/version": {"version": "0.0.0-test"},
-        "/api/tags": {"models": models if models is not None else [{"name": MODEL, "digest": "abc123"}]},
-        "/api/show": {"details": {"quantization_level": "Q4_K_M", "parameter_size": "8.0B"}},
+        "/api/version": {"version": version},
+        "/api/tags": {"models": models if models is not None else [{"name": MODEL, "digest": digest}]},
+        "/api/show": {"details": {"quantization_level": quantization, "parameter_size": "8.0B"}},
         "/api/ps": {"models": [{"name": MODEL, "size": 5_000, "size_vram": size_vram, "context_length": context_length}]},
         "/api/generate": {
             "response": '{"action": "CONTINUE", "target": null, "reason_code": "X"}',
@@ -68,7 +77,7 @@ def test_ready_runtime_passes_and_reports_itself(ollama):
     readiness = check(CONFIG, ollama.url)
 
     assert readiness.status == "PASS", readiness.failures
-    assert (readiness.runtime_version, readiness.model_digest, readiness.quantization) == ("0.0.0-test", "abc123", "Q4_K_M")
+    assert (readiness.runtime_version, readiness.model_digest, readiness.quantization) == (VERSION, DIGEST, QUANTIZATION)
     assert readiness.processor == "100% GPU"
     assert readiness.model_load_ms == 1500.0
     assert readiness.warmup_inference_ms is not None
@@ -88,15 +97,24 @@ def test_model_is_unloaded_before_the_warm_up(ollama):
         ({"models": []}, "not available"),
         ({"size_vram": 2_500}, "partially on GPU"),
         ({"context_length": 2048}, "num_ctx"),
+        ({"version": "0.34.0"}, "runtime_version '0.34.0' != frozen"),
+        ({"digest": "0" * 64}, "model_digest"),
+        ({"quantization": "Q8_0"}, "quantization 'Q8_0' != frozen 'Q4_K_M'"),
     ],
     indirect=["ollama"],
-    ids=["model-missing", "partial-gpu", "short-context"],
+    ids=["model-missing", "partial-gpu", "short-context", "other-runtime", "other-digest", "other-quantization"],
 )
 def test_unfit_runtime_fails(ollama, failure):
     readiness = check(CONFIG, ollama.url)
 
     assert readiness.status == "FAIL"
     assert any(failure in message for message in readiness.failures)
+
+
+def test_runtime_fields_left_null_in_the_config_are_not_checked(ollama):
+    unfrozen = CONFIG.model_copy(update={"llm": CONFIG.llm.model_copy(update=dict.fromkeys(("runtime_version", "model_digest", "quantization")))})
+
+    assert check(unfrozen, ollama.url).status == "PASS"
 
 
 def test_unreachable_runtime_fails():

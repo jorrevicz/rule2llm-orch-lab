@@ -91,6 +91,7 @@ def check(config: ExperimentConfig, base_url: str = DEFAULT_OLLAMA_URL) -> LLMRe
     try:
         readiness.runtime_version = client.version()
         _read_model(client, config, readiness)
+        _check_frozen(config, readiness)
         if readiness.failures:
             return readiness
         prompt = _warm_up(client, config, readiness)
@@ -139,6 +140,21 @@ def _read_model(client: OllamaClient, config: ExperimentConfig, readiness: LLMRe
     details = client.show().get("details", {})
     readiness.quantization = details.get("quantization_level")
     readiness.parameter_size = details.get("parameter_size")
+
+
+FROZEN_RUNTIME_FIELDS = ("runtime_version", "model_digest", "quantization")
+
+
+def _check_frozen(config: ExperimentConfig, readiness: LLMReadiness) -> None:
+    """Runtime, digest e quantização congelados na config (M8-T03) precisam ser os observados.
+
+    Campo `null` na config não é verificado (piloto antes do congelamento). Divergência é falha
+    da bancada: a execução não usa o modelo do experimento (CLAUDE §19, §24).
+    """
+    for name in FROZEN_RUNTIME_FIELDS:
+        expected, observed = getattr(config.llm, name), getattr(readiness, name)
+        if expected is not None and observed != expected:
+            readiness.failures.append(f"{name} {observed!r} != frozen {expected!r}")
 
 
 def _warm_up(client: OllamaClient, config: ExperimentConfig, readiness: LLMReadiness) -> str:

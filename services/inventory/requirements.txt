@@ -1,6 +1,25 @@
-# Dependências do inventory-service.
-# Imagem base prevista: Python 3.12 (provisória).
-# Versões ainda NÃO pinadas: o pin reproduzível é feito no congelamento (M8-T03).
-celery    # worker de reserva sobre RabbitMQ (inventory.primary / inventory.fallback)
-pydantic  # validação do envelope de mensagem
-pyyaml    # leitura de config/experiment_config.yml
+# Dependências do inventory-service — pin reproduzível (M8-T03), congelado em freeze-v1.
+# Fechamento completo (`pip freeze` da imagem usada no servidor da coleta, 2026-11-11), sobre
+# python:3.12-slim fixada por digest no Dockerfile (Python 3.12.16, pip 25.0.1).
+# Diretas:
+celery==5.7.0         # worker de reserva sobre RabbitMQ (inventory.primary / inventory.fallback)
+pydantic==2.14.3      # validação do envelope de mensagem
+PyYAML==6.0.3         # leitura de config/experiment_config.yml
+# Transitivas:
+amqp==5.4.2
+annotated-types==0.8.0
+billiard==4.3.2
+click==8.5.1
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.4.1
+kombu==5.7.0
+prompt_toolkit==3.0.53
+pydantic_core==2.50.4
+python-dateutil==2.9.0.post0
+six==1.17.0
+typing-inspection==0.4.5
+typing_extensions==4.16.0
+tzlocal==5.4.5
+vine==5.1.0
+wcwidth==0.9.4

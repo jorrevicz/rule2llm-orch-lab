@@ -1,8 +1,10 @@
-# Ambiente de desenvolvimento e testes (local).
+# Bancada no host e testes (fora dos containers). Pin de M8-T03: versões do .venv do servidor
+# da coleta (Python 3.12.15, 2026-11-11), congeladas em freeze-v1.
 # Inclui as dependências dos dois serviços para que os testes exercitem o mesmo código.
 -r services/orders/requirements.txt
 -r services/inventory/requirements.txt
-pytest  # execução dos testes unitários, de contrato e de integração
-httpx2  # cliente HTTP exigido pelo TestClient do Starlette nos testes da API
-scipy==1.18.1  # bancada: testes estatísticos da análise pareada (D-35), fora dos serviços
-psutil==7.2.2  # bancada no host: CPU/RAM do processo do Ollama (fora dos containers, D-08/D-10)
+pytest==9.2.0   # execução dos testes unitários, de contrato e de integração
+httpx2==2.16.0  # cliente HTTP exigido pelo TestClient do Starlette nos testes da API
+scipy==1.18.1   # bancada: testes estatísticos da análise pareada (D-35), fora dos serviços
+numpy==2.5.4    # base do scipy; fixada para o mesmo resultado numérico da análise
+psutil==7.2.2   # bancada no host: CPU/RAM do processo do Ollama (fora dos containers, D-08/D-10)

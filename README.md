@@ -165,6 +165,11 @@ No Linux, o Ollama roda no host como serviço systemd (D-08), e o compose o alca
   parado (`k3s-killall.sh`) e desabilitado no boot.
 - **Permissões:** os containers rodam como root. Antes de um `docker compose up` manual,
   crie `data/pilot/PILOT_0000` como usuário; as execuções do protocolo já criam o diretório.
+- **Versões congeladas (M8-T03):** imagens por digest, bibliotecas com o fechamento completo
+  e Ollama 0.33.2 com `llama3.1:8b` (digest `46e0c10c…`, Q4_K_M) ([03 §3.8](docs/03-stack-tecnologica.md)).
+  A readiness reprova outro runtime, digest ou quantização. Por isso, depois do congelamento, a
+  coleta só passa num host com exatamente esse runtime, e o Mac do piloto deixa de servir.
+  Recrie o `.venv` da bancada com `uv pip install -r requirements-dev.txt`.
 - **Execução longa:** rode o protocolo dentro do `tmux` e traga os dados com
   `rsync -av <servidor>:rule2llm-orch-lab/data/<fase>/ <destino>/`. A numeração `PILOT_nnnn`
   é própria de cada host: não misture os diretórios de hosts diferentes.
