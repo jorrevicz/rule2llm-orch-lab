@@ -245,6 +245,7 @@ class CycleReport:
     results: list[dict] = field(default_factory=list)
     not_run: Plan = field(default_factory=list)
     interrupted: tuple[str, str, int] | None = None
+    aborted: tuple[str, str, int] | None = None  # o run_experiment saiu sem abrir execução (M8-T28)
 
 
 def run_cycle(plan: Plan, stop: StopRequest, runner: Callable[[list[str], StopRequest], list[dict]] = run_child) -> CycleReport:
@@ -254,10 +255,17 @@ def run_cycle(plan: Plan, stop: StopRequest, runner: Callable[[list[str], StopRe
             report.not_run = plan[index:]
             break
         print(f"\n▶ {scenario} · {engine} · repetição {repetition} ({index + 1}/{len(plan)})", flush=True)
-        report.results += runner(run_experiment_command(scenario, engine, repetition), stop)
+        results = runner(run_experiment_command(scenario, engine, repetition), stop)
+        report.results += results
         if stop.forced:
             report.interrupted = (scenario, engine, repetition)
             report.not_run = plan[index + 1:]
+            break
+        if not results:
+            # Toda tentativa aberta imprime um resultado (até as INVALID): nenhum = erro antes de abrir.
+            # Seguir só queimaria números de repetição; a sessão para aqui.
+            report.aborted = (scenario, engine, repetition)
+            report.not_run = plan[index:]
             break
     return report
 
@@ -284,6 +292,8 @@ def print_cycle_report(report: CycleReport, data_root: Path = DEFAULT_DATA_ROOT)
         print(f"Artefatos em {data_root.relative_to(REPO_ROOT) if data_root.is_relative_to(REPO_ROOT) else data_root}/<fase>/<execution_id>/")
     if report.interrupted:
         print(f"⚠ Interrompida à força (diretório incompleto, sem run_status final): {report.interrupted}")
+    if report.aborted:
+        print(f"✖ O run_experiment saiu sem abrir execução em {report.aborted} (veja o erro acima); sessão encerrada.")
     if report.not_run:
         print(f"Não executadas neste ciclo ({len(report.not_run)}): {report.not_run}")
 
@@ -358,7 +368,7 @@ def full_protocol(ask: Ask) -> None:
             report = run_cycle(cycle_plan(scenarios, engines, repetition), stop)
             reports.append(report)
             print_cycle_report(report)
-            if stop.requested or (cycles and len(reports) >= cycles):
+            if report.aborted or stop.requested or (cycles and len(reports) >= cycles):
                 break
             print(
                 f"\n⚠ Ciclo da repetição {repetition} concluído. Nenhuma execução em andamento: é seguro parar agora."

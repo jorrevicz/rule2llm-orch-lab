@@ -112,6 +112,16 @@ def test_forced_stop_marks_the_execution_as_interrupted():
     assert report.not_run == plan[1:]
 
 
+def test_cycle_stops_when_the_procedure_exits_without_opening_an_execution():
+    # M8-T28: erro de argumento/configuração não pode seguir queimando repetições.
+    plan = menu.cycle_plan(SCENARIOS, ["RULES", "LLM"], 1)
+    calls = []
+    report = menu.run_cycle(plan, menu.StopRequest(), runner=lambda command, stop: calls.append(command) or [])
+    assert len(calls) == 1
+    assert report.aborted == plan[0] and report.not_run == plan
+    assert report.interrupted is None
+
+
 def test_cycle_without_stop_runs_every_execution():
     plan = menu.cycle_plan(SCENARIOS, ["RULES", "LLM"], 3)
     report = menu.run_cycle(plan, menu.StopRequest(), runner=lambda command, stop: [_result(*plan[0])])

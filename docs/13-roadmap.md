@@ -409,6 +409,7 @@ doc 10 §10.6).
 | M9-T02 | Execuções inválidas | `chore(experiment)` | `invalid_runs.csv`; repetição até completar `N_rep` válidas por combinação | [06 §6.12](06-modelo-de-decisao.md) | ⬜ |
 | M9-T03 | Consolidação dos resultados | `chore(experiment)` | `compare_engines --phase experiment` e `replay_decisions --phase experiment` → `results.csv`, `analysis_summary.md`, matriz de conclusões do [doc 15](15-protocolo-de-validacao.md) — apenas com dados reais | CLAUDE §42, §44 | ⬜ |
 | M9-T04 | **(D)** Versionamento dos dados | `docs(decisoes)` | D-12: como versionar/publicar os dados experimentais | RNF-006 | ⬜ |
+| M9-T05 | Disparo da coleta pelo menu | `fix(experiment)` | Bug da bancada achado ao iniciar a coleta (2026-11-12): a verificação de ordem de M8-T27 exigia `--engine RULES --engine LLM` em toda chamada, e o menu chama um motor por vez (com a alternância já aplicada por `cycle_plan` a partir de `execution_order`). Todas as chamadas saíam no `argparse`, antes de abrir execução, e o menu seguia avançando a repetição. Nenhum dado gravado (`data/experiment/` vazio). Agora: um motor por chamada é aceito; vários seguem `execution_order`; o menu encerra a sessão quando o `run_experiment` sai sem abrir execução. Fora do manifesto (bancada, não decisão nem análise): `freeze-v1` segue sem diferenças. Testado: 2 unitários novos (cada comando do ciclo passa a verificação; sessão encerrada sem execução aberta) e 570 unitários | D-11, M8-T27 | ✅ |
 
 **Critério de conclusão**
 

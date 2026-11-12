@@ -246,9 +246,13 @@ def schedule(
 
 
 def experiment_order_error(config: ExperimentConfig, engines: list[str]) -> str | None:
-    """Na fase `experiment`, os motores seguem `execution_order` (D-11); no piloto, qualquer ordem."""
+    """Na fase `experiment`, vários motores numa chamada seguem `execution_order` (D-11); no piloto, qualquer ordem.
+
+    Um único motor por chamada é aceito: é como o menu roda o protocolo, com a alternância já
+    aplicada por `menu.cycle_plan` a partir de `execution_order`.
+    """
     expected = list(config.experiment.execution_order or [])
-    if config.experiment.phase == "experiment" and engines != expected:
+    if config.experiment.phase == "experiment" and len(engines) > 1 and engines != expected:
         return f"phase 'experiment': --engine must be {expected} (execution_order), got {engines}"
     return None
 

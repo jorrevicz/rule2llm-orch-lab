@@ -18,8 +18,24 @@ def test_experiment_phase_requires_the_frozen_engine_order():
 
     assert experiment_order_error(experiment, ["RULES", "LLM"]) is None
     assert "execution_order" in experiment_order_error(experiment, ["LLM", "RULES"])
-    assert "execution_order" in experiment_order_error(experiment, ["LLM"])
-    assert experiment_order_error(pilot, ["LLM"]) is None
+    assert experiment_order_error(pilot, ["LLM", "RULES"]) is None
+    # M8-T28: o menu chama um motor por vez, já na ordem alternada de `cycle_plan`.
+    assert experiment_order_error(experiment, ["LLM"]) is None
+    assert experiment_order_error(experiment, ["RULES"]) is None
+
+
+def test_every_command_of_the_menu_cycle_passes_the_order_check():
+    import menu
+
+    base = repo_config()
+    experiment = base.model_copy(
+        update={"experiment": base.experiment.model_copy(update={"phase": "experiment", "execution_order": ["RULES", "LLM"]})}
+    )
+    for repetition in (1, 2):
+        for scenario, engine, rep in menu.cycle_plan(["normal", "timeout"], ["RULES", "LLM"], repetition):
+            command = menu.run_experiment_command(scenario, engine, rep)
+            engines = [command[i + 1] for i, arg in enumerate(command) if arg == "--engine"]
+            assert experiment_order_error(experiment, engines) is None, command
 
 
 def test_schedule_alternates_the_engine_that_opens_each_repetition():
