@@ -4,7 +4,22 @@ import csv
 
 import pytest
 
-from scripts.experiment.run_experiment import REQUIRED_ARTIFACTS, record_invalid, schedule, validate
+from scripts.experiment.run_experiment import REQUIRED_ARTIFACTS, experiment_order_error, record_invalid, schedule, validate
+from tests.factories import repo_config
+
+
+def test_experiment_phase_requires_the_frozen_engine_order():
+    # D-11 / M8-T06: na amostra, a ordem que abre as repetições ímpares é a de `execution_order`.
+    base = repo_config()
+    experiment = base.model_copy(
+        update={"experiment": base.experiment.model_copy(update={"phase": "experiment", "execution_order": ["RULES", "LLM"]})}
+    )
+    pilot = base.model_copy(update={"experiment": base.experiment.model_copy(update={"phase": "pilot"})})
+
+    assert experiment_order_error(experiment, ["RULES", "LLM"]) is None
+    assert "execution_order" in experiment_order_error(experiment, ["LLM", "RULES"])
+    assert "execution_order" in experiment_order_error(experiment, ["LLM"])
+    assert experiment_order_error(pilot, ["LLM"]) is None
 
 
 def test_schedule_alternates_the_engine_that_opens_each_repetition():

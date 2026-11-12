@@ -1,22 +1,30 @@
 import json
+import re
+import tempfile
 import threading
 from pathlib import Path
 
 import pytest
 
+from scripts.pilot import new_execution
 from scripts.pilot.llm_readiness import LLMReadiness
 from scripts.pilot.new_execution import (
     EFFECTIVE_CONFIG_FILE,
     METADATA_FILE,
     SCENARIOS_DIR,
     available_scenarios,
+    next_execution_id,
     next_pilot_id,
     open_execution,
 )
 from shared.artifacts import Artifact, JsonlWriter, execution_dir, shard_path
 from shared.config import load_experiment_config, load_scenario
 
-REPO_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
+BASE_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
+# Config versionada com a fase forçada a `pilot`: estes testes abrem execuções sem protocolo,
+# o que a fase `experiment` (M8-T06) recusa. Os caminhos relativos resolvem pela raiz do repositório.
+REPO_CONFIG = Path(tempfile.mkdtemp(prefix="pilot-config-")) / "experiment_config.yml"
+REPO_CONFIG.write_text(re.sub(r"(?m)^  phase: \w+", "  phase: pilot", BASE_CONFIG.read_text(encoding="utf-8")), encoding="utf-8")
 
 
 def test_pilot_and_experiment_executions_never_share_a_directory(tmp_path):
@@ -79,15 +87,38 @@ def test_open_execution_writes_pilot_metadata(tmp_path):
         assert metadata[field] is None
 
 
-def test_open_execution_refuses_a_non_pilot_config(tmp_path):
-    config = tmp_path / "experiment_config.yml"
-    config.write_text(
-        REPO_CONFIG.read_text(encoding="utf-8").replace("phase: pilot", "phase: experiment"),
-        encoding="utf-8",
-    )
+# -- fase experimental (M8-T06) ---------------------------------------------------------
 
-    with pytest.raises(SystemExit):
-        open_execution(tmp_path / "data", "normal", config)
+
+def _phase_config(tmp_path: Path, phase: str) -> Path:
+    config = tmp_path / f"experiment_config.{phase}.yml"
+    config.write_text(re.sub(r"(?m)^  phase: \w+", f"  phase: {phase}", BASE_CONFIG.read_text(encoding="utf-8")), encoding="utf-8")
+    return config
+
+
+def test_experiment_phase_opens_sample_executions_apart_from_the_pilot(tmp_path, monkeypatch):
+    monkeypatch.setattr(new_execution, "git_commit", lambda: "a" * 40)
+    (tmp_path / "data" / "pilot" / "PILOT_0042").mkdir(parents=True)
+
+    directory = open_execution(tmp_path / "data", "normal", _phase_config(tmp_path, "experiment"), engine="RULES", repetition_id=1)
+
+    metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
+    assert directory == tmp_path / "data" / "experiment" / "EXP_0001"
+    assert (metadata["phase"], metadata["eligible_for_sample"], metadata["repetition_id"]) == ("EXPERIMENT", True, 1)
+    assert next_execution_id(tmp_path / "data", "experiment") == "EXP_0002"
+    assert next_execution_id(tmp_path / "data", "pilot") == "PILOT_0043"
+
+
+@pytest.mark.parametrize(
+    ("repetition_id", "commit", "reason"),
+    [(None, "a" * 40, "repetition_id"), (1, "a" * 40 + "-dirty", "clean commit"), (1, None, "clean commit")],
+    ids=["manual-execution", "dirty-tree", "no-git"],
+)
+def test_experiment_phase_refuses_executions_outside_the_protocol(tmp_path, monkeypatch, repetition_id, commit, reason):
+    monkeypatch.setattr(new_execution, "git_commit", lambda: commit)
+
+    with pytest.raises(SystemExit, match=reason):
+        open_execution(tmp_path / "data", "normal", _phase_config(tmp_path, "experiment"), repetition_id=repetition_id)
     assert not (tmp_path / "data").exists()
 
 

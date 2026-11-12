@@ -18,7 +18,8 @@ Protocolo completo:
 - entre ciclos, aviso + espera de 10 s: nenhuma execução está em andamento, é o momento
   seguro de parar.
 
-Só cria execuções de piloto: `open_execution` recusa fase diferente de `pilot`.
+A fase vem da config (M8-T06). Em `experiment`, a pré-verificação exige commit limpo e a
+configuração igual ao manifesto de congelamento; as execuções são `EXP_nnnn`.
 """
 
 import json
@@ -32,6 +33,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from types import FrameType
 
+from scripts.experiment.freeze_manifest import FREEZE_TAG
+from scripts.experiment.freeze_manifest import differences as manifest_differences
+from scripts.experiment.freeze_manifest import load as load_manifest
 from scripts.experiment.run_experiment import DEFAULT_DATA_ROOT, REQUIRED_ARTIFACTS, schedule
 from scripts.pilot.environment import REPO_ROOT
 from scripts.pilot.llm_readiness import DEFAULT_OLLAMA_URL
@@ -299,8 +303,14 @@ def countdown(seconds: int, stop: StopRequest, sleep: Callable[[float], None] = 
 def preflight(config: ExperimentConfig, engines: list[str]) -> list[str]:
     """Falhas óbvias da bancada antes de abrir execuções (evita inválidas em série)."""
     failures = []
-    if config.experiment.phase != "pilot":
-        failures.append(f"fase da config é '{config.experiment.phase}': o executor só abre execuções de piloto")
+    if config.experiment.phase == "experiment":
+        commit = git_commit()
+        if commit is None or commit.endswith("-dirty"):
+            failures.append(f"fase experiment exige um commit limpo (git_commit={commit!r})")
+        manifest = load_manifest()
+        found = ["manifesto ausente"] if manifest is None else manifest_differences(manifest)
+        if found:
+            failures.append(f"configuração diferente do congelamento ({FREEZE_TAG}): {'; '.join(found[:5])}")
     try:
         docker = subprocess.run(["docker", "info"], capture_output=True, timeout=30)
         if docker.returncode != 0:
@@ -312,7 +322,7 @@ def preflight(config: ExperimentConfig, engines: list[str]) -> list[str]:
         try:
             client.version()
         except (LLMRuntimeError, LLMTimeout) as error:
-            failures.append(f"Ollama não responde em {DEFAULT_OLLAMA_URL} ({error}); inicie com `open -a Ollama`")
+            failures.append(f"Ollama não responde em {DEFAULT_OLLAMA_URL} ({error}); inicie-o (macOS: `open -a Ollama`; Linux: `sudo systemctl start ollama`)")
     return failures
 
 

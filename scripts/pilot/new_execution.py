@@ -15,7 +15,10 @@ Com `--engine LLM`, roda a readiness e o warm-up do Ollama (`llm_readiness`) e r
 versão do runtime, digest, quantização, `model_load_ms` e `warmup_inference_ms`. Se a
 readiness reprovar, a execução é registrada como inválida e o script sai com erro.
 
-Somente fase de piloto: `phase = PILOT`, `eligible_for_sample = false`. Campos que
+A fase vem da config: `pilot` → `PILOT_nnnn` em `data/pilot/`, `phase = PILOT`,
+`eligible_for_sample = false`; `experiment` → `EXP_nnnn` em `data/experiment/`,
+`phase = EXPERIMENT`, `eligible_for_sample = true`, aberta só pelo protocolo e sobre um commit
+limpo (M8-T06). Campos que
 não podem ser obtidos de forma confiável neste momento ficam `null` (nunca
 inventados); versões de componentes, readiness e `run_status` são preenchidos pelo
 protocolo de execução (M7-T06).
@@ -36,7 +39,7 @@ import yaml
 
 from scripts.pilot.llm_readiness import LLMReadiness
 from scripts.pilot.llm_readiness import check as check_llm_readiness
-from shared.artifacts import execution_dir
+from shared.artifacts import PHASE_DIRS, execution_dir
 from shared.config import (
     ExperimentConfig,
     ScenarioFile,
@@ -54,17 +57,25 @@ EFFECTIVE_CONFIG_FILE = "experiment_config.yml"
 CONTAINER_DATA_ROOT = Path("/srv/data")
 SCENARIOS_DIR = REPO_ROOT / "config" / "scenarios"
 EXECUTION_ID_WIDTH = 4
-_PILOT_ID = re.compile(r"^PILOT_(\d+)$")
+_EXECUTION_ID = re.compile(r"^(PILOT|EXP)_(\d+)$")
+PHASE_PREFIX = {"pilot": IdPrefix.PILOT_EXECUTION, "experiment": IdPrefix.EXPERIMENT_EXECUTION}
+PHASE_LABEL = {"pilot": "PILOT", "experiment": "EXPERIMENT"}
+
+
+def next_execution_id(data_root: Path, phase: str = "pilot") -> str:
+    """`PILOT_nnnn` em `data/pilot/` ou `EXP_nnnn` em `data/experiment/` (CLAUDE §28)."""
+    prefix = PHASE_PREFIX[phase]
+    phase_dir = data_root / PHASE_DIRS[prefix]
+    numbers = [
+        int(match.group(2))
+        for path in (phase_dir.iterdir() if phase_dir.exists() else [])
+        if (match := _EXECUTION_ID.match(path.name)) and match.group(1) == prefix
+    ]
+    return sequential_id(prefix, max(numbers, default=0) + 1, EXECUTION_ID_WIDTH)
 
 
 def next_pilot_id(data_root: Path) -> str:
-    pilot_dir = data_root / "pilot"
-    numbers = [
-        int(match.group(1))
-        for path in (pilot_dir.iterdir() if pilot_dir.exists() else [])
-        if (match := _PILOT_ID.match(path.name))
-    ]
-    return sequential_id(IdPrefix.PILOT_EXECUTION, max(numbers, default=0) + 1, EXECUTION_ID_WIDTH)
+    return next_execution_id(data_root, "pilot")
 
 
 def sha256_of(path: Path) -> str | None:
@@ -115,8 +126,8 @@ def build_metadata(
     dataset = REPO_ROOT / config.workload.dataset
     return {
         "execution_id": execution_id,
-        "phase": "PILOT",
-        "eligible_for_sample": False,
+        "phase": PHASE_LABEL[config.experiment.phase],
+        "eligible_for_sample": config.experiment.phase == "experiment",  # só se também VALID (doc 15 §15.8)
         "scenario_id": scenario_id,
         "repetition_id": None,
         "decision_engine": config.experiment.decision_engine,
@@ -201,6 +212,18 @@ def apply_llm_readiness(metadata: dict, readiness: LLMReadiness) -> None:
         metadata["invalid_reason"] = "llm_readiness_failed: " + "; ".join(readiness.failures)
 
 
+def refuse_unprotocoled_experiment(repetition_id: int | None, commit: str | None) -> None:
+    """Execução da amostra só pelo protocolo (com `repetition_id`) e sobre um commit limpo (M8-T06).
+
+    Uma execução manual não tem par nem seed por repetição (D-27, D-35); uma árvore alterada
+    não corresponde a nenhum commit, e o congelamento não poderia ser demonstrado.
+    """
+    if repetition_id is None:
+        raise SystemExit("phase 'experiment': executions are opened only by run_experiment, with a repetition_id")
+    if commit is None or commit.endswith("-dirty"):
+        raise SystemExit(f"phase 'experiment': the working tree must be a clean commit (git_commit={commit!r})")
+
+
 def open_execution(
     data_root: Path = DEFAULT_DATA_ROOT,
     scenario_id: str = "normal",
@@ -213,13 +236,14 @@ def open_execution(
 ) -> Path:
     """`llm_readiness=None`: a readiness do LLM fica para depois do reset (protocolo, M7-T06)."""
     base_path = resolve_config_path(config_path).resolve()
-    if load_experiment_config(base_path).experiment.phase != "pilot":
-        raise SystemExit("config phase is not 'pilot': this script only opens pilot executions")
+    phase = load_experiment_config(base_path).experiment.phase
+    if phase == "experiment":
+        refuse_unprotocoled_experiment(repetition_id, git_commit())
     scenario_path = scenarios_dir / f"{scenario_id}.yml"
     if not scenario_path.is_file():
         raise SystemExit(f"unknown scenario {scenario_id!r}; available: {available_scenarios(scenarios_dir)}")
     scenario = load_scenario(scenario_path)
-    execution_id = next_pilot_id(data_root)
+    execution_id = next_execution_id(data_root, phase)
     directory = execution_dir(data_root, execution_id)
     directory.mkdir(parents=True)
     effective_path = write_effective_config(base_path, directory, engine, scenario, repetition_id)

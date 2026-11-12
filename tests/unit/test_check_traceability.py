@@ -6,8 +6,7 @@ import pytest
 
 from scripts.pilot.check_traceability import check
 from scripts.pilot.new_execution import open_execution
-
-REPO_CONFIG = Path(__file__).resolve().parents[2] / "config" / "experiment_config.yml"
+from tests.unit.test_artifacts import REPO_CONFIG  # config versionada com a fase forçada a pilot (M8-T06)
 EXECUTION = "PILOT_0001"
 TS = "2026-09-28T12:00:00.000Z"
 

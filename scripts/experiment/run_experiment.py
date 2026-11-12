@@ -49,7 +49,7 @@ from scripts.pilot.llm_readiness import check_from_services as check_llm_from_se
 from scripts.pilot.new_execution import METADATA_FILE, apply_llm_readiness, available_scenarios, open_execution
 from scripts.scenarios.run_scenario import apply_scenario, finish
 from shared.artifacts import Artifact
-from shared.config import load_experiment_config
+from shared.config import ExperimentConfig, load_experiment_config
 from shared.timestamps import utc_now_iso
 
 DEFAULT_DATA_ROOT = REPO_ROOT / "data"
@@ -244,6 +244,14 @@ def schedule(
     return plan
 
 
+def experiment_order_error(config: ExperimentConfig, engines: list[str]) -> str | None:
+    """Na fase `experiment`, os motores seguem `execution_order` (D-11); no piloto, qualquer ordem."""
+    expected = list(config.experiment.execution_order or [])
+    if config.experiment.phase == "experiment" and engines != expected:
+        return f"phase 'experiment': --engine must be {expected} (execution_order), got {engines}"
+    return None
+
+
 def keep_host_awake() -> subprocess.Popen | None:
     if platform.system() != "Darwin":
         return None
@@ -259,6 +267,8 @@ def main() -> int:
     parser.add_argument("--max-attempts", type=int, default=3, help="tentativas por execução inválida")
     parser.add_argument("--settle-timeout", type=float, default=900.0)
     args = parser.parse_args()
+    if (error := experiment_order_error(load_experiment_config(), args.engine)) is not None:
+        parser.error(error)
 
     awake = keep_host_awake()
     results = []
