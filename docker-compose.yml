@@ -37,7 +37,8 @@ services:
       EXPERIMENT_CONFIG_PATH: ${EXECUTION_CONFIG_PATH:-/srv/config/experiment_config.yml}
       DATA_ROOT: /srv/data
       SERVICE_ROLE: orders-api
-      # D-08: Ollama no host (bare-metal, GPU Metal), fora do compose.
+      # D-08: Ollama no host (bare-metal, GPU do host), fora do compose: Metal no Mac do piloto,
+      # CUDA no servidor da coleta (M8-T25).
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     extra_hosts:
       - "host.docker.internal:host-gateway"

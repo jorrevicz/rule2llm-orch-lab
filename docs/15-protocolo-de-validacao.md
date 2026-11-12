@@ -324,8 +324,12 @@ Bibliografia conferida em 2026-11-08; **ler antes de citar** e incluir no TCC so
 
 ## 15.12 Verificação antes do `freeze-v1`
 
-- [ ] Hipóteses conciliadas com a Introdução do TCC.
-- [ ] Artigos primários e fontes do Consensus lidos; status C de §15.3 confirmado ou corrigido.
+- [ ] Hipóteses conciliadas com a Introdução do TCC. *Não bloqueia a coleta (M8-T01): é trabalho de
+  redação. As hipóteses operacionais de §15.2 e o plano de análise ficam congelados como estão; a
+  Introdução deve ser ajustada a eles, e não o contrário.*
+- [ ] Artigos primários e fontes do Consensus lidos; status C de §15.3 confirmado ou corrigido. *Não
+  bloqueia a coleta: afeta só a discussão. Se a leitura alterar uma métrica, a mudança é registrada
+  como desvio do protocolo, não aplicada em silêncio.*
 - [ ] Critério de não saturação aprovado no servidor final.
 - [x] `N_rep` definido com o piso de §15.7: 30 pares por cenário (D-38).
 - [x] `config/analysis_plan.yml` e a rubrica incluídos no manifesto de hashes (M8-T04: `config/freeze_manifest.json`).

@@ -111,7 +111,7 @@ Parâmetros acrescentados no M5 (A CONGELAR): `response_format: json` (D-09), `n
 (contexto explícito — o Ollama corta em silêncio um prompt maior que o contexto) e
 `keep_alive` (o modelo não é descarregado no meio de uma execução).
 
-**D-08 (2026-09-29) 🔬:** o Ollama roda **no host** (bare-metal, GPU Metal do Apple M2), fora do Docker Compose; os serviços o acessam por `host.docker.internal:11434`. Em container, o Docker no macOS só teria CPU. Consequência para a instrumentação: o custo de CPU/RAM do modelo **não aparece no Docker Stats**; o processo do Ollama precisa de coleta própria no host (M7-T04), para que o overhead do LLM não fique invisível na comparação de custo.
+**D-08 (2026-09-29) 🔬:** o Ollama roda **no host** (bare-metal, GPU Metal do Apple M2), fora do Docker Compose; os serviços o acessam por `host.docker.internal:11434`. Em container, o Docker no macOS só teria CPU. Consequência para a instrumentação: o custo de CPU/RAM do modelo **não aparece no Docker Stats**; o processo do Ollama precisa de coleta própria no host (M7-T04), para que o overhead do LLM não fique invisível na comparação de custo. **Na coleta (M8-T25)**, o host é o servidor Fedora 44 com RTX 3080 (CUDA), e a arquitetura é a mesma: Ollama como serviço do host, alcançado por `host.docker.internal` (`host-gateway`). O Mac M2 serviu só ao piloto; nenhum dado dele entra na amostra.
 
 **D-09 (2026-09-29) 🔬:** chamada com `format: "json"`: o runtime restringe a saída a JSON **sintaticamente** válido, sem schema. Ação, target e `reason_code` continuam livres, e as decisões inválidas de conteúdo seguem sendo medidas pelo `DecisionValidator`. Um schema restrito (enum de ações/targets) eliminaria na geração parte do comportamento avaliado.
 

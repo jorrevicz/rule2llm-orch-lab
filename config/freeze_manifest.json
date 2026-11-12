@@ -1,6 +1,6 @@
 {
   "freeze": "freeze-v1",
-  "created_at": "2026-11-12T03:04:47.005Z",
+  "created_at": "2026-11-12T03:15:47.518Z",
   "groups": {
     "decision": {
       "config/prompts/decision_prompt_v1.txt": "99381a48e3025abeb45875e3671e5ca8a274fb358ff2791fdf73a575f623048f",
@@ -46,7 +46,7 @@
       "scripts/analysis/replay_decisions.py": "f304d9e0e572c80612074262ccc9f9c5f935ac806d202312050fb166158d6913"
     },
     "environment": {
-      "docker-compose.yml": "f084f5560b189d6bdba023221a82933a3cc6a74a2f92fe918e27a356ce654cf1",
+      "docker-compose.yml": "730809f5106e71f4c1bfada68f2ad3c04b506d23d168fd63d0f1bc564333c17e",
       "requirements-dev.txt": "efe7c70ea5da15694bed4c98d824f004d31d2623aadf51018a56f24875934dbf",
       "services/inventory/Dockerfile": "f6689df6945674df9dc38a55a43f194cd102b3da550f7b807f6abf2c396a4ed3",
       "services/inventory/requirements.txt": "668a24dd0ce72685fe5c5b6d9015a4712bcbb63ef38a5bdcca881d20af1a695b",
