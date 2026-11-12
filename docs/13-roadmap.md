@@ -48,7 +48,7 @@ Maturidade dos entregáveis ([`CLAUDE.md`](../CLAUDE.md) §44): **implementado**
 | [M5](#m5--llmdecisionengine) | Ollama + `LLMDecisionEngine` stateless | ✅ | `m5-llm` | 2026-09-29 |
 | [M6](#m6--cenários-de-falha-e-carga) | Dataset, carga e scripts de falha dos 6 cenários | ✅ | `m6-falhas-carga` | 2026-09-29 |
 | [M7](#m7--instrumentação-e-protocolo-experimental) | Reset, readiness, métricas, protocolo de execução | ✅ | `m7-instrumentacao` | 2026-09-29 |
-| [M8](#m8--congelamento) | Congelamento da configuração experimental | 🔄 | `freeze-v1` | — |
+| [M8](#m8--congelamento) | Congelamento da configuração experimental | ✅ | `freeze-v1` | 2026-11-12 |
 | [M9](#m9--coleta-definitiva) | Coleta definitiva da amostra | ⬜ | `coleta-v1` | — |
 
 ## 13.3 Dependências entre marcos
@@ -389,8 +389,12 @@ doc 10 §10.6).
 
 **Critério de conclusão**
 
-- [ ] Nenhum campo crítico `null` no `experiment_config.yml`.
-- [ ] Tag `freeze-v1` publicada; a partir daqui nada congelado é alterado.
+- [x] Nenhum campo crítico `null` no `experiment_config.yml`: restam só os campos de `fault` do cenário `normal`, que não tem falha.
+- [x] Tag `freeze-v1` publicada; a partir daqui nada congelado é alterado. `config/freeze_manifest.json` (41 arquivos) é verificado pela readiness em toda execução da amostra.
+
+> Verificado em 2026-11-12 no servidor da coleta (`6db66aa`): 568 unitários, 9/9 de integração na fase
+> `experiment` (nenhum `EXP_*` criado por teste), manifesto sem diferenças; ensaio geral 14/14 válido
+> (M8-T05).
 
 ---
 
