@@ -110,6 +110,39 @@ def test_without_k_consecutive_normal_tasks_the_system_is_not_recovered():
     assert row["recovered"] is False and row["recovery_time_ms"] is None
 
 
+def test_an_isolated_slow_task_does_not_postpone_recovery():
+    # D-39 (PILOT_0006 do servidor): uma tarefa normal acima do limiar no meio da janela não adia
+    # a recuperação; a mediana da janela segue no nível pré-falha.
+    tasks = [task(1, 0, 1.0), task(2, 2, 3.0)]
+    tasks += [task(3, 21, 21.5), task(4, 22, 25.0)]       # 2ª tarefa lenta (3 s), isolada
+    tasks += [task(n, 20 + n, 20 + n + 0.5) for n in range(5, 9)]
+
+    row = recovery(tasks, WINDOW, k=5)
+
+    assert row["recovered"] is True
+    assert row["recovered_at"] == ts(21.5)                # TASK_000003, sem esperar a lenta sair da janela
+
+
+def test_persistent_slowness_keeps_the_system_unrecovered():
+    # 1ª tarefa normal, mas 3 das 5 acima da referência: a mediana ainda não voltou ao steady state.
+    tasks = [task(1, 0, 1.0), task(2, 2, 3.0)]
+    tasks += [task(3, 23, 23.5), task(4, 24, 27.0), task(5, 25, 28.0), task(6, 26, 29.0), task(7, 27, 27.5)]
+
+    assert recovery(tasks, WINDOW, k=5)["recovered"] is False
+
+    tasks[3] = task(4, 24, 24.5)                          # TASK_000004 normal: 2 de 5 lentas, mediana normal
+    assert recovery(tasks, WINDOW, k=5)["recovered_at"] == ts(23.5)
+
+
+def test_recovery_window_must_start_on_a_normal_task():
+    tasks = [task(1, 0, 1.0), task(2, 2, 3.0)]
+    tasks += [task(3, 21, 25.0)] + [task(n, 20 + n, 20 + n + 0.5) for n in range(4, 9)]
+
+    row = recovery(tasks, WINDOW, k=5)
+
+    assert row["recovered_at"] == ts(24.5)                # TASK_000004: a lenta não ancora a janela
+
+
 def test_recovery_is_not_computable_without_a_pre_fault_reference():
     row = recovery([task(1, 21, 22.0)], WINDOW, k=1)
     assert row["recovered"] is None and row["baseline_p95_ms"] is None

@@ -62,7 +62,7 @@ em `metrics_summary.csv`.
 | `error_rate` | Tarefas não concluídas / tarefas | razão | `task_events.jsonl` | Metodologia Tabela 15 | M | Conta `ABORT` correto como erro; métrica secundária |
 | `failed_with_reservation` | Tarefas `ABORTED`/`DEAD_LETTERED` com reserva efetivada | contagem | `task_events.jsonl`, logs do Inventory | D-32 | D | Inconsistência final; não há ação de compensação no recorte |
 | `throughput_per_s` | Concluídas / (último término − primeira criação) | 1/s | `task_events.jsonl` | Metodologia Tabela 17 | M | Em malha aberta sem saturação, reflete a taxa de chegada |
-| `recovery_after_fault_end_ms` | 1º pedido da janela de `k` sucessos normais − fim da falha | ms | `latency_metrics.csv` | D-24, D-28; Zhang et al. (2024) para a injeção | D | Referência é o próprio pré-falha da execução |
+| `recovery_after_fault_end_ms` | 1º pedido da janela de `k` sucessos (1º pedido e mediana ≤ P95 pré-falha) − fim da falha | ms | `latency_metrics.csv` | D-24, D-28, D-39; Zhang et al. (2024) para a injeção | D | Referência é o próprio pré-falha da execução; a mediana tolera pedidos lentos isolados |
 | `recovery_time_ms` | Mesmo instante − início da falha | ms | `latency_metrics.csv` | Metodologia Tabela 17 | M | Tem piso igual à duração da falha |
 | `recovery_rate` | Execuções recuperadas / calculáveis | razão | `compare_engines.py` | D-28 | D | Sempre ao lado do tempo |
 | `recovery_restricted_ms` | Tempo pós-falha limitado a um horizonte `τ` comum; não recuperado = `τ` | ms | `compare_engines.py` | D-28; média restrita | D | `τ` é o menor horizonte observado no cenário |

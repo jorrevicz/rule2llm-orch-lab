@@ -2741,6 +2741,8 @@ A repetição experimental continua necessária.
 
 > **Decisão D-38 (2026-11-11) 🔬:** `N_rep` = 30 pares válidos por cenário, iguais em todos os sete cenários (420 execuções). O piso de 8 pares (D-35) só torna a significância possível; por simulação do poder do Wilcoxon exato com o limiar da 1ª etapa do Holm, 30 pares detectam efeitos grandes (`dz ≥ 0,8`) com probabilidade ≥ 0,94 e moderados (`dz = 0,5`) com 0,52 a 0,81. O valor é fixado antes da coleta, sem parada opcional nem repetições extras após ver os dados. Registro: `docs/13-roadmap.md` §13.4; protocolo: `docs/15-protocolo-de-validacao.md` §15.7; simulação: `scripts/analysis/power_simulation.py`.
 
+> **Decisão D-39 (2026-11-11) 🔬:** a janela de recuperação de `k` pedidos exige todos concluídos, o 1º pedido e a mediana com latência ≤ P95 pré-falha (antes: todos os `k` ≤ P95). Um único pedido normal de 263 ms contra um limiar de 183,5 ms adiou a recuperação do Rules de 11,6 s para 154 s no servidor. Recalculado sobre as 11 execuções de verificação, só esse caso muda. Registro: `docs/13-roadmap.md` §13.4; definição: `docs/10-rastreabilidade-e-metricas.md` §10.4.3.1.
+
 ## 35.7 Fallback deve ter significado operacional real
 
 Não basta criar uma fila com outro nome que executa exatamente a mesma rota sujeita à mesma falha.

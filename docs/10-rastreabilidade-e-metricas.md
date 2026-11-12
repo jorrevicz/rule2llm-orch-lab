@@ -207,12 +207,13 @@ throughput, `Δ > 0` favorece LLM.
 ### 10.4.3.1 Definições operacionais (M7)
 
 - **Tempo de recuperação (D-24):** recuperado quando `k` pedidos consecutivos (ordem de
-  criação) criados após o fim da falha terminam `COMPLETED` com latência ≤ P95 dos pedidos
-  **concluídos** antes do início da falha (D-28), na mesma execução. `recovery_time =
+  criação) criados após o fim da falha terminam `COMPLETED`, com o 1º deles e a **mediana** da
+  janela com latência ≤ P95 dos pedidos **concluídos** antes do início da falha (D-28, D-39), na
+  mesma execução. A mediana tolera até `⌊(k − 1) / 2⌋` pedidos lentos isolados. `recovery_time =
   t_conclusão do 1º pedido da janela − t_início da falha`; `recovery_after_fault_end` parte
   do fim da falha e é a medida principal, pois a primeira tem piso igual à duração da falha.
   Sem janela até o fim da execução → "não recuperado" (censura em `recovery_horizon_ms`,
-  [15 §15.3](15-protocolo-de-validacao.md)). `k` provisório = 5.
+  [15 §15.3](15-protocolo-de-validacao.md)). `k` = 5 (D-11).
 - **Blast radius (D-25):** tarefa afetada = teve algum ponto de decisão além do inicial ou não
   terminou `COMPLETED`. Registrados à parte: tarefas atingidas diretamente (`FAULT_APPLIED`),
   serviços afetados, mensagens reentregues e mortas (DLQ).

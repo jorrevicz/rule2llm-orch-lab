@@ -199,6 +199,19 @@ def fault_windows(faults: list[dict]) -> list[dict]:
     ]
 
 
+def _stable_window(window: list[dict], reference: float) -> bool:
+    """D-39: `k` tarefas seguidas, todas concluídas; a 1ª e a mediana com latência ≤ referência.
+
+    A mediana tolera até ⌊(k − 1) / 2⌋ tarefas lentas isoladas dentro da janela. Antes, uma só
+    tarefa normal de 263 ms contra um limiar de 183,5 ms adiava a recuperação em minutos
+    (PILOT_0006 do servidor, §13.7). Exigir a 1ª tarefa normal ancora o instante num pedido que
+    já voltou ao nível pré-falha.
+    """
+    if not all(t["status"] == "COMPLETED" for t in window):
+        return False
+    return window[0]["e2e_ms"] <= reference and statistics.median(t["e2e_ms"] for t in window) <= reference
+
+
 def recovery(tasks: list[dict], window: dict, k: int) -> dict:
     fault_start, fault_end = parse_ts(window["started_at"]), parse_ts(window["ended_at"])
     # D-28: só tarefas concluídas antes da falha; a que cruza a janela já está sob o efeito dela.
@@ -223,9 +236,8 @@ def recovery(tasks: list[dict], window: dict, k: int) -> dict:
         row["recovered"] = None  # sem referência pré-falha: não calculável
         return row
     after = [t for t in tasks if parse_ts(t["created_at"]) >= fault_end]
-    normal = [t["status"] == "COMPLETED" and t["e2e_ms"] <= reference for t in after]
     for index in range(len(after) - k + 1):
-        if all(normal[index:index + k]):
+        if _stable_window(after[index:index + k], reference):
             recovered_at = parse_ts(after[index]["finished_at"])
             row.update(
                 recovered=True,
