@@ -148,6 +148,27 @@ aplica carga e falha, exporta as métricas do Prometheus e do Ollama, valida a i
 consolida (`metrics_summary.csv` e demais). Inválidas vão para `invalid_runs.csv` e são
 repetidas com a mesma configuração.
 
+### Servidor da coleta (Linux)
+
+No Linux, o Ollama roda no host como serviço systemd (D-08), e o compose o alcança por
+`host.docker.internal` (`host-gateway`). Pontos verificados no servidor Fedora (M8-T25):
+
+- **Ollama:** unit completa em `/etc/systemd/system/ollama.service` (`ExecStart=… serve`,
+  `User=ollama`), com `OLLAMA_HOST=0.0.0.0:11434` e `OLLAMA_NUM_PARALLEL=1`. Não use
+  `systemctl edit --full` sobre uma unit inexistente: ela fica sem `ExecStart`.
+- **Firewall:** com `policy drop` no host, libere a 11434 só para as bridges do Docker
+  (`iifname "docker0"` e `iifname "br-*"`, porque o reset recria a rede). Se o arquivo de
+  regras começa com `flush ruleset`, aplique com `nft add rule` em vez de recarregar o
+  serviço, que apagaria as regras do Docker. A readiness do LLM reprova a execução se os
+  containers não alcançarem o runtime.
+- **Host dedicado:** nada mais disputando CPU e GPU durante a coleta. No servidor, o k3s foi
+  parado (`k3s-killall.sh`) e desabilitado no boot.
+- **Permissões:** os containers rodam como root. Antes de um `docker compose up` manual,
+  crie `data/pilot/PILOT_0000` como usuário; as execuções do protocolo já criam o diretório.
+- **Execução longa:** rode o protocolo dentro do `tmux` e traga os dados com
+  `rsync -av <servidor>:rule2llm-orch-lab/data/<fase>/ <destino>/`. A numeração `PILOT_nnnn`
+  é própria de cada host: não misture os diretórios de hosts diferentes.
+
 ### Análise dos resultados
 
 A consolidação por execução roda sozinha ao fim de cada execução válida. A comparação e a
