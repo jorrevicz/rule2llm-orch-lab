@@ -88,7 +88,7 @@ abaixo **não são benchmarks reproduzidos** aqui:
 
 ## 15.4 Cenários
 
-Parâmetros em `config/scenarios/`, provisórios até M8-T02. **Taxa e janelas seguem D-30.** A seed de
+Parâmetros em `config/scenarios/`, finais desde M8-T02 (D-11) e congelados em `freeze-v1`. A seed de
 falha varia por repetição e é igual dentro do par Rules/LLM (D-27).
 
 | Cenário | Justificativa | Sinal visível ao decisor | Pode distinguir decisão contextual? | Critério de avaliação |
@@ -136,9 +136,33 @@ e 0,60 e os atrasos no Orders ficaram iguais aos do Rules. A inferência estava 
 anterior (mediana de 3,7–3,9 s, contra 4,9–5,3 s); naquela velocidade, a utilização seria de cerca de 0,8.
 Por isso o critério precisa ser reavaliado no servidor final.
 
-**Alinhamento a fixar em M8-T02.** O início e o fim da janela devem coincidir com envios da carga. Com
-fim aos 560 s e envio aos 571,4 s, o tempo de recuperação ganha um piso de 11,4 s, igual nos dois motores,
-que infla o valor absoluto sem deslocar a diferença pareada.
+**Carga final (D-11, M8-T02), medida no servidor da coleta.** O que se transfere entre máquinas é o
+limite, não a taxa. No servidor (RTX 3080), a 0,035/s, o pior caso (`persistent_degradation` com LLM)
+teve utilização de 0,043 e 0,051, cômputo mediano de 0,35 s e p95 de 0,40 s (PILOT_0007 e 0008 do
+servidor). A utilização cresce na proporção da taxa:
+
+| Taxa | Intervalo | Utilização prevista no pior caso (mediana / p95 do cômputo) | Decisão |
+|---|---|---|---|
+| 0,035/s | 28,6 s | 0,043–0,051 (medida) | Servidor quase ocioso; ~14 min por execução |
+| **0,25/s** | **4 s** | **0,31–0,36 / ~0,41** | **Adotada** |
+| 0,5/s | 2 s | 0,62–0,73 / ~0,82 | Excluída: no limite de 0,70 ou acima |
+
+A 0,25/s sobra margem para tarefas com mais decisões que as 4 de `persistent_degradation`: 7 decisões
+a 0,35 s gastam 2,45 s a cada 4 s (0,61). Com 4 s entre envios, um pedido lento isolado desloca a
+janela de recuperação em no máximo `k × 4 = 20 s`, contra 143 s a 0,035/s (§13.7, resolvido por D-39).
+
+Estrutura das execuções, igual para Rules e LLM:
+
+- **60 pedidos:** 20 antes, 20 durante e 20 depois da janela de falha (80–160 s). A referência
+  pré-falha passa de 10 para 20 tarefas.
+- **Janela alinhada a envios:** o início e o fim coincidem com o 21º e o 41º envio, o que elimina o
+  piso de 11,4 s no tempo de recuperação observado com fim aos 560 s e envio aos 571,4 s (PILOT_0089–0092).
+- **`recovery`:** parada de 40 s (80–120 s, 10 tarefas), metade da janela, como antes.
+- **`overload`:** 20 pedidos a 0,25/s, rajada de 10 s a 15/s a partir do 21º envio (150 pedidos) e mais
+  20 a 0,25/s, total de 190.
+
+`tests/unit/test_generate_load.py` fixa as contagens e o alinhamento de cada cenário. A verificação do
+critério no servidor é o ensaio geral (M8-T05).
 
 ## 15.5 Rubrica de adequação da decisão (D-33)
 

@@ -10,20 +10,21 @@ experiment:
   phase: pilot                  # pilot | experiment
   decision_engine: RULES        # RULES | LLM — única diferença entre as condições (D-06)
   repetitions: 30               # N_rep: pares válidos por cenário — D-38; congela em freeze-v1
-  execution_order: null         # ordem de execução Rules/LLM — A CONGELAR
+  execution_order: [RULES, LLM] # D-11: abre as repetições ímpares; nas pares, a ordem inverte (metodologia §4.4.1)
 
+# messaging e context: valores finais de M8-T02 (D-11), iguais aos do piloto §14.1.
 messaging:
   inventory_timeout_ms: 2000    # timeout operacional (não é timeout de HTTP síncrono)
   max_attempts: 3               # 1 tentativa inicial + até 2 novas (nunca max_retries)
   retry_delay_ms: 500
   wait_delay_ms: 1000
   max_waits: 2
-  fallback_max_attempts: 1      # semântica ainda pendente (roadmap D-15)
-  queue_high_watermark: 20      # provisório; valor final após observar o steady state
+  fallback_max_attempts: 1      # D-15
+  queue_high_watermark: 20      # D-11: entre o steady state (fila ≤ 1) e o pico da rajada de overload
   task_deadline_ms: 60000       # piloto §14.1; ausente do exemplo do §31 (roadmap I-04)
 
 context:
-  recent_events_limit: 5        # janela K de recent_events — A CONGELAR
+  recent_events_limit: 5        # janela K de recent_events — D-11
 
 llm:
   runtime: ollama
@@ -56,8 +57,8 @@ metrics:
 # config/scenarios/ (new_execution --scenario), que substitui estas duas seções.
 workload:
   dataset: datasets/orders_v1.json
-  requests: 30                  # provisório — A CONGELAR
-  rate_per_second: 0.035        # malha aberta — D-30 e D-37, provisório, A CONGELAR
+  requests: 60                  # D-11
+  rate_per_second: 0.25         # malha aberta — D-11, calibrada no servidor da coleta (D-37)
   seed: 1042                    # seed que gerou o dataset (seed_workload)
 
 fault:                          # metodologia Código 11; campos exigidos por tipo em shared/config.py

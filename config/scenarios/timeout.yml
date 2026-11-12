@@ -1,6 +1,7 @@
 # Cenário atraso / timeout — metodologia §4.4, Tabela 12; roadmap M6.
 # Substitui as seções workload e fault da config base (new_execution --scenario).
-# Mesmo arquivo para Rules e LLM. Valores do PILOTO: provisórios, A CONGELAR (M8-T02); carga calibrada em D-30 e D-37.
+# Mesmo arquivo para Rules e LLM. Valores finais de M8-T02 (D-11), medidos no servidor da coleta;
+# congelados em freeze-v1. 60 pedidos a 0,25/s; janela do 21º ao 40º envio (80–160 s).
 
 scenario_id: timeout
 description: >-
@@ -8,15 +9,15 @@ description: >-
 
 workload:
   dataset: datasets/orders_v1.json
-  requests: 30
-  rate_per_second: 0.035
+  requests: 60
+  rate_per_second: 0.25
   seed: 1042                    # seed que gerou o dataset
 
 fault:
   type: timeout
   target: inventory.primary
-  start_after_seconds: 280
-  duration_seconds: 280
+  start_after_seconds: 80
+  duration_seconds: 80
   failure_probability: 0.5
   delay_ms: 3000
   overload_rate_per_second: null

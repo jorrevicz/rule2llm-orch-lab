@@ -48,6 +48,30 @@ def test_overload_window_raises_the_send_rate_only_inside_the_window():
     assert inside == pytest.approx(fault.duration_seconds * fault.overload_rate_per_second, abs=1)
 
 
+@pytest.mark.parametrize(
+    ("name", "before", "inside", "after"),
+    [
+        ("intermittent_failure", 20, 20, 20),
+        ("persistent_degradation", 20, 20, 20),
+        ("timeout", 20, 20, 20),
+        ("inconsistent_data", 20, 20, 20),
+        ("recovery", 20, 10, 30),
+        ("overload", 20, 150, 20),
+    ],
+)
+def test_fault_window_starts_and_ends_on_a_send(name, before, inside, after):
+    # D-11: início e fim da janela coincidem com envios; fim desalinhado criava um piso no
+    # tempo de recuperação igual ao intervalo até o envio seguinte (§13.7, PILOT_0089–0092).
+    config = scenario_config(name)
+    start = config.fault.start_after_seconds
+    end = start + config.fault.duration_seconds
+    offsets = send_offsets(config)
+
+    assert [sum(o < start for o in offsets), sum(start <= o < end for o in offsets), sum(o >= end for o in offsets)] == [before, inside, after]
+    assert min(abs(o - start) for o in offsets) < 1e-3
+    assert min(abs(o - end) for o in offsets) < 1e-3
+
+
 def test_inconsistent_orders_are_drawn_only_inside_the_window():
     config = scenario_config("inconsistent_data", requests=40)
     fault = config.fault

@@ -146,3 +146,7 @@ hardware; `QUEUE_HIGH_WATERMARK` final; `recent_events_limit = K` final; dataset
 volume de carga; taxa de requisições; seeds; duração/intensidade de cada falha; `N_rep` (definido: 30 pares, D-38);
 ordem de execução Rules/LLM; política completa de reset; critérios automáticos de readiness;
 hashes/commit da configuração congelada.
+
+Resolvidos em M8-T02 (D-11, 2026-11-11): `QUEUE_HIGH_WATERMARK`, K, dataset, volume e taxa de carga,
+seeds, duração/intensidade das falhas e ordem Rules/LLM. Valores em `config/experiment_config.yml` e
+`config/scenarios/`; derivação da carga em [15 §15.4](15-protocolo-de-validacao.md).
