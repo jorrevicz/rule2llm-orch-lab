@@ -155,10 +155,11 @@ def run_once(
     settle_timeout_s: float = 900.0,
     build: bool = True,
     scenarios_dir: Path | None = None,
+    config_path: Path | None = None,
 ) -> dict:
     # 1. execução aberta; a readiness do LLM vem depois do reset (etapa 5)
     directory = open_execution(
-        data_root, scenario_id, engine=engine, llm_readiness=None, repetition_id=repetition_id,
+        data_root, scenario_id, config_path, engine=engine, llm_readiness=None, repetition_id=repetition_id,
         **({"scenarios_dir": scenarios_dir} if scenarios_dir else {}),
     )
     execution_id = directory.name

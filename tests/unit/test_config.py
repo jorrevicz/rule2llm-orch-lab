@@ -72,10 +72,13 @@ def test_repo_config_has_exactly_the_expected_keys():
     assert {section: set(values) for section, values in raw.items()} == EXPECTED_KEYS
 
 
-def test_repo_config_loads_as_pilot():
+def test_repo_config_is_frozen_in_the_experiment_phase():
+    # M8-T06: a config versionada é a da coleta; piloto só com config própria de fase `pilot`.
     config = load_experiment_config(REPO_CONFIG)
 
-    assert config.experiment.phase == "pilot"
+    assert config.experiment.phase == "experiment"
+    assert config.experiment.execution_order == ["RULES", "LLM"]
+    assert None not in (config.llm.runtime_version, config.llm.model_digest, config.llm.quantization)
     assert config.experiment.decision_engine in {"RULES", "LLM"}
     assert config.llm.session_memory is False
 

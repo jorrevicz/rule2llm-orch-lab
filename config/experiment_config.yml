@@ -7,7 +7,7 @@
 #         docs/03-stack-tecnologica.md §3.5 e §3.6.
 
 experiment:
-  phase: pilot                  # pilot | experiment
+  phase: experiment             # pilot | experiment — M8-T06 (freeze-v1): execuções EXP_nnnn da amostra
   decision_engine: RULES        # RULES | LLM — única diferença entre as condições (D-06)
   repetitions: 30               # N_rep: pares válidos por cenário — D-38; congela em freeze-v1
   execution_order: [RULES, LLM] # D-11: abre as repetições ímpares; nas pares, a ordem inverte (metodologia §4.4.1)

@@ -122,6 +122,16 @@ def test_experiment_phase_refuses_executions_outside_the_protocol(tmp_path, monk
     assert not (tmp_path / "data").exists()
 
 
+def test_experiment_phase_refuses_scenarios_outside_the_frozen_directory(tmp_path, monkeypatch):
+    # O teste de integração do protocolo usa um cenário próprio: nunca pode virar EXP_nnnn.
+    monkeypatch.setattr(new_execution, "git_commit", lambda: "a" * 40)
+    (tmp_path / "normal.yml").write_text((SCENARIOS_DIR / "normal.yml").read_text(encoding="utf-8"), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="scenarios come only from config/scenarios"):
+        open_execution(tmp_path / "data", "normal", _phase_config(tmp_path, "experiment"), repetition_id=1, scenarios_dir=tmp_path)
+    assert not (tmp_path / "data").exists()
+
+
 # -- motor por execução e readiness do LLM (M5-T06) ---------------------------------
 
 

@@ -174,6 +174,10 @@ No Linux, o Ollama roda no host como serviço systemd (D-08), e o compose o alca
   do Validator, do Executor, das configs, do dataset, da análise e do ambiente. Confira com
   `.venv/bin/python -m scripts.experiment.freeze_manifest --check`. Na fase `experiment`, a
   readiness recusa a execução se algum arquivo divergir.
+- **Fase `experiment` (M8-T06, `freeze-v1`):** a config versionada abre `EXP_nnnn` em
+  `data/experiment/`, só pelo protocolo, sobre commit limpo e com os cenários de
+  `config/scenarios/`. Um piloto depois do congelamento exige uma cópia da config com
+  `phase: pilot`, passada por `EXPERIMENT_CONFIG_PATH`, nunca a edição da versionada.
 - **Execução longa:** rode o protocolo dentro do `tmux` e traga os dados com
   `rsync -av <servidor>:rule2llm-orch-lab/data/<fase>/ <destino>/`. A numeração `PILOT_nnnn`
   é própria de cada host: não misture os diretórios de hosts diferentes.

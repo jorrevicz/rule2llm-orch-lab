@@ -212,16 +212,20 @@ def apply_llm_readiness(metadata: dict, readiness: LLMReadiness) -> None:
         metadata["invalid_reason"] = "llm_readiness_failed: " + "; ".join(readiness.failures)
 
 
-def refuse_unprotocoled_experiment(repetition_id: int | None, commit: str | None) -> None:
-    """Execução da amostra só pelo protocolo (com `repetition_id`) e sobre um commit limpo (M8-T06).
+def refuse_unprotocoled_experiment(repetition_id: int | None, commit: str | None, scenarios_dir: Path = SCENARIOS_DIR) -> None:
+    """Execução da amostra só pelo protocolo (com `repetition_id`), sobre um commit limpo e com
+    um dos cenários congelados de `config/scenarios/` (M8-T06).
 
     Uma execução manual não tem par nem seed por repetição (D-27, D-35); uma árvore alterada
-    não corresponde a nenhum commit, e o congelamento não poderia ser demonstrado.
+    não corresponde a nenhum commit; um cenário de outro diretório (como o do teste de
+    integração) não está no manifesto. Nenhum dos três pode virar `EXP_nnnn`.
     """
     if repetition_id is None:
         raise SystemExit("phase 'experiment': executions are opened only by run_experiment, with a repetition_id")
     if commit is None or commit.endswith("-dirty"):
         raise SystemExit(f"phase 'experiment': the working tree must be a clean commit (git_commit={commit!r})")
+    if scenarios_dir.resolve() != SCENARIOS_DIR.resolve():
+        raise SystemExit(f"phase 'experiment': scenarios come only from {_display_path(SCENARIOS_DIR)}, not {scenarios_dir}")
 
 
 def open_execution(
@@ -238,7 +242,7 @@ def open_execution(
     base_path = resolve_config_path(config_path).resolve()
     phase = load_experiment_config(base_path).experiment.phase
     if phase == "experiment":
-        refuse_unprotocoled_experiment(repetition_id, git_commit())
+        refuse_unprotocoled_experiment(repetition_id, git_commit(), scenarios_dir)
     scenario_path = scenarios_dir / f"{scenario_id}.yml"
     if not scenario_path.is_file():
         raise SystemExit(f"unknown scenario {scenario_id!r}; available: {available_scenarios(scenarios_dir)}")

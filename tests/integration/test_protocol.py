@@ -15,6 +15,7 @@ import yaml
 
 from scripts.experiment.run_experiment import REQUIRED_ARTIFACTS, run_once
 from shared.artifacts import execution_dir
+from tests.unit.test_artifacts import REPO_CONFIG as PILOT_CONFIG  # fase forçada a pilot (M8-T06)
 from tests.unit.test_config import REPO_CONFIG
 
 pytestmark = pytest.mark.integration
@@ -35,7 +36,8 @@ CONSOLIDATED = ("latency_metrics.csv", "throughput_metrics.csv", "error_metrics.
 def test_one_execution_follows_the_protocol_and_produces_every_artifact(tmp_path):
     (tmp_path / "protocol_check.yml").write_text(yaml.safe_dump(SHORT_SCENARIO), encoding="utf-8")
 
-    metadata = run_once("protocol_check", "RULES", 1, scenarios_dir=tmp_path, settle_timeout_s=120)
+    # Config de piloto: com a config versionada (fase experiment), esta execução de teste seria recusada.
+    metadata = run_once("protocol_check", "RULES", 1, scenarios_dir=tmp_path, settle_timeout_s=120, config_path=PILOT_CONFIG)
 
     directory = execution_dir(REPO_CONFIG.parents[1] / "data", metadata["execution_id"])
     assert metadata["run_status"] == "VALID", metadata["invalid_reason"]
