@@ -161,8 +161,11 @@ Estrutura das execuções, igual para Rules e LLM:
 - **`overload`:** 20 pedidos a 0,25/s, rajada de 10 s a 15/s a partir do 21º envio (150 pedidos) e mais
   20 a 0,25/s, total de 190.
 
-`tests/unit/test_generate_load.py` fixa as contagens e o alinhamento de cada cenário. A verificação do
-critério no servidor é o ensaio geral (M8-T05).
+`tests/unit/test_generate_load.py` fixa as contagens e o alinhamento de cada cenário.
+
+**Verificação no servidor (M8-T05, dado de piloto).** No ensaio geral (PILOT_0012–0025, 14/14 válidas), a
+utilização ficou em 0,10–0,29 fora de `overload` e em 0,85 em `overload`. O critério de não saturação
+está aprovado no servidor final.
 
 ## 15.5 Rubrica de adequação da decisão (D-33)
 
@@ -255,9 +258,9 @@ Justificativa:
    efeitos moderados. Diferenças menores tendem a ficar abaixo do limiar de relevância, que já impede
    o rótulo de favorecimento mesmo com significância.
 3. Custo: 30 × 7 cenários × 2 abordagens = **420 execuções válidas**, sem contar as inválidas
-   repetidas. As execuções de `persistent_degradation` levaram 14,7 min em média (PILOT_0089–0092);
-   os demais cenários têm a mesma carga base, o que dá cerca de 103 h de bancada. Estimativa de
-   piloto, a confirmar no servidor final.
+   repetidas. Na configuração final, no servidor, o ensaio geral levou cerca de 4,8 min por execução
+   (M8-T05), o que dá cerca de **34 h de bancada**. A estimativa anterior, de 103 h, valia para
+   0,035/s no Mac.
 
 Condições:
 
@@ -330,6 +333,6 @@ Bibliografia conferida em 2026-11-08; **ler antes de citar** e incluir no TCC so
 - [ ] Artigos primários e fontes do Consensus lidos; status C de §15.3 confirmado ou corrigido. *Não
   bloqueia a coleta: afeta só a discussão. Se a leitura alterar uma métrica, a mudança é registrada
   como desvio do protocolo, não aplicada em silêncio.*
-- [ ] Critério de não saturação aprovado no servidor final.
+- [x] Critério de não saturação aprovado no servidor final (M8-T05: 0,10–0,29 fora de `overload`).
 - [x] `N_rep` definido com o piso de §15.7: 30 pares por cenário (D-38).
 - [x] `config/analysis_plan.yml` e a rubrica incluídos no manifesto de hashes (M8-T04: `config/freeze_manifest.json`).
