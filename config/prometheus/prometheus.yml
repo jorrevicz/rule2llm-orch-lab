@@ -1,4 +1,4 @@
-# Coleta comum a Rules e LLM (D-10); intervalo de 1 s (D-26, provisório — A CONGELAR).
+# Coleta comum a Rules e LLM (D-10); intervalo de 1 s (D-26), congelado em freeze-v1.
 # Os indicadores ficam só com a bancada: o decisor nunca lê o Prometheus (RNF-029).
 global:
   scrape_interval: 1s

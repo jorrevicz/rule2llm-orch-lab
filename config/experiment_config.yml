@@ -1,7 +1,7 @@
 # Configuração experimental — fonte de verdade dos parâmetros (RNF-022).
 #
-# Fase atual: PILOTO. Todos os valores são provisórios e ficam A CONGELAR antes da
-# coleta definitiva (M8). Após o congelamento, nada aqui muda durante a coleta.
+# Valores finais do M8 (D-11, M8-T02 a M8-T04), congelados em freeze-v1: nada aqui muda durante a
+# coleta. Os hashes deste arquivo e dos demais artefatos congelados estão em config/freeze_manifest.json.
 #
 # Fontes: docs/ref/piloto-do-experimento.md §14.1 e §31;
 #         docs/03-stack-tecnologica.md §3.5 e §3.6.
@@ -42,18 +42,18 @@ llm:
   request_timeout_seconds: 30
   stream: false
   response_format: json         # D-09: restrição do runtime só à sintaxe JSON (sem schema)
-  num_ctx: 4096                 # contexto explícito (o Ollama corta prompt maior) — A CONGELAR
-  keep_alive: 30m               # modelo carregado durante toda a execução — A CONGELAR
-  prompt_template: config/prompts/decision_prompt_v1.txt   # Quadro 2 da metodologia — A CONGELAR
+  num_ctx: 4096                 # contexto explícito (o Ollama corta prompt maior)
+  keep_alive: 30m               # modelo carregado durante toda a execução
+  prompt_template: config/prompts/decision_prompt_v1.txt   # Quadro 2 da metodologia; hash no manifesto (M8-T04)
 
 inventory:
-  service_time_ms: 100          # D-22: tempo de serviço simulado (duas rotas, todos os cenários) — A CONGELAR
+  service_time_ms: 100          # D-22: tempo de serviço simulado (duas rotas, todos os cenários)
   catalog: datasets/inventory_catalog_v1.json   # D-03: catálogo de SKUs (sem saldo)
 
 metrics:
   sampling_interval_seconds: 1  # D-26: mesmo valor em config/prometheus/prometheus.yml, no
-                                # cAdvisor e no RabbitMQ (teste de coerência) — A CONGELAR
-  recovery_window_tasks: 5      # D-24: k da janela de sucessos do tempo de recuperação — A CONGELAR
+                                # cAdvisor e no RabbitMQ (teste de coerência)
+  recovery_window_tasks: 5      # D-24, D-39: k da janela de sucessos do tempo de recuperação
 
 # workload e fault abaixo = cenário normal. Cada execução usa um cenário de
 # config/scenarios/ (new_execution --scenario), que substitui estas duas seções.

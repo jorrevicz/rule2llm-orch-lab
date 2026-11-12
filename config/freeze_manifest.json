@@ -1,0 +1,57 @@
+{
+  "freeze": "freeze-v1",
+  "created_at": "2026-11-12T03:04:47.005Z",
+  "groups": {
+    "decision": {
+      "config/prompts/decision_prompt_v1.txt": "99381a48e3025abeb45875e3671e5ca8a274fb358ff2791fdf73a575f623048f",
+      "contracts/decision.schema.json": "e23cd0cd83a434f3da209759d391fdf7c603236d5bd6e1ce824a3b5bcfa8ac9b",
+      "contracts/message_envelope.schema.json": "7ced64e1c6755df53e77263c1c22d07203869575a5a65917d2a15cc0b95e8960",
+      "contracts/message_payloads.schema.json": "47269247720bd196bf3f582a38c08399c30e10cdf745b289a5f7d9c3b1939c08",
+      "contracts/system_state.schema.json": "1fa22cbe037aa6dee7afeebd46e52c33747d5c1278c3af360e9f6cb77a4ec41b",
+      "services/orders/app/llm/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "services/orders/app/llm/decision_parser.py": "028dafefab759d0799140668b97f7d63306f0a3c8c9f1c176306b36c73180cfd",
+      "services/orders/app/llm/llm_engine.py": "caa97d3fcc4ba32c7f0f2f2901ea32d91717f70385378f1b7e54b28aa99afc21",
+      "services/orders/app/llm/ollama_client.py": "546a787e8d4ec1d9293739e5b538136638673b7c89b8b43de02088280d0d2ec8",
+      "services/orders/app/llm/prompt_builder.py": "0be25cfe039cb41a7cc9cdb0d5c3faaa1dfc71a733803c99b1bdf60422a7e30c",
+      "services/orders/app/orchestration/decision_engine.py": "1a0ded5f7c27c481135ecc1ccc13505befb186f61d4288d0b22f9197db4add5c",
+      "services/orders/app/orchestration/executor.py": "f0ef43b82213abf1f921672106f6e844dea21f835e5c79bd07d1b4961756a33d",
+      "services/orders/app/orchestration/rules_engine.py": "33b3bf74849619bf61b33116501d4cf2b40cd362494fd049ffa4cf088781aee3",
+      "services/orders/app/orchestration/state_builder.py": "d81843ab025479cbe3c4c61c381c736e56e014b41d4801852cf3f484501cdee3",
+      "services/orders/app/orchestration/validator.py": "33cc897e9ddb9698b092a002ff63edf3bffb4ed622043d0538146c3bedb0c8f0",
+      "shared/decision.py": "1127a36fab5d80340c326892b3db639290e121273f4bda853741b14c4cdb2729",
+      "shared/system_state.py": "c9b18d1c0ddef2ed0203b1621559a4b79992987d90c7e385d155f270fd5977b1"
+    },
+    "configuration": {
+      "config/analysis_plan.yml": "ea26e451abb4cb5715d5a0d6b9c4573148bdbe9e4b2383eed76600bfb55ec77c",
+      "config/experiment_config.yml": "3c742a78c6a45c7a1c8de693e6658230aa1d8fd6c68f5fd384ea48753e690dd1",
+      "config/prometheus/prometheus.yml": "835da828a094e6a50848c5cf9d8b0aad78fef59dcc20c3a6cd90946e798f3365",
+      "config/rabbitmq/definitions.json": "4da38ca10bc1bf8e0cfc72689d24ee9d6de4dd6d52fc5b9a6d37e94e8f6d8dd3",
+      "config/rabbitmq/rabbitmq.conf": "9c54e3b5aa449b22eb3fc41d8da28f2237b00ec4ef25aec6febcc35c75bac7a3",
+      "config/scenarios/inconsistent_data.yml": "9aac2ffede56dc991a88f592dd870959964b8a1db363e5fa8dbd12ebd01b453e",
+      "config/scenarios/intermittent_failure.yml": "cd8c38802b61aa51c44cadd0a909cd22f535e2b9a6e33878c5bbb73a302aad7b",
+      "config/scenarios/normal.yml": "9f79d35b4856d9fa41308d5d2cc637490e266995fd36204854c63f5d0cbdee56",
+      "config/scenarios/overload.yml": "148713d6a551253dccd87ec2d09f04676b1666c559a337689284c051ab2307ba",
+      "config/scenarios/persistent_degradation.yml": "ced36cec1b21543cd1ba1174603257c0f2d794fa80b08b52b70be4e7ad33a303",
+      "config/scenarios/recovery.yml": "45f84df870a76239e7150c56b7e0705a75065c8be2c5fbd8a25be270a89338cc",
+      "config/scenarios/timeout.yml": "b4d6f2828b120229215bd018513778ef92f7b3116da54039970c49e953e759f7"
+    },
+    "data": {
+      "datasets/inventory_catalog_v1.json": "88921e3854119dd11b3a803228ec2255b5da733bcbc4bfc00bce24ea6613931e",
+      "datasets/orders_v1.json": "906d067c255155aec70a086a8c3a82ada87a2123dcb958e2b0dde7c3ccbc6832"
+    },
+    "analysis": {
+      "scripts/analysis/compare_engines.py": "2d658bbb64f430be0daa2a244eab0452b55d19939299e383943206a20035c7ef",
+      "scripts/analysis/consolidate.py": "a40c834d6d8cca8a1791cd1a4a9d277ed8a5fb2368d7f40386a1c7f290076467",
+      "scripts/analysis/decision_adequacy.py": "f36ac50b134626d9122e099b9b30c65fd137a6dee08ffe571ed7fffcc80239cb",
+      "scripts/analysis/replay_decisions.py": "f304d9e0e572c80612074262ccc9f9c5f935ac806d202312050fb166158d6913"
+    },
+    "environment": {
+      "docker-compose.yml": "f084f5560b189d6bdba023221a82933a3cc6a74a2f92fe918e27a356ce654cf1",
+      "requirements-dev.txt": "efe7c70ea5da15694bed4c98d824f004d31d2623aadf51018a56f24875934dbf",
+      "services/inventory/Dockerfile": "f6689df6945674df9dc38a55a43f194cd102b3da550f7b807f6abf2c396a4ed3",
+      "services/inventory/requirements.txt": "668a24dd0ce72685fe5c5b6d9015a4712bcbb63ef38a5bdcca881d20af1a695b",
+      "services/orders/Dockerfile": "392634366d5d383cfda3c6ef502b16ff5cd99713615062466a834084e5d0ce04",
+      "services/orders/requirements.txt": "dac6ee0b9cef7d93ee6144fbd5dec4327d9b59d0e5c9fa20cfa4d0e498481096"
+    }
+  }
+}

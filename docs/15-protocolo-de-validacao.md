@@ -328,4 +328,4 @@ Bibliografia conferida em 2026-11-08; **ler antes de citar** e incluir no TCC so
 - [ ] Artigos primários e fontes do Consensus lidos; status C de §15.3 confirmado ou corrigido.
 - [ ] Critério de não saturação aprovado no servidor final.
 - [x] `N_rep` definido com o piso de §15.7: 30 pares por cenário (D-38).
-- [ ] `config/analysis_plan.yml` e a rubrica incluídos no manifesto de hashes (M8-T04).
+- [x] `config/analysis_plan.yml` e a rubrica incluídos no manifesto de hashes (M8-T04: `config/freeze_manifest.json`).

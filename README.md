@@ -170,6 +170,10 @@ No Linux, o Ollama roda no host como serviço systemd (D-08), e o compose o alca
   A readiness reprova outro runtime, digest ou quantização. Por isso, depois do congelamento, a
   coleta só passa num host com exatamente esse runtime, e o Mac do piloto deixa de servir.
   Recrie o `.venv` da bancada com `uv pip install -r requirements-dev.txt`.
+- **Manifesto (M8-T04):** `config/freeze_manifest.json` guarda os hashes do prompt, do Rules,
+  do Validator, do Executor, das configs, do dataset, da análise e do ambiente. Confira com
+  `.venv/bin/python -m scripts.experiment.freeze_manifest --check`. Na fase `experiment`, a
+  readiness recusa a execução se algum arquivo divergir.
 - **Execução longa:** rode o protocolo dentro do `tmux` e traga os dados com
   `rsync -av <servidor>:rule2llm-orch-lab/data/<fase>/ <destino>/`. A numeração `PILOT_nnnn`
   é própria de cada host: não misture os diretórios de hosts diferentes.

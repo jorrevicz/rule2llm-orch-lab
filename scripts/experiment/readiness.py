@@ -11,6 +11,8 @@ Acréscimos do piloto: as imagens dos serviços foram construídas do commit atu
 os serviços apontam para esta execução, e o host está
 no estado controlado — no macOS, na tomada, sem Low Power Mode e com sleep impedido
 (asserção do `caffeinate` do executor); no Linux (servidor da coleta), não se aplica.
+Na fase `experiment`, os artefatos congelados precisam bater com `config/freeze_manifest.json`
+(M8-T04); no piloto, as diferenças só são relatadas.
 
 Qualquer critério reprovado → `readiness_status = FAIL` → a execução não é válida.
 """
@@ -27,6 +29,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from scripts.datasets.generate_dataset import REPO_ROOT
+from scripts.experiment.freeze_manifest import differences
+from scripts.experiment.freeze_manifest import load as load_manifest
 from scripts.experiment.reset_environment import _SNAPSHOT_SCRIPT, INITIAL_STATE_FILE, head_commit
 from scripts.pilot.environment import DEFAULT_BASE_URL, QUEUES, compose
 from services.inventory.app.db.connection import init_database as init_inventory_database
@@ -168,6 +172,19 @@ def check_host(system: str = platform.system(), run: Callable[..., str] = _comma
     return Check("host_power", all(value for key, value in detail.items() if key != "platform"), detail)
 
 
+def check_freeze(phase: str, manifest: dict | None = None, find: Callable[[dict], list[str]] = differences) -> Check:
+    """Fase `experiment`: os artefatos congelados precisam bater com o manifesto (M8-T04).
+
+    No piloto, as diferenças são só relatadas: o congelamento ainda pode mudar.
+    """
+    manifest = load_manifest() if manifest is None else manifest
+    if manifest is None:
+        return Check("frozen_configuration", phase != "experiment", "no freeze manifest")
+    found = find(manifest)
+    detail = {"freeze": manifest.get("freeze"), "differences": found}
+    return Check("frozen_configuration", phase != "experiment" or not found, detail)
+
+
 def check(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT) -> Readiness:
     directory = execution_dir(data_root, execution_id)
     config = load_experiment_config(directory / "experiment_config.yml")
@@ -181,6 +198,7 @@ def check(execution_id: str, data_root: Path = DEFAULT_DATA_ROOT) -> Readiness:
         check_databases(state, expected_database_state(REPO_ROOT / config.inventory.catalog)),
         check_collectors(),
         check_host(),
+        check_freeze(config.experiment.phase),
     ]
     status = "PASS" if all(item.ok for item in checks) else "FAIL"
     return Readiness(status=status, timestamp=utc_now_iso(), checks=checks)
