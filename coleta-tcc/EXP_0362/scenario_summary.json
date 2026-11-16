@@ -1,0 +1,45 @@
+{
+  "execution_id": "EXP_0362",
+  "scenario_id": "recovery",
+  "decision_engine": "RULES",
+  "duration_s": 238.2,
+  "wall_clock_s": 238.2,
+  "settled": true,
+  "orders_sent": 60,
+  "http_errors": 0,
+  "order_status": {
+    "COMPLETED": 51,
+    "FAILED": 9
+  },
+  "reservations_by_route": {
+    "primary": 51
+  },
+  "failed_orders_with_reservation": 0,
+  "decisions": 80,
+  "executed_actions": {
+    "CONTINUE/NORMAL_FLOW": 51,
+    "WAIT/SERVICE_UNAVAILABLE": 20,
+    "ABORT/SERVICE_UNAVAILABLE_LIMIT": 9
+  },
+  "invalid_decisions": {},
+  "llm_inference_ms_p50": null,
+  "fault_events": {
+    "FAULT_STARTED": 1,
+    "FAULT_ENDED": 1
+  },
+  "queue_depths_at_end": {
+    "inventory.fallback": 0,
+    "tasks.dlq": 0,
+    "orders.events": 0,
+    "inventory.primary": 0
+  },
+  "artifacts": {
+    "task_events": 262,
+    "states": 80,
+    "decisions": 80,
+    "microservices_logs": 558,
+    "fault_events": 2
+  },
+  "traceability_ok": true,
+  "traceability_errors": []
+}

@@ -1,0 +1,4 @@
+{"timestamp":"2026-11-13T00:08:53.028Z","execution_id":"EXP_0183","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":28,"order_id":"ORD_000028","task_id":"TASK_000028","effect":"sku SKU-037 -> SKU-999","seed":2061}
+{"timestamp":"2026-11-13T00:09:05.013Z","execution_id":"EXP_0183","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":31,"order_id":"ORD_000031","task_id":"TASK_000031","effect":"sku SKU-019 -> SKU-999","seed":2061}
+{"timestamp":"2026-11-13T00:09:13.004Z","execution_id":"EXP_0183","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":33,"order_id":"ORD_000033","task_id":"TASK_000033","effect":"sku SKU-038 -> SKU-999","seed":2061}
+{"timestamp":"2026-11-13T00:09:29.020Z","execution_id":"EXP_0183","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":37,"order_id":"ORD_000037","task_id":"TASK_000037","effect":"sku SKU-031 -> SKU-999","seed":2061}

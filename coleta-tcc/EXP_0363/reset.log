@@ -1,0 +1,4 @@
+2026-11-13T14:04:12.385Z reset started for EXP_0363 (docker-compose.yml)
+2026-11-13T14:04:19.065Z docker compose down -v --remove-orphans: containers, bancos, filas e métricas removidos
+2026-11-13T14:04:50.754Z docker compose up -d --wait --build: ambiente no ar para EXP_0363
+2026-11-13T14:04:52.999Z estado inicial registrado em initial_state.json

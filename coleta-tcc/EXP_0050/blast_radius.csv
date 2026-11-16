@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,tasks_total,tasks_affected,tasks_affected_ratio,tasks_directly_hit,tasks_interrupted,services_with_warnings,messages_redelivered,messages_dead_lettered
+EXP_0050,EXPERIMENT,overload,RULES,4,VALID,FAULT_OVERLOAD,overload,190,113,0.5947,0,32,[],0,0

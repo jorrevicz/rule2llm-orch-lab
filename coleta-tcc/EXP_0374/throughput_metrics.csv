@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,completed_tasks,window_s,throughput_per_s
+EXP_0374,EXPERIMENT,persistent_degradation,LLM,27,VALID,46,236.5,0.1945

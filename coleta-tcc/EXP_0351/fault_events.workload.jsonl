@@ -1,0 +1,3 @@
+{"timestamp":"2026-11-13T13:11:02.357Z","execution_id":"EXP_0351","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":23,"order_id":"ORD_000023","task_id":"TASK_000023","effect":"sku SKU-004 -> SKU-999","seed":2073}
+{"timestamp":"2026-11-13T13:11:10.350Z","execution_id":"EXP_0351","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":25,"order_id":"ORD_000025","task_id":"TASK_000025","effect":"sku SKU-035 -> SKU-999","seed":2073}
+{"timestamp":"2026-11-13T13:11:14.328Z","execution_id":"EXP_0351","event_type":"FAULT_APPLIED","fault_type":"inconsistent_data","order_index":26,"order_id":"ORD_000026","task_id":"TASK_000026","effect":"sku SKU-025 -> SKU-999","seed":2073}

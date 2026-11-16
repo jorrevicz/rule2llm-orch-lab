@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,tasks_total,tasks_affected,tasks_affected_ratio,tasks_directly_hit,tasks_interrupted,services_with_warnings,messages_redelivered,messages_dead_lettered
+EXP_0334,EXPERIMENT,recovery,RULES,24,VALID,FAULT_RECOVERY,recovery,60,10,0.1667,0,9,[],0,0

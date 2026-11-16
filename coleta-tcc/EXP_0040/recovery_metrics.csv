@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,fault_started_at,fault_ended_at,window_tasks_k,baseline_tasks,baseline_p95_ms,recovered,recovered_at,recovery_time_ms,recovery_after_fault_end_ms,recovery_horizon_ms
+EXP_0040,EXPERIMENT,recovery,LLM,3,VALID,FAULT_RECOVERY,recovery,2026-11-12T13:01:10.761Z,2026-11-12T13:01:47.322Z,5,20,548.4,True,2026-11-12T13:01:48.389Z,37628.0,1067.0,113064.0

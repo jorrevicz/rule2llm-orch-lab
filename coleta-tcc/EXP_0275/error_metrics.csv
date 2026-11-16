@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,tasks,failed_tasks,error_rate,aborted,dead_lettered,not_terminal,invalid_decisions,llm_decision_timeouts,http_errors,abort_reasons
+EXP_0275,EXPERIMENT,persistent_degradation,LLM,20,VALID,60,12,0.2,12,0,0,12,0,0,"{""INVALID_DECISION"": 12}"

@@ -1,0 +1,2 @@
+{"timestamp":"2026-11-12T20:50:42.692Z","level":"INFO","service":"inventory-fallback","logger":"celery.worker.consumer.connection","execution_id":"EXP_0141","message":"Connected to amqp://tcc:**@rabbitmq:5672//"}
+{"timestamp":"2026-11-12T20:50:42.696Z","level":"INFO","service":"inventory-fallback","logger":"celery.apps.worker","execution_id":"EXP_0141","message":"inventory-fallback@436914db1de9 ready."}

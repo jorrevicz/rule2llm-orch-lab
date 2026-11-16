@@ -1,0 +1,45 @@
+{
+  "execution_id": "EXP_0408",
+  "scenario_id": "inconsistent_data",
+  "decision_engine": "RULES",
+  "duration_s": 238.2,
+  "wall_clock_s": 238.2,
+  "settled": true,
+  "orders_sent": 60,
+  "http_errors": 0,
+  "order_status": {
+    "COMPLETED": 53,
+    "FAILED": 7
+  },
+  "reservations_by_route": {
+    "primary": 53
+  },
+  "failed_orders_with_reservation": 0,
+  "decisions": 67,
+  "executed_actions": {
+    "CONTINUE/NORMAL_FLOW": 60,
+    "ABORT/INVALID_DATA": 7
+  },
+  "invalid_decisions": {},
+  "llm_inference_ms_p50": null,
+  "fault_events": {
+    "FAULT_STARTED": 1,
+    "FAULT_APPLIED": 7,
+    "FAULT_ENDED": 1
+  },
+  "queue_depths_at_end": {
+    "inventory.fallback": 0,
+    "tasks.dlq": 0,
+    "orders.events": 0,
+    "inventory.primary": 0
+  },
+  "artifacts": {
+    "task_events": 240,
+    "states": 67,
+    "decisions": 67,
+    "microservices_logs": 553,
+    "fault_events": 9
+  },
+  "traceability_ok": true,
+  "traceability_errors": []
+}

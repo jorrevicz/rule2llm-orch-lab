@@ -1,0 +1,44 @@
+{
+  "execution_id": "EXP_0153",
+  "scenario_id": "timeout",
+  "decision_engine": "RULES",
+  "duration_s": 238.1,
+  "wall_clock_s": 238.1,
+  "settled": true,
+  "orders_sent": 60,
+  "http_errors": 0,
+  "order_status": {
+    "COMPLETED": 60
+  },
+  "reservations_by_route": {
+    "primary": 60
+  },
+  "failed_orders_with_reservation": 0,
+  "decisions": 72,
+  "executed_actions": {
+    "CONTINUE/NORMAL_FLOW": 60,
+    "RETRY/TRANSIENT_RETRY": 12
+  },
+  "invalid_decisions": {},
+  "llm_inference_ms_p50": null,
+  "fault_events": {
+    "FAULT_STARTED": 1,
+    "FAULT_APPLIED": 11,
+    "FAULT_ENDED": 1
+  },
+  "queue_depths_at_end": {
+    "inventory.fallback": 0,
+    "tasks.dlq": 0,
+    "orders.events": 0,
+    "inventory.primary": 0
+  },
+  "artifacts": {
+    "task_events": 282,
+    "states": 72,
+    "decisions": 72,
+    "microservices_logs": 678,
+    "fault_events": 13
+  },
+  "traceability_ok": true,
+  "traceability_errors": []
+}

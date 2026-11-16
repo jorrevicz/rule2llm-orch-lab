@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,tasks_total,tasks_affected,tasks_affected_ratio,tasks_directly_hit,tasks_interrupted,services_with_warnings,messages_redelivered,messages_dead_lettered
+EXP_0080,EXPERIMENT,persistent_degradation,RULES,6,VALID,FAULT_INTERMITTENT_ERROR,intermittent_error,60,18,0.3,18,0,[],0,0

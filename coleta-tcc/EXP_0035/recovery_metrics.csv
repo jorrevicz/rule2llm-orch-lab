@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,fault_started_at,fault_ended_at,window_tasks_k,baseline_tasks,baseline_p95_ms,recovered,recovered_at,recovery_time_ms,recovery_after_fault_end_ms,recovery_horizon_ms
+EXP_0035,EXPERIMENT,overload,RULES,3,VALID,FAULT_OVERLOAD,overload,2026-11-12T12:39:12.659Z,2026-11-12T12:39:22.659Z,5,20,150.4,True,2026-11-12T12:39:30.803Z,18144.0,8144.0,76152.0

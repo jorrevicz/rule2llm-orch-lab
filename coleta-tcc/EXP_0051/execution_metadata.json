@@ -1,0 +1,227 @@
+{
+  "execution_id": "EXP_0051",
+  "phase": "EXPERIMENT",
+  "eligible_for_sample": true,
+  "scenario_id": "persistent_degradation",
+  "repetition_id": 4,
+  "decision_engine": "LLM",
+  "experiment_version": null,
+  "git_commit": "96ae343a40f52ccd19d907470e554d3cd152aef9",
+  "experiment_config": "data/experiment/EXP_0051/experiment_config.yml",
+  "experiment_config_hash": "1489b8de921e7d2471f19fe85ca282da6c2c9fb105cd9fbf5b383948e7e4604f",
+  "scenario_config": "config/scenarios/persistent_degradation.yml",
+  "scenario_config_hash": "ced36cec1b21543cd1ba1174603257c0f2d794fa80b08b52b70be4e7ad33a303",
+  "dataset": "datasets/orders_v1.json",
+  "dataset_hash": "906d067c255155aec70a086a8c3a82ada87a2123dcb958e2b0dde7c3ccbc6832",
+  "seeds": {
+    "workload": 1042,
+    "fault": 2051,
+    "llm": 42
+  },
+  "software": {
+    "python_version": "3.12.16",
+    "docker_compose_version": "5.7.0",
+    "rabbitmq_version": "4.4.0",
+    "llm_runtime": "ollama",
+    "llm_runtime_version": "0.33.2",
+    "celery_version": "5.7.0",
+    "docker_version": "29.8.2",
+    "images": {
+      "rule2llm-orch-lab-inventory-worker-1": {
+        "image": "rule2llm-orch-lab-inventory-worker:latest",
+        "id": "sha256:33ad42ae0be61b857712fbd971f907df1ef6475fa98301a7113b09031e101a76"
+      },
+      "rule2llm-orch-lab-cadvisor-1": {
+        "image": "gcr.io/cadvisor/cadvisor:",
+        "id": "sha256:3de2bd5203120b866d74a9b283b2ffb8ec382fbf9dc321814700c6ea6f44ec57"
+      },
+      "rule2llm-orch-lab-node-exporter-1": {
+        "image": "prom/node-exporter:",
+        "id": "sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0"
+      },
+      "rule2llm-orch-lab-prometheus-1": {
+        "image": "prom/prometheus:",
+        "id": "sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e"
+      },
+      "rule2llm-orch-lab-rabbitmq-1": {
+        "image": "rabbitmq:",
+        "id": "sha256:af6f50d38098d8bd52fef7f3fa85015dd8b2bf6def58e995bf584ae9ba0f6407"
+      },
+      "rule2llm-orch-lab-orders-api-1": {
+        "image": "rule2llm-orch-lab-orders-api:latest",
+        "id": "sha256:acc0eb6f3c29c5e96a2b5e3f46917573a8a2f45cb88dca5433c8e81a54379e36"
+      },
+      "rule2llm-orch-lab-orders-worker-1": {
+        "image": "rule2llm-orch-lab-orders-worker:latest",
+        "id": "sha256:acc0eb6f3c29c5e96a2b5e3f46917573a8a2f45cb88dca5433c8e81a54379e36"
+      }
+    }
+  },
+  "llm": {
+    "model": "llama3.1:8b",
+    "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+    "quantization": "Q4_K_M",
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 64,
+    "seed": 42,
+    "session_memory": false,
+    "request_timeout_seconds": 30,
+    "stream": false,
+    "response_format": "json",
+    "num_ctx": 4096,
+    "keep_alive": "30m",
+    "prompt_template": "config/prompts/decision_prompt_v1.txt",
+    "prompt_template_hash": "99381a48e3025abeb45875e3671e5ca8a274fb358ff2791fdf73a575f623048f"
+  },
+  "hardware": {
+    "platform": "Linux-7.2.11-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu": "Intel(R) Xeon(R) W-2223 CPU @ 3.60GHz",
+    "ram_gb": 15.3,
+    "gpu": "NVIDIA GeForce RTX 3080"
+  },
+  "context_policy": {
+    "recent_events_limit": 5,
+    "llm_session_memory": false
+  },
+  "message_ordering_policy": {
+    "scope": "per_task",
+    "field": "event_seq",
+    "global_total_order": false,
+    "logical_clock": false
+  },
+  "readiness_status": "PASS",
+  "model_load_ms": 4798.616421,
+  "warmup_inference_ms": 5270.187254995108,
+  "started_at": "2026-11-12T13:49:41.856Z",
+  "finished_at": "2026-11-12T13:54:35.595Z",
+  "run_status": "VALID",
+  "invalid_reason": null,
+  "base_experiment_config": "config/experiment_config.yml",
+  "base_experiment_config_hash": "31bf34fb15431362bdab5065016083527244a39940a753c2091eef96d1ebd7c6",
+  "fault": {
+    "type": "intermittent_error",
+    "target": "inventory.primary",
+    "start_after_seconds": 80.0,
+    "duration_seconds": 80.0,
+    "failure_probability": 0.9,
+    "delay_ms": null,
+    "overload_rate_per_second": null,
+    "seed": 2051
+  },
+  "workload": {
+    "dataset": "datasets/orders_v1.json",
+    "requests": 60,
+    "rate_per_second": 0.25,
+    "seed": 1042
+  },
+  "readiness_timestamp": "2026-11-12T13:50:25.298Z",
+  "readiness_checks": [
+    {
+      "name": "containers",
+      "ok": true,
+      "detail": [
+        "cadvisor",
+        "inventory-worker",
+        "node-exporter",
+        "orders-api",
+        "orders-worker",
+        "prometheus",
+        "rabbitmq"
+      ]
+    },
+    {
+      "name": "images_match_commit",
+      "ok": true,
+      "detail": {
+        "orders-api": "96ae343a40f52ccd19d907470e554d3cd152aef9",
+        "orders-worker": "96ae343a40f52ccd19d907470e554d3cd152aef9",
+        "inventory-worker": "96ae343a40f52ccd19d907470e554d3cd152aef9"
+      }
+    },
+    {
+      "name": "services_on_execution",
+      "ok": true,
+      "detail": {
+        "orders-api": "EXP_0051",
+        "orders-worker": "EXP_0051",
+        "inventory-worker": "EXP_0051"
+      }
+    },
+    {
+      "name": "queues_declared_empty_with_consumers",
+      "ok": true,
+      "detail": {
+        "inventory.fallback": 1,
+        "tasks.dlq": 1,
+        "orders.events": 1,
+        "inventory.primary": 1
+      }
+    },
+    {
+      "name": "api_health",
+      "ok": true,
+      "detail": {
+        "status": "ok"
+      }
+    },
+    {
+      "name": "databases_initial_state",
+      "ok": true,
+      "detail": {
+        "orders": "58cd0cf92e8e",
+        "inventory": "966ad3818a35"
+      }
+    },
+    {
+      "name": "collectors",
+      "ok": true,
+      "detail": {
+        "cadvisor": "up",
+        "node": "up",
+        "rabbitmq": "up"
+      }
+    },
+    {
+      "name": "host_power",
+      "ok": true,
+      "detail": {
+        "platform": "Linux",
+        "power_checks": "not_applicable"
+      }
+    },
+    {
+      "name": "frozen_configuration",
+      "ok": true,
+      "detail": {
+        "freeze": "freeze-v1",
+        "differences": []
+      }
+    }
+  ],
+  "initial_database_hashes": {
+    "orders": "58cd0cf92e8ec074ceabfc7a5a562f816dbbd5c6317ed0c73b51d30c994c31a2",
+    "inventory": "966ad3818a353408b26cd1bed1f8c5c990f0ad36529d343fedd7faf0d784394c"
+  },
+  "llm_readiness": {
+    "status": "PASS",
+    "runtime_version": "0.33.2",
+    "model": "llama3.1:8b",
+    "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+    "quantization": "Q4_K_M",
+    "parameter_size": "8.0B",
+    "processor": "100% GPU",
+    "context_length": 4096,
+    "model_load_ms": 4798.616421,
+    "warmup_inference_ms": 5270.187254995108,
+    "probe_inference_ms": 248.98106799810193,
+    "reachable_from_services": {
+      "orders-api": "0.33.2",
+      "orders-worker": "0.33.2"
+    },
+    "failures": []
+  },
+  "load_started_at": "2026-11-12T13:50:34.763Z"
+}

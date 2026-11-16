@@ -1,0 +1,4 @@
+{"timestamp":"2026-11-12T16:10:06.963Z","level":"INFO","service":"inventory-fallback","logger":"celery.worker.consumer.connection","execution_id":"EXP_0081","message":"Connected to amqp://tcc:**@rabbitmq:5672//"}
+{"timestamp":"2026-11-12T16:10:06.971Z","level":"INFO","service":"inventory-fallback","logger":"celery.apps.worker","execution_id":"EXP_0081","message":"inventory-fallback@7e567fe24068 ready."}
+{"timestamp":"2026-11-12T16:12:43.603Z","level":"INFO","service":"inventory-fallback","logger":"celery.worker.consumer.connection","execution_id":"EXP_0081","message":"Connected to amqp://tcc:**@rabbitmq:5672//"}
+{"timestamp":"2026-11-12T16:12:43.607Z","level":"INFO","service":"inventory-fallback","logger":"celery.apps.worker","execution_id":"EXP_0081","message":"inventory-fallback@7e567fe24068 ready."}

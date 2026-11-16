@@ -1,0 +1,46 @@
+{
+  "execution_id": "EXP_0399",
+  "scenario_id": "overload",
+  "decision_engine": "RULES",
+  "duration_s": 169.0,
+  "wall_clock_s": 169.0,
+  "settled": true,
+  "orders_sent": 190,
+  "http_errors": 0,
+  "order_status": {
+    "COMPLETED": 156,
+    "FAILED": 34
+  },
+  "reservations_by_route": {
+    "primary": 163
+  },
+  "failed_orders_with_reservation": 7,
+  "decisions": 380,
+  "executed_actions": {
+    "CONTINUE/NORMAL_FLOW": 163,
+    "WAIT/QUEUE_PRESSURE": 148,
+    "RETRY/TRANSIENT_RETRY": 35,
+    "ABORT/QUEUE_PRESSURE_LIMIT": 34
+  },
+  "invalid_decisions": {},
+  "llm_inference_ms_p50": null,
+  "fault_events": {
+    "FAULT_STARTED": 1,
+    "FAULT_ENDED": 1
+  },
+  "queue_depths_at_end": {
+    "inventory.fallback": 0,
+    "tasks.dlq": 0,
+    "orders.events": 0,
+    "inventory.primary": 0
+  },
+  "artifacts": {
+    "task_events": 1097,
+    "states": 380,
+    "decisions": 380,
+    "microservices_logs": 2353,
+    "fault_events": 2
+  },
+  "traceability_ok": true,
+  "traceability_errors": []
+}

@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "runtime_version": "0.33.2",
+  "model": "llama3.1:8b",
+  "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+  "quantization": "Q4_K_M",
+  "parameter_size": "8.0B",
+  "processor": "100% GPU",
+  "context_length": 4096,
+  "model_load_ms": 4142.819551,
+  "warmup_inference_ms": 4566.460508009186,
+  "probe_inference_ms": 248.97780000173952,
+  "reachable_from_services": {
+    "orders-api": "0.33.2",
+    "orders-worker": "0.33.2"
+  },
+  "failures": []
+}

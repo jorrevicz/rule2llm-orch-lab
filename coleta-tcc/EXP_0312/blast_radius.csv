@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,tasks_total,tasks_affected,tasks_affected_ratio,tasks_directly_hit,tasks_interrupted,services_with_warnings,messages_redelivered,messages_dead_lettered
+EXP_0312,EXPERIMENT,intermittent_failure,LLM,23,VALID,FAULT_INTERMITTENT_ERROR,intermittent_error,60,13,0.2167,13,2,[],0,0

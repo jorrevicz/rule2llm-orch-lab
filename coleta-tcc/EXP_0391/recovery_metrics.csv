@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,fault_started_at,fault_ended_at,window_tasks_k,baseline_tasks,baseline_p95_ms,recovered,recovered_at,recovery_time_ms,recovery_after_fault_end_ms,recovery_horizon_ms
+EXP_0391,EXPERIMENT,timeout,LLM,28,VALID,FAULT_TIMEOUT,timeout,2026-11-13T16:16:50.424Z,2026-11-13T16:18:10.423Z,5,20,541.2,True,2026-11-13T16:18:14.956Z,84532.0,4533.0,76529.0

@@ -1,0 +1,56 @@
+# Config efetiva de EXP_0155: config/experiment_config.yml + cenário inconsistent_data (gerada por new_execution; não editar).
+experiment:
+  phase: experiment
+  decision_engine: LLM
+  repetitions: 30
+  execution_order:
+  - RULES
+  - LLM
+messaging:
+  inventory_timeout_ms: 2000
+  max_attempts: 3
+  retry_delay_ms: 500
+  wait_delay_ms: 1000
+  max_waits: 2
+  fallback_max_attempts: 1
+  queue_high_watermark: 20
+  task_deadline_ms: 60000
+context:
+  recent_events_limit: 5
+llm:
+  runtime: ollama
+  runtime_version: 0.33.2
+  model: llama3.1:8b
+  model_digest: 46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e
+  quantization: Q4_K_M
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 64
+  seed: 42
+  session_memory: false
+  request_timeout_seconds: 30
+  stream: false
+  response_format: json
+  num_ctx: 4096
+  keep_alive: 30m
+  prompt_template: config/prompts/decision_prompt_v1.txt
+inventory:
+  service_time_ms: 100
+  catalog: datasets/inventory_catalog_v1.json
+metrics:
+  sampling_interval_seconds: 1
+  recovery_window_tasks: 5
+workload:
+  dataset: datasets/orders_v1.json
+  requests: 60
+  rate_per_second: 0.25
+  seed: 1042
+fault:
+  type: inconsistent_data
+  target: null
+  start_after_seconds: 80.0
+  duration_seconds: 80.0
+  failure_probability: 0.3
+  delay_ms: null
+  overload_rate_per_second: null
+  seed: 2059

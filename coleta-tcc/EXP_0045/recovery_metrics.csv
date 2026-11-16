@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,fault_started_at,fault_ended_at,window_tasks_k,baseline_tasks,baseline_p95_ms,recovered,recovered_at,recovery_time_ms,recovery_after_fault_end_ms,recovery_horizon_ms
+EXP_0045,EXPERIMENT,intermittent_failure,LLM,4,VALID,FAULT_INTERMITTENT_ERROR,intermittent_error,2026-11-12T13:25:17.466Z,2026-11-12T13:26:37.465Z,5,20,648.4,True,2026-11-12T13:26:37.978Z,80512.0,513.0,76514.0

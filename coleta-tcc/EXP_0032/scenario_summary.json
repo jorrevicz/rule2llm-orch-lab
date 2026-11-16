@@ -1,0 +1,52 @@
+{
+  "execution_id": "EXP_0032",
+  "scenario_id": "intermittent_failure",
+  "decision_engine": "LLM",
+  "duration_s": 238.5,
+  "wall_clock_s": 238.5,
+  "settled": true,
+  "orders_sent": 60,
+  "http_errors": 0,
+  "order_status": {
+    "COMPLETED": 59,
+    "FAILED": 1
+  },
+  "reservations_by_route": {
+    "primary": 59
+  },
+  "failed_orders_with_reservation": 0,
+  "decisions": 75,
+  "executed_actions": {
+    "CONTINUE/TASK_CREATED": 11,
+    "CONTINUE/TASK_PHASE_PENDING": 48,
+    "RETRY/SERVICE_DEGRADED": 8,
+    "RETRY/ATTEMPT_LIMIT_REACHED": 5,
+    "RETRY/ATTEMPT_001": 1,
+    "ABORT/INVALID_DECISION": 1,
+    "CONTINUE/001": 1
+  },
+  "invalid_decisions": {
+    "RETRY_LIMIT_EXCEEDED": 1
+  },
+  "llm_inference_ms_p50": 382.35631899442524,
+  "fault_events": {
+    "FAULT_STARTED": 1,
+    "FAULT_APPLIED": 15,
+    "FAULT_ENDED": 1
+  },
+  "queue_depths_at_end": {
+    "inventory.fallback": 0,
+    "tasks.dlq": 0,
+    "orders.events": 0,
+    "inventory.primary": 0
+  },
+  "artifacts": {
+    "task_events": 282,
+    "states": 75,
+    "decisions": 75,
+    "microservices_logs": 790,
+    "fault_events": 17
+  },
+  "traceability_ok": true,
+  "traceability_errors": []
+}

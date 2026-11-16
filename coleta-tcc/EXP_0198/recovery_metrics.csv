@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,fault_id,fault_type,fault_started_at,fault_ended_at,window_tasks_k,baseline_tasks,baseline_p95_ms,recovered,recovered_at,recovery_time_ms,recovery_after_fault_end_ms,recovery_horizon_ms
+EXP_0198,EXPERIMENT,inconsistent_data,LLM,15,VALID,FAULT_INCONSISTENT_DATA,inconsistent_data,2026-11-13T01:18:25.035Z,2026-11-13T01:19:45.035Z,5,20,546.4,True,2026-11-13T01:19:49.561Z,84526.0,4526.0,76529.0

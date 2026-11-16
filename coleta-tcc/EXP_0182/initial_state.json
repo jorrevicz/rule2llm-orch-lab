@@ -1,0 +1,50 @@
+{
+  "captured_at": "2026-11-13T00:01:49.967Z",
+  "databases": {
+    "orders": {
+      "tables": {
+        "orders": {
+          "rows": 0
+        },
+        "processed_events": {
+          "rows": 0
+        },
+        "task_events": {
+          "rows": 0
+        },
+        "tasks": {
+          "rows": 0
+        }
+      },
+      "logical_sha256": "58cd0cf92e8ec074ceabfc7a5a562f816dbbd5c6317ed0c73b51d30c994c31a2"
+    },
+    "inventory": {
+      "tables": {
+        "processed_messages": {
+          "rows": 0
+        },
+        "reservations": {
+          "rows": 0
+        },
+        "stock": {
+          "rows": 50
+        }
+      },
+      "logical_sha256": "966ad3818a353408b26cd1bed1f8c5c990f0ad36529d343fedd7faf0d784394c"
+    }
+  },
+  "queues": {
+    "messages": {
+      "inventory.fallback": 0,
+      "tasks.dlq": 0,
+      "orders.events": 0,
+      "inventory.primary": 0
+    },
+    "consumers": {
+      "inventory.fallback": 1,
+      "tasks.dlq": 1,
+      "orders.events": 1,
+      "inventory.primary": 1
+    }
+  }
+}

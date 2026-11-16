@@ -1,0 +1,2 @@
+execution_id,phase,scenario_id,decision_engine,repetition_id,run_status,completed_tasks,window_s,throughput_per_s
+EXP_0028,EXPERIMENT,timeout,RULES,2,VALID,60,236.2,0.2541
